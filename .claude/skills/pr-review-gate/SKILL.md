@@ -150,4 +150,3 @@ every comment inline, so they pass with or without it. `probe-pagination.sh` ver
 path against a real PR with `COMMENTS_PAGE_SIZE=1`, comparing three merges: no re-fetch and
 `unique_by` (which sorts, hiding a disposition that sorts before the finding) must both MISS
 the disposition; the shipping order-preserving merge must see it.
-

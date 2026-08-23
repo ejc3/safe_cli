@@ -46,7 +46,7 @@ REPO_NAME=${REPO_NAME:-safe_cli}
 COMMENTS_PAGE_SIZE=${COMMENTS_PAGE_SIZE:-100}
 
 fetch_payload() {
-  local pr=$1 cursor=null threads='[]' reviews='[]'
+  local pr=$1 cursor=null threads='[]' reviews='[]' comments='[]'
   while :; do
     local after="" resp
     # `\"` here, NOT `\\\"`: the latter puts a literal backslash into the GraphQL
@@ -57,6 +57,7 @@ fetch_payload() {
       { repository(owner: \"$REPO_OWNER\", name: \"$REPO_NAME\") {
           pullRequest(number: $pr) {
             reviews(first: 100) { nodes { author { login } state body } }
+            comments(first: 100) { nodes { author { login } body } }
             reviewThreads(first: 100$after) {
               pageInfo { hasNextPage endCursor }
               nodes {
@@ -76,8 +77,10 @@ fetch_payload() {
 
     threads=$(jq -s '.[0] + (.[1].data.repository.pullRequest.reviewThreads.nodes // [])' \
           <(echo "$threads") <(echo "$resp"))
-    reviews=$(jq -s '.[0] + (.[1].data.repository.pullRequest.reviews.nodes // [])' \
-          <(echo "$reviews") <(echo "$resp"))
+    # reviews and comments do not paginate here (first:100), so capture the current
+    # page rather than appending — appending duplicates them across thread pages.
+    reviews=$(jq '.data.repository.pullRequest.reviews.nodes // []' <<<"$resp")
+    comments=$(jq '.data.repository.pullRequest.comments.nodes // []' <<<"$resp")
     [ "$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$resp")" = "true" ] || break
     cursor=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor' <<<"$resp")
   done
@@ -103,8 +106,8 @@ fetch_payload() {
       <<<"$threads")
   done
 
-  jq -n --argjson t "$threads" --argjson r "$reviews" \
-     '{data:{repository:{pullRequest:{reviewThreads:{nodes:$t}, reviews:{nodes:$r}}}}}'
+  jq -n --argjson t "$threads" --argjson r "$reviews" --argjson c "$comments" \
+     '{data:{repository:{pullRequest:{reviewThreads:{nodes:$t}, reviews:{nodes:$r}, comments:{nodes:$c}}}}}'
 }
 
 if [ "${1:-}" = "--from-file" ]; then
@@ -115,6 +118,7 @@ else
 fi
 threads=$(jq '.data.repository.pullRequest.reviewThreads.nodes' <<<"$payload" 2>/dev/null)
 reviews=$(jq '.data.repository.pullRequest.reviews.nodes // []' <<<"$payload" 2>/dev/null)
+issue_comments=$(jq '.data.repository.pullRequest.comments.nodes // []' <<<"$payload" 2>/dev/null)
 
 # Prove the payload is what we think before counting it. `jq` emits `null` for a missing
 # path and an empty string on a parse error, and `[ "" -gt 0 ]` is a shell error, not a
@@ -199,11 +203,14 @@ fi
 # Count only bodies that are NOT themselves acknowledgements. An ACK reply carries a
 # body too, and counting it as one more thing needing acknowledgement made a correctly
 # acked PR block forever — the fail-closed-permanently twin of the bug this replaced.
-unacked=$(jq -r '
-  ([ .[] | select((.body // "") | test("[^[:space:]]"))
-          | select((.body // "") | test("REVIEW-ACK:") | not) ] | length) as $needing
-  | ([ .[] | select((.body // "") | test("REVIEW-ACK:[[:space:]]*[^[:space:]]")) ] | length) as $acks
-  | if $acks > 0 then 0 else $needing end' <<<"$reviews" 2>/dev/null || echo 0)
+# Acknowledgements may be posted as a PR-level review OR as a PR conversation comment
+# (`gh pr comment`), so both are ack sources. And one ack does not clear every body —
+# require at least as many acks as review bodies that need one.
+unacked=$(jq -rn --argjson reviews "$reviews" --argjson comments "$issue_comments" '
+  ([ $reviews[] | select((.body // "") | test("[^[:space:]]"))
+                | select((.body // "") | test("REVIEW-ACK:") | not) ] | length) as $needing
+  | ([ ($reviews[], $comments[]) | select((.body // "") | test("REVIEW-ACK:[[:space:]]*[^[:space:]]")) ] | length) as $acks
+  | if $acks >= $needing then 0 else ($needing - $acks) end' 2>/dev/null || echo 0)
 
 if [ "${unacked:-0}" -gt 0 ]; then
   echo

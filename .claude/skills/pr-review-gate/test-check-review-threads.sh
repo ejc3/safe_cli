@@ -26,6 +26,9 @@ run_case() {
 }
 
 wrap() { printf '{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":%s},"reviews":{"nodes":%s}}}}}' "$1" "${2:-[]}"; }
+# Like wrap, but also carries PR-level issue comments (3rd arg) — the channel a
+# `gh pr comment` REVIEW-ACK lands in.
+wrap3() { printf '{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":%s},"reviews":{"nodes":%s},"comments":{"nodes":%s}}}}}' "$1" "$2" "$3"; }
 
 echo "== finding 1: a missing/nonexistent PR must not read as 'no threads' =="
 run_case "null pullRequest blocks" \
@@ -70,6 +73,17 @@ run_case "acknowledged review body clears" \
   0 "CLEAR"
 run_case "empty review body needs no ack" \
   "$(wrap '[]' '[{"author":{"login":"someone"},"state":"APPROVED","body":""}]')" \
+  0 "CLEAR"
+
+echo "== PR#1 codex: an ack may arrive as a PR comment, and one ack != all bodies =="
+run_case "REVIEW-ACK as an issue comment clears the review body" \
+  "$(wrap3 '[]' '[{"author":{"login":"codex"},"state":"COMMENTED","body":"P1: this drops events"}]' '[{"author":{"login":"me"},"body":"REVIEW-ACK: fixed in abc123"}]')" \
+  0 "CLEAR"
+run_case "one review-body ack does not clear two review bodies" \
+  "$(wrap '[]' '[{"author":{"login":"codex"},"state":"COMMENTED","body":"P1: bug A"},{"author":{"login":"codex"},"state":"COMMENTED","body":"P1: bug B"},{"author":{"login":"me"},"state":"COMMENTED","body":"REVIEW-ACK: fixed A"}]')" \
+  1 "BLOCKED"
+run_case "two acks clear two review bodies" \
+  "$(wrap3 '[]' '[{"author":{"login":"codex"},"state":"COMMENTED","body":"P1: bug A"},{"author":{"login":"codex"},"state":"COMMENTED","body":"P1: bug B"}]' '[{"author":{"login":"me"},"body":"REVIEW-ACK: fixed A"},{"author":{"login":"me"},"body":"REVIEW-ACK: fixed B"}]')" \
   0 "CLEAR"
 
 echo "== finding 6: a disposition past the first comment page must be seen =="
