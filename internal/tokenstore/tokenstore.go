@@ -4,12 +4,36 @@
 package tokenstore
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
+
+// jwtClaimInt parses an (unverified) JWT and returns an integer claim such as
+// "exp" or "iat". The token is a bearer artifact we already hold, so we read its
+// payload for timing without verifying the signature.
+func jwtClaimInt(token, claim string) (int64, bool) {
+	parts := strings.Split(token, ".")
+	if len(parts) < 2 {
+		return 0, false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return 0, false
+	}
+	var m map[string]any
+	if json.Unmarshal(payload, &m) != nil {
+		return 0, false
+	}
+	if v, ok := m[claim].(float64); ok {
+		return int64(v), true
+	}
+	return 0, false
+}
 
 // Token is one entry of the frisco token response.
 type Token struct {
@@ -58,8 +82,14 @@ func (s *TokenSet) IDToken() (string, bool) {
 	return "", false
 }
 
-// Expired reports whether the online token is past (or within skew of) its expiry.
+// Expired reports whether the token is past (or within skew of) its expiry.
+// It prefers the id_token JWT's own `exp` (absolute, robust to any delay between
+// issuance and import); only if that is unavailable does it fall back to
+// ObtainedAt+ExpiresIn, and if neither is known it returns false.
 func (t Token) Expired(skew time.Duration) bool {
+	if exp, ok := jwtClaimInt(t.IDToken, "exp"); ok {
+		return time.Now().Add(skew).After(time.Unix(exp, 0))
+	}
 	if t.ObtainedAt == 0 || t.ExpiresIn == 0 {
 		return false // unknown; let the server decide
 	}
@@ -83,7 +113,13 @@ func DefaultStore() (*Store, error) {
 func (s *Store) Save(ts *TokenSet, now time.Time) error {
 	for i := range ts.Tokens {
 		if ts.Tokens[i].ObtainedAt == 0 {
-			ts.Tokens[i].ObtainedAt = now.Unix()
+			// Use the JWT's real issuance time so a delayed import can't extend the
+			// apparent lifetime; fall back to now only when the token isn't a JWT.
+			if iat, ok := jwtClaimInt(ts.Tokens[i].IDToken, "iat"); ok {
+				ts.Tokens[i].ObtainedAt = iat
+			} else {
+				ts.Tokens[i].ObtainedAt = now.Unix()
+			}
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(s.Path), 0o700); err != nil {

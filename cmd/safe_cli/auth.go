@@ -68,6 +68,9 @@ func (c *authImportCmd) Run(rc *runContext) error {
 	if err := st.Save(&ts, time.Now()); err != nil {
 		return err
 	}
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, map[string]any{"imported": len(ts.Tokens), "path": st.Path})
+	}
 	_, err = fmt.Fprintf(rc.Out, "imported %d token(s) -> %s\n", len(ts.Tokens), st.Path)
 	return err
 }
@@ -115,6 +118,9 @@ func (c *authLogoutCmd) Run(rc *runContext) error {
 	}
 	if err := st.Delete(); err != nil {
 		return err
+	}
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, map[string]any{"loggedOut": true, "path": st.Path})
 	}
 	_, err = fmt.Fprintf(rc.Out, "logged out (removed %s)\n", st.Path)
 	return err

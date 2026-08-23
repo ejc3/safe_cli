@@ -1,11 +1,51 @@
 package tokenstore
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+// makeJWT builds an unsigned JWT with the given claims (header.payload.).
+func makeJWT(claims map[string]any) string {
+	hdr := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	pj, _ := json.Marshal(claims)
+	return hdr + "." + base64.RawURLEncoding.EncodeToString(pj) + "."
+}
+
+func TestExpiredPrefersJWTExp(t *testing.T) {
+	past := Token{IDToken: makeJWT(map[string]any{"exp": time.Now().Add(-time.Minute).Unix()})}
+	if !past.Expired(0) {
+		t.Error("token whose JWT exp is in the past should be expired")
+	}
+	// A stale ObtainedAt+ExpiresIn must not override a still-valid JWT exp.
+	fut := Token{
+		IDToken:    makeJWT(map[string]any{"exp": time.Now().Add(time.Hour).Unix()}),
+		ObtainedAt: 1, ExpiresIn: 1,
+	}
+	if fut.Expired(0) {
+		t.Error("token whose JWT exp is in the future should not be expired")
+	}
+}
+
+func TestSaveStampsFromJWTIatNotImportTime(t *testing.T) {
+	iat := time.Now().Add(-2 * time.Hour).Unix()
+	st := &Store{Path: filepath.Join(t.TempDir(), "t.json")}
+	ts := &TokenSet{Tokens: []Token{{IDToken: makeJWT(map[string]any{"iat": iat}), FriscoTokenType: "online"}}}
+	if err := st.Save(ts, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Tokens[0].ObtainedAt != iat {
+		t.Errorf("ObtainedAt = %d, want JWT iat %d (not import time)", got.Tokens[0].ObtainedAt, iat)
+	}
+}
 
 func sample() *TokenSet {
 	return &TokenSet{
