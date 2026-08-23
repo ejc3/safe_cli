@@ -93,6 +93,64 @@ The doorways to Android-on-ARM, evaluated on this host:
 > reached without GMS, we add it to the guest properly (GMS-enabled image / GApps) —
 > not by skipping the step.
 
+### 4.1 Building the Cuttlefish toolchain (clean, reproducible)
+
+There are no prebuilt Cuttlefish debs for arm64, so build from source. This exact
+order is distilled from a build that hit every trap below — follow it as written and
+a fresh box builds first-try.
+
+**1. Install Bazel *first*.** The `base` package is a Bazel C++ build; without Bazel
+on `PATH` its `debian/rules` aborts with *"Bazel install is broken"*.
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git devscripts equivs config-package-dev debhelper-compat golang curl
+# bazelisk auto-selects the Bazel version the repo pins
+curl -sL -o /tmp/bazelisk https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-arm64
+sudo install /tmp/bazelisk /usr/local/bin/bazel
+```
+
+**2. Build the debs — as your user, one at a time** (never under `sudo`):
+
+```bash
+git clone https://github.com/google/android-cuttlefish && cd android-cuttlefish
+for d in base frontend; do
+  ( cd "$d"
+    sudo mk-build-deps -i -t 'apt-get -y'   # build-deps install *with* sudo …
+    dpkg-buildpackage -uc -us -b )          # … the build itself must NOT be sudo
+done
+```
+
+**3. Install + join the host groups:**
+
+```bash
+sudo apt-get install -y ./cuttlefish-base_*.deb ./cuttlefish-user_*.deb ./cuttlefish-orchestration_*.deb
+sudo usermod -aG kvm,cvdnetwork,render "$USER"
+newgrp cvdnetwork    # or re-login, so the new groups take effect
+```
+
+**4. Fetch an image + launch headless:**
+
+```bash
+cvd fetch --default_build=aosp-main/aosp_cf_arm64_only_phone-userdebug
+HOME="$PWD" launch_cvd --daemon --report_anonymous_usage_stats=n
+adb connect 0.0.0.0:6520 && adb wait-for-device
+```
+
+**Traps this order avoids — each one cost a full rebuild:**
+
+- **Never build under `sudo`.** A sudo build leaves root-owned files in
+  `debian/<pkg>/…`; the next run's `dh_clean` then dies with `rm: … Permission
+  denied`. Recovery: `sudo chown -R "$USER" base/debian` then rebuild.
+- **Exactly one build at a time.** Concurrent `dpkg-buildpackage` runs fight over the
+  single Bazel server and the shared `../*.deb` output, producing corrupt/no debs.
+- **`debian/rules clean` wipes Bazel's cache**, so a *re-run* recompiles from scratch
+  — budget ~15–20 min on a many-core box. The `base` link uses `-flto=auto`, so the
+  final `ld.lld` is slow and mostly single-threaded: that is normal, not a hang.
+- **Don't `pkill -f bazel`** from a shell whose own command line contains the word
+  `bazel` — `pkill -f` matches your shell too and kills it. Kill by PID, or use
+  `bazel shutdown` from the workspace.
+
 ## 5. From capture to code
 
 Captured request shapes become the `method` + headers + body of each descriptor
@@ -112,9 +170,6 @@ unzip "bundle/com.verizon.familybase.parent.apk" -d base
 strings -n 5 base/classes*.dex | grep -EiC0 'IntegrityManager|PlayIntegrity|Bearer|/oauth|/token'
 grep -hoE '(vsf|frisco)/[A-Za-z0-9._/{}-]*v[0-9]+/[A-Za-z0-9._/{}-]*' <(strings base/classes*.dex) | sort -u
 
-# Dynamic (Cuttlefish, ARM) — host packages
-git clone https://github.com/google/android-cuttlefish && cd android-cuttlefish
-( cd base && dpkg-buildpackage -uc -us -b ) && ( cd frontend && dpkg-buildpackage -uc -us -b )
-sudo apt-get install -y ./cuttlefish-*.deb
-# then: fetch_cvd (image + host pkg) -> launch_cvd --daemon -> adb install-multiple -> mitmproxy + frida unpin
+# Dynamic (Cuttlefish, ARM): build the toolchain per §4.1 (clean, reproducible),
+# then: cvd fetch -> launch_cvd --daemon -> adb install-multiple -> mitmproxy + frida unpin
 ```
