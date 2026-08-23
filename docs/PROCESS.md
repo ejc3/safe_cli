@@ -200,13 +200,14 @@ POST https://api.prd.vsf.aws.vz-connect.com/auth/frisco/frisco-iam-device-auth/v
 
 1. **The auth path prefix is `/auth/frisco/…`, not `/frisco/…`.** The blind replays in
    §3 used the wrong base path — one reason they returned `400`.
-2. **Requests are signed.** Every call carries `x-signature` (64 hex = HMAC-SHA256) over
-   the body + `x-timestamp` + `x-transaction-id` + `x-appuuid`. This is the per-request
-   signing hinted at statically (`SignRequest`/`computeSignature`/`HmacSHA256`). It is
-   **not** device attestation and is **replicable** (the signing key ships in the app),
-   so a scripted client stays viable — but it must reproduce the signature. Recovering
-   the exact signed-string + key (via a frida hook on the signing function) and the
-   `otp/validate` → token exchange are the remaining steps.
+2. **Requests are signed.** The device-auth calls carry `x-signature` (64 hex =
+   HMAC-SHA256) over request **metadata** — `AppVersion + SourceApp + x-transaction-id
+   + method + x-timestamp + x-appuuid`, **not** the body (exact string verified in §11). This is the
+   per-request signing hinted at statically (`SignRequest`/`computeSignature`/`HmacSHA256`). It is
+   **not** device attestation and is **replicable** — the signing key ships in the app,
+   and the CLI sources it at runtime from the operator's own copy rather than embedding
+   it (§11). The exact signed string is now recovered and reproduced (§11); the
+   `otp/validate` → token exchange is the remaining step.
 
 ### The working MITM recipe (what actually captured traffic)
 
@@ -285,9 +286,10 @@ noise omitted):
 
 Notes:
 
-- Every frisco call is **signed**: `x-signature` (HMAC-SHA256) over the body +
-  `x-timestamp` + `x-transaction-id` + `x-appuuid`, with `x-source-app: AndroidMAPP`
-  and `x-mobile-app-version`.
+- The device-auth calls are **signed**: `x-signature` (HMAC-SHA256) over request
+  metadata (`AppVersion + SourceApp + x-transaction-id + method + x-timestamp +
+  x-appuuid`, **not** the body — see §11), with `x-source-app: AndroidMAPP` and
+  `x-mobile-app-version`.
 - **Mixed path prefixes:** `/auth/frisco/…` for the OTP steps, `/frisco/…` for the OAuth
   authorize. `/auth/frisco/…/v5/user/login/audit` returns `400` and is non-blocking.
 - **Architectural consequence for the CLI:** steps 3–5 are a *hosted web login*
@@ -349,3 +351,57 @@ Proven by replaying captured tokens **from outside the emulator**:
    `id_token → Cognito GetCredentialsForIdentity → SigV4` for parental-control ops.
 4. Persist tokens/creds; refresh transparently; re-run `login` only when the offline
    refresh finally expires.
+
+## 11. The `x-signature` request signer — algorithm and the bring-your-own-key model
+
+The device-auth endpoints (OTP send/validate, token refresh) require an
+`x-signature` header. `internal/signing` reproduces the algorithm; the synthetic
+vectors in `signing_test.go` pin the concatenation and primitive with a **fake** key
+and independently-computed digests — no real key and no captured per-session data is
+committed.
+
+**Algorithm** — `GenerateHmacSignatureUseCase`:
+
+```
+x-signature = hex( HMAC-SHA256( key = <app signing key, supplied at runtime>,
+                                msg = AppVersion + SourceApp + x-transaction-id
+                                      + method + x-timestamp + x-appuuid ) )
+```
+
+It signs request **metadata**, not the body. `x-transaction-id` comes from
+`com.verizon.network.TransactionId.get()`.
+
+**The key is not shipped with this tool.** It is an app-embedded build constant
+(`com.verizon.familybase.feature.identity.BuildConfig.HMAC_SIGNING_SECRET`). Publishing
+the algorithm is interoperability code; committing the vendor's live shared credential
+is a different thing with no clean legal authority — so the repo carries neither the key
+nor any per-session capture (see `CLAUDE.md` § Secrets). Instead the operator supplies
+it at runtime from **their own licensed copy of the app**. Never put the value on a
+shell command line (e.g. `export KEY=<hex>`) — it lands in shell history. Two safe
+paths:
+
+- **Preferred (planned): `safe_cli auth extract-key --apk <your.apk>`** reads the
+  constant out of the APK straight into the signing path in memory — the hex never
+  appears in your shell, its history, or on disk.
+- **Interim:** pipe the value from the decompiled source into a private, mode-600 file
+  the CLI reads, without ever echoing it to the terminal:
+
+  ```bash
+  # On your own device/APK. The value never enters this repo and is never printed.
+  jadx -d out <your com.verizon.familybase.parent.apk>
+  install -m 600 /dev/null ~/.config/safe_cli/signing.key
+  grep HMAC_SIGNING_SECRET \
+    out/sources/com/verizon/familybase/feature/identity/BuildConfig.java \
+    | grep -oE '[0-9a-f]{64}' > ~/.config/safe_cli/signing.key   # not echoed
+  # point the CLI at it: SAFE_CLI_SIGNING_KEY_FILE=~/.config/safe_cli/signing.key
+  ```
+
+If the vendor rotates the key in a later app version, re-extract from the newer APK
+(and update the pinned `AppVersion`).
+
+**Footgun — the transaction id is decimal, not base-64.** `TransactionId.get()` is
+`new BigInteger(130, SecureRandom).toString(64)`. Java's `BigInteger.toString(radix)`
+silently falls back to **radix 10** for any radix outside 2–36, so `toString(64)`
+renders a decimal string (~39–40 digits), *not* base-64. A re-implementation that
+takes `64` at face value produces the wrong id and every signature fails. `internal/
+signing.TransactionID` generates a 130-bit value rendered in decimal to match.
