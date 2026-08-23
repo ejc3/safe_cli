@@ -59,8 +59,18 @@ func encString(idx uint32) []byte {
 	return append([]byte{byte(len(lb)-1)<<5 | valueString}, lb...)
 }
 
+// dexOpts injects malformed static_fields layouts for robustness tests.
+type dexOpts struct {
+	staticFieldsSize *uint64  // override the declared static_fields_size
+	diffs            []uint64 // override the field_idx_diff sequence
+}
+
 // buildDex assembles a single-class dex with the given static fields, in order.
 func buildDex(className string, fields []sfield) []byte {
+	return buildDexEx(className, fields, dexOpts{})
+}
+
+func buildDexEx(className string, fields []sfield, opts dexOpts) []byte {
 	var strs []string
 	strIndex := map[string]uint32{}
 	addStr := func(s string) uint32 {
@@ -104,14 +114,21 @@ func buildDex(className string, fields []sfield) []byte {
 	}
 
 	classDataOff := off()
-	data = appendUleb(data, uint64(F)) // static_fields_size
-	data = appendUleb(data, 0)         // instance_fields_size
-	data = appendUleb(data, 0)         // direct_methods_size
-	data = appendUleb(data, 0)         // virtual_methods_size
+	sfSize := uint64(F)
+	if opts.staticFieldsSize != nil {
+		sfSize = *opts.staticFieldsSize
+	}
+	data = appendUleb(data, sfSize) // static_fields_size
+	data = appendUleb(data, 0)      // instance_fields_size
+	data = appendUleb(data, 0)      // direct_methods_size
+	data = appendUleb(data, 0)      // virtual_methods_size
 	for i := range fields {
 		diff := uint64(1)
 		if i == 0 {
 			diff = 0
+		}
+		if opts.diffs != nil {
+			diff = opts.diffs[i]
 		}
 		data = appendUleb(data, diff) // field_idx_diff
 		data = appendUleb(data, 0x19) // public static final
@@ -259,6 +276,34 @@ func TestExtractNoDexIsNotAnAPK(t *testing.T) {
 	_, err := ExtractSigningKey(apk)
 	if err == nil || !strings.Contains(err.Error(), "no classes*.dex") {
 		t.Fatalf("want a no-dex error, got %v", err)
+	}
+}
+
+// A malformed static_fields list with a non-ascending field_idx (a zero diff after
+// the first entry) must be rejected, not walked — that is the shape that would
+// otherwise pin the index and re-scan one name every iteration (quadratic blowup).
+func TestRejectsNonAscendingStaticFields(t *testing.T) {
+	dex := buildDexEx(BuildConfigClass,
+		[]sfield{{name: "VERSION_CODE", ival: 1}, {name: SigningFieldName, isStr: true, str: goodKey}},
+		dexOpts{diffs: []uint64{0, 0}}, // second field pins field_idx at 0
+	)
+	_, _, err := findStaticStringField(dex, BuildConfigClass, SigningFieldName)
+	if err == nil || !strings.Contains(err.Error(), "ascending") {
+		t.Fatalf("want a non-ascending error, got %v", err)
+	}
+}
+
+// An inflated static_fields_size (more static fields than the dex has field_ids)
+// must be rejected up front, bounding the loop.
+func TestRejectsInflatedStaticFieldsSize(t *testing.T) {
+	huge := uint64(1 << 20)
+	dex := buildDexEx(BuildConfigClass,
+		[]sfield{{name: SigningFieldName, isStr: true, str: goodKey}},
+		dexOpts{staticFieldsSize: &huge},
+	)
+	_, _, err := findStaticStringField(dex, BuildConfigClass, SigningFieldName)
+	if err == nil || !strings.Contains(err.Error(), "exceeds field_ids") {
+		t.Fatalf("want an inflated-size error, got %v", err)
 	}
 }
 

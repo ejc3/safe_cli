@@ -279,16 +279,40 @@ func (d *dex) typeDescriptor(idx uint32) (string, error) {
 }
 
 // fieldName resolves a field_id index to its member name.
-func (d *dex) fieldName(idx uint32) (string, error) {
+// fieldNameIdx returns the name string_id index for a field_id.
+func (d *dex) fieldNameIdx(idx uint32) (uint32, error) {
 	if idx >= d.fieldIDsLen {
-		return "", errBounds
+		return 0, errBounds
 	}
 	// field_id_item: class_idx u16, type_idx u16, name_idx u32
-	nameIdx, err := d.u32(int(d.fieldIDsOff) + 8*int(idx) + 4)
-	if err != nil {
-		return "", err
+	return d.u32(int(d.fieldIDsOff) + 8*int(idx) + 4)
+}
+
+// stringEquals reports whether string_id idx equals want, WITHOUT scanning to the
+// string's terminator when the lengths differ. The dex string_data length prefix is
+// in UTF-16 code units, which equals len(want) for an ASCII want (field names are
+// ASCII). This bounds each field-name comparison to O(len(want)), so a class with a
+// huge static_fields list cannot force a quadratic re-scan of a long name.
+func (d *dex) stringEquals(idx uint32, want string) (bool, error) {
+	if idx >= d.stringIDsLen {
+		return false, errBounds
 	}
-	return d.stringAt(nameIdx)
+	dataOff, err := d.u32(int(d.stringIDsOff) + 4*int(idx))
+	if err != nil {
+		return false, err
+	}
+	declLen, n, err := uleb128(d.b, int(dataOff))
+	if err != nil {
+		return false, err
+	}
+	if declLen != uint64(len(want)) {
+		return false, nil
+	}
+	start := int(dataOff) + n
+	if start < 0 || start+len(want) > len(d.b) {
+		return false, errBounds
+	}
+	return string(d.b[start:start+len(want)]) == want, nil
 }
 
 // findStaticStringField returns the string value of the static field classDesc.field,
@@ -344,6 +368,11 @@ func (d *dex) staticStringValue(classDataOff, staticValuesOff int, field string)
 		}
 		off += n
 	}
+	// A class cannot declare more static fields than there are field_ids; this bounds
+	// the loop and rejects an inflated static_fields_size.
+	if staticFieldsSize > uint64(d.fieldIDsLen) {
+		return "", false, errors.New("dex: static_fields_size exceeds field_ids count")
+	}
 	fieldPos := -1
 	var fieldIdx uint64
 	for i := uint64(0); i < staticFieldsSize; i++ {
@@ -356,12 +385,24 @@ func (d *dex) staticStringValue(classDataOff, staticValuesOff int, field string)
 			return "", false, err
 		}
 		off += n
+		// static_fields are sorted by strictly increasing field_idx; a zero diff after
+		// the first entry is malformed and would otherwise pin the index and re-scan.
+		if i > 0 && diff == 0 {
+			return "", false, errors.New("dex: static_fields not strictly ascending")
+		}
 		fieldIdx += diff
-		name, err := d.fieldName(uint32(fieldIdx))
+		if fieldIdx >= uint64(d.fieldIDsLen) { // check before the uint32 narrowing
+			return "", false, errBounds
+		}
+		nameIdx, err := d.fieldNameIdx(uint32(fieldIdx))
 		if err != nil {
 			return "", false, err
 		}
-		if name == field {
+		eq, err := d.stringEquals(nameIdx, field)
+		if err != nil {
+			return "", false, err
+		}
+		if eq {
 			fieldPos = int(i)
 			break
 		}
