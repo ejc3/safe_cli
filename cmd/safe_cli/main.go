@@ -51,10 +51,12 @@ func (c *versionCmd) Run(rc *runContext) error {
 			"base_url":    rc.D.BaseURL,
 		})
 	}
-	fmt.Fprintf(rc.Out, "safe_cli %s\n", version)
-	fmt.Fprintf(rc.Out, "descriptor: %s (targets %s %s at %s)\n",
+	if _, err := fmt.Fprintf(rc.Out, "safe_cli %s\n", version); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(rc.Out, "descriptor: %s (targets %s %s at %s)\n",
 		rc.D.Name, rc.D.AppPackage, rc.D.AppVersion, rc.D.BaseURL)
-	return nil
+	return err
 }
 
 type entitiesCmd struct{}
@@ -83,9 +85,13 @@ func (c *describeCmd) Run(rc *runContext) error {
 	if rc.G.JSON {
 		return outfmt.JSON(rc.Out, e)
 	}
-	fmt.Fprintf(rc.Out, "%s — %s\n", c.Entity, e.Summary)
+	if _, err := fmt.Fprintf(rc.Out, "%s — %s\n", c.Entity, e.Summary); err != nil {
+		return err
+	}
 	if e.IDField != "" {
-		fmt.Fprintf(rc.Out, "  id: %s\n", e.IDField)
+		if _, err := fmt.Fprintf(rc.Out, "  id: %s\n", e.IDField); err != nil {
+			return err
+		}
 	}
 	var rows [][]string
 	for _, k := range e.OperationNames() {
@@ -109,7 +115,7 @@ func confirmed(b bool) string {
 func main() {
 	d, err := descriptor.Default()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "safe_cli:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "safe_cli:", err)
 		os.Exit(1)
 	}
 	var cli CLI
