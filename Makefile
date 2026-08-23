@@ -14,8 +14,11 @@ lint: vet
 	if [ -n "$$unformatted" ]; then \
 		echo "not gofmt-clean:"; echo "$$unformatted"; exit 1; \
 	fi
-	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run || \
-		echo "(golangci-lint not installed locally; CI runs it)"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run; \
+	else \
+		echo "(golangci-lint not installed locally; CI runs it)"; \
+	fi
 
 vet:
 	go vet ./...
