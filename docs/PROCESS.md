@@ -106,7 +106,9 @@ is the single source of truth, the same engine serves every SafePath **carrier**
 
 ```bash
 # Static
-unzip verizon-family.xapk -d bundle && unzip bundle/*.apk -d base
+unzip verizon-family.xapk -d bundle
+# the base APK holds the dex; the config.* entries are arch/dpi splits.
+unzip "bundle/com.verizon.familybase.parent.apk" -d base
 strings -n 5 base/classes*.dex | grep -EiC0 'IntegrityManager|PlayIntegrity|Bearer|/oauth|/token'
 grep -hoE '(vsf|frisco)/[A-Za-z0-9._/{}-]*v[0-9]+/[A-Za-z0-9._/{}-]*' <(strings base/classes*.dex) | sort -u
 
