@@ -377,17 +377,20 @@ Publishing interoperability code is different from committing the vendor's live 
 credential, and the repo carries neither the key nor any per-session capture (see
 `CLAUDE.md` § Secrets). The operator supplies it at runtime from **their own licensed
 copy of the app** — the APK is already on their machine, so no special handling ceremony
-is needed. Read the constant out of the decompiled APK and hand it to the CLI:
+is needed. Extract the constant from the decompiled APK and hand it to the CLI:
 
 ```bash
 jadx -d out <your com.verizon.familybase.parent.apk>
-export SAFE_CLI_SIGNING_KEY=$(grep HMAC_SIGNING_SECRET \
+KEY=$(grep HMAC_SIGNING_SECRET \
   out/sources/com/verizon/familybase/feature/identity/BuildConfig.java \
   | grep -oE '[0-9a-f]{64}')
+SAFE_CLI_SIGNING_KEY=$KEY safe_cli <command>   # scoped to this one invocation
+# or save $KEY to a file once and set SAFE_CLI_SIGNING_KEY_FILE=<path> for reuse
 ```
 
-A planned `safe_cli auth extract-key --apk <your.apk>` will do this in one step. The
-CLI itself never persists, logs, or prints the key.
+Prefer the scoped form over `export` so the value isn't inherited by every other child
+process in the shell. A planned `safe_cli auth extract-key --apk <your.apk>` will do the
+extraction in one step. The CLI itself never persists, logs, or prints the key.
 
 If the vendor rotates the key in a later app version, re-extract from the newer APK
 (and update the pinned `AppVersion`).
