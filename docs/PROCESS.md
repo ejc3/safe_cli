@@ -296,3 +296,23 @@ Notes:
   browser/WebView, capture the resulting **`refresh_token`**, and thereafter use the
   refresh token + the signed REST API directly. Everyday commands never repeat the full
   chain.
+
+### 9a. The last-mile wall: bot protection on the My Verizon account login
+
+Automating steps 4–5 end-to-end via `adb input` reaches the point of a **correct** 2FA
+entry (code in the field, Continue enabled) but then the hosted login resets with
+*"To keep your information safe, Please start over."* — a security/bot-detection reset on
+`secure.verizon.com` (Akamai-style), triggered by the robotic interaction, **not** a
+wrong code. Consequences:
+
+- The **SafePath parental-control API is fully scriptable** once you hold tokens: clean
+  signed REST (`Authorization: Bearer` + the `x-signature` set).
+- The **initial token acquisition is not reliably headless** — Verizon's *account* login
+  (steps 3–5) is a bot-protected hosted web flow with two SMS factors. So `auth login`
+  should be an **assisted login**: let a human complete the `secure.verizon.com` login in
+  a real WebView/browser once, capture the resulting **`refresh_token`**, and persist it.
+  Everyday commands then use the refresh token + signed REST directly and never touch the
+  hosted login again.
+- Still fully recoverable headlessly (no bot wall — it's in-app): the **`x-signature`
+  algorithm**, via a frida hook on the signing function. That plus a one-time
+  assisted-login `refresh_token` is everything the CLI needs.
