@@ -67,3 +67,24 @@ runtime-minted values, so a browser-only code exchange is **not** sufficient —
 exact request contract must be observed from the real app (rooted device/emulator +
 frida), per `docs/PROCESS.md` §3–§4. This is the step where the account owner's
 credentials are needed (they complete the SMS OTP).
+
+## Confirmed by dynamic capture (2026-08-23)
+
+Booted the app on an arm64 Cuttlefish (Android 17) and MITM'd its real sign-in
+(mitmproxy + frida unpinning; see `docs/PROCESS.md` §7). Results:
+
+- **VIABLE holds — no device attestation gates the API.** The app reached and drove
+  sign-in with no Play Integrity / attestation challenge on the request.
+- **Correction: the auth path prefix is `/auth/frisco/…`,** not `/frisco/…` (a cause of
+  the earlier blind `400`s).
+- **Requests are signed.** Every call carries `x-signature` (HMAC-SHA256 over the body +
+  `x-timestamp` + `x-transaction-id` + `x-appuuid`) plus `x-source-app: AndroidMAPP` and
+  `x-mobile-app-version`. This is per-request signing, **not** attestation — and it's
+  replicable because the key ships in the app. The scripted client must reproduce it.
+- **Login is a direct user-auth API, not the OAuth-redirect webview:**
+  `POST /auth/frisco/frisco-iam-device-auth/v7/user/auth/otp` with `{"mdn":"<phone>"}`
+  → `200 {"state":"OTP_SENT"}` (SMS code sent), then an `otp/validate` step returns
+  tokens.
+
+**Remaining to fully wire `auth login`:** recover the `x-signature` algorithm (frida hook
+on the signing function) and capture the `otp/validate` → token response.
