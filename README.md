@@ -63,6 +63,12 @@ All changes land via PR through a review gate (`.claude/skills/pr-review-gate`)
 that requires every review thread resolved **and** disposed, with Codex reviewing
 each PR. See `CLAUDE.md`.
 
+## Docs
+
+- `docs/FINDINGS.md` — the deciding-question verdict and evidence.
+- `docs/PROCESS.md` — the full reverse-engineering + dynamic-capture runbook.
+- `docs/discovered-endpoints.txt` — the 183-endpoint catalog.
+
 ## License
 
 MIT — see `LICENSE`.

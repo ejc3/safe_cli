@@ -59,7 +59,11 @@ Two things static analysis cannot fully confirm:
 1. That a headless OAuth2 login succeeds against Verizon SSO (MFA/OTP behavior).
 2. That no individual endpoint independently demands an integrity token.
 
-Because auth is a normal web OAuth2 flow (not app-only), this can be done by
-driving the login in a browser and exchanging the code for tokens — no rooted
-device or frida required. This is the step where the account owner's credentials
-are needed.
+An initial hypothesis was that this could be done purely in a browser (an OAuth2
+authorization-code exchange, no device). **Dynamic recon disproved it:** the
+`authorize` endpoint returns `400 Invalid Request` until the app's
+device-registration handshake (`registeruser` / `deviceauth`) supplies
+runtime-minted values, so a browser-only code exchange is **not** sufficient — the
+exact request contract must be observed from the real app (rooted device/emulator +
+frida), per `docs/PROCESS.md` §3–§4. This is the step where the account owner's
+credentials are needed (they complete the SMS OTP).
