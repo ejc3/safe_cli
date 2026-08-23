@@ -316,3 +316,36 @@ wrong code. Consequences:
 - Still fully recoverable headlessly (no bot wall — it's in-app): the **`x-signature`
   algorithm**, via a frida hook on the signing function. That plus a one-time
   assisted-login `refresh_token` is everything the CLI needs.
+
+## 10. Token & API model — the durable CLI design
+
+Proven by replaying captured tokens **from outside the emulator**:
+
+- **Token set** from `POST /auth/frisco/frisco-iam-device-auth/v7/user/auth/token`:
+  an **online** set (`id_token` JWT + `access_token` + `refresh_token`, `expires_in`
+  1800) and an **offline** set (`id_token` + `refresh_token`, `expires_in` 86400).
+- **Two auth schemes on the backend:**
+  1. **Config / content endpoints** (e.g. `/auth/frisco/mappcontent/v6/configs`):
+     `Authorization: <id_token>` — the **raw JWT, NO `Bearer ` prefix** — plus mundane
+     headers (`x-source-app`, `x-mobile-app-version`, `x-transaction-id`,
+     `user-agent: okhttp/4.12.0`). **Confirmed `200` replayed from a plain host.**
+  2. **The parental-control operations** (`…/parental-control/…`) return `403
+     "Authorization header requires 'Credential' parameter"` — i.e. **AWS SigV4**
+     (API Gateway IAM). The app trades the `id_token` for **temporary AWS credentials
+     via a Cognito Identity Pool**, then **SigV4-signs** each control request (matches
+     the `X-Amz-*` headers and the Cognito references in the APK).
+- **Refresh** (`…/v6/deviceauth/refreshtoken`) needs `grant_type` **and** `client_id`
+  (`6ebckm2cmaijai6kfb7251ar9a`), `app_uuid`, `x-trace-transaction-id`, and a `code`
+  field — a device-auth refresh, not a bare OAuth refresh.
+
+**Durable CLI auth design:**
+
+1. `login` (slow, one-time; assisted for the Akamai-protected My Verizon web step):
+   run the 3-factor flow → capture the **offline** token set → persist the
+   `refresh_token` (OS keyring / encrypted file).
+2. **Refresh** the `id_token` on demand via `deviceauth/refreshtoken` (client_id +
+   app_uuid + refresh_token). No OTP.
+3. **Call the API** by class: `Authorization: <id_token>` for config/content;
+   `id_token → Cognito GetCredentialsForIdentity → SigV4` for parental-control ops.
+4. Persist tokens/creds; refresh transparently; re-run `login` only when the offline
+   refresh finally expires.
