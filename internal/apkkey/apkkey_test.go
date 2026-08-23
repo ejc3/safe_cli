@@ -262,6 +262,18 @@ func TestExtractNoDexIsNotAnAPK(t *testing.T) {
 	}
 }
 
+// The dex parser must never panic on arbitrary input, only return a value or error.
+func FuzzFindStaticStringField(f *testing.F) {
+	f.Add(buildDex(BuildConfigClass, []sfield{{name: SigningFieldName, isStr: true, str: goodKey}}))
+	f.Add(buildDex(BuildConfigClass, []sfield{{name: "A", ival: 1}, {name: SigningFieldName, isStr: true, str: goodKey}}))
+	f.Add([]byte("dex\n035\x00"))
+	f.Add([]byte{})
+	f.Fuzz(func(_ *testing.T, b []byte) {
+		// Any (value, found, err) is acceptable; a panic is not.
+		_, _, _ = findStaticStringField(b, BuildConfigClass, SigningFieldName)
+	})
+}
+
 // Malformed/truncated dex bytes must return an error, never panic.
 func TestMalformedDexDoesNotPanic(t *testing.T) {
 	full := buildDex(BuildConfigClass, []sfield{{name: SigningFieldName, isStr: true, str: goodKey}})

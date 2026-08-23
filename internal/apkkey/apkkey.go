@@ -385,7 +385,7 @@ func (d *dex) encodedArrayStringAt(off, k int) (string, bool, error) {
 		return "", false, nil
 	}
 	for i := 0; i < int(size); i++ {
-		strIdx, isString, next, err := d.readEncodedValue(off)
+		strIdx, isString, next, err := d.readEncodedValue(off, 0)
 		if err != nil {
 			return "", false, err
 		}
@@ -401,10 +401,17 @@ func (d *dex) encodedArrayStringAt(off, k int) (string, bool, error) {
 	return "", false, nil
 }
 
+// maxEncodedDepth caps nesting of encoded_array / encoded_annotation values so a
+// crafted or corrupt dex cannot drive readEncodedValue into a stack overflow.
+const maxEncodedDepth = 64
+
 // readEncodedValue parses one encoded_value at off. It returns the string_id index and
 // isString=true for VALUE_STRING, and always returns next = the offset just past the
 // value (recursing through ARRAY/ANNOTATION) so callers can skip values they don't want.
-func (d *dex) readEncodedValue(off int) (strIdx uint32, isString bool, next int, err error) {
+func (d *dex) readEncodedValue(off, depth int) (strIdx uint32, isString bool, next int, err error) {
+	if depth > maxEncodedDepth {
+		return 0, false, 0, errors.New("dex: encoded value nested too deeply")
+	}
 	hdr, err := d.u8(off)
 	if err != nil {
 		return 0, false, 0, err
@@ -420,7 +427,7 @@ func (d *dex) readEncodedValue(off int) (strIdx uint32, isString bool, next int,
 		}
 		off += n
 		for i := uint64(0); i < size; i++ {
-			if _, _, off, err = d.readEncodedValue(off); err != nil {
+			if _, _, off, err = d.readEncodedValue(off, depth+1); err != nil {
 				return 0, false, 0, err
 			}
 		}
@@ -443,7 +450,7 @@ func (d *dex) readEncodedValue(off int) (strIdx uint32, isString bool, next int,
 				return 0, false, 0, err
 			}
 			off += n3
-			if _, _, off, err = d.readEncodedValue(off); err != nil {
+			if _, _, off, err = d.readEncodedValue(off, depth+1); err != nil {
 				return 0, false, 0, err
 			}
 		}
