@@ -52,18 +52,37 @@ are all inside the Nok Nok FIDO code.
   location, notifications, call-and-text, family-line, driving-insights,
   account-management, and auth.
 
-## What still needs a dynamic capture
+## The dynamic capture (completed)
 
-Two things static analysis cannot fully confirm:
+Static analysis could not confirm the exact login contract, whether any endpoint
+gates on an integrity token, or the signing key. All three were resolved by a full
+dynamic capture — see `docs/PROCESS.md` §7–§10 — which also established that login is a
+**hybrid, multi-stage flow**, not a single OAuth exchange. (An early hypothesis of a
+pure browser OAuth code-exchange was disproved: the `authorize` step is only one stage
+and the device-auth calls are signed.)
 
-1. That a headless OAuth2 login succeeds against Verizon SSO (MFA/OTP behavior).
-2. That no individual endpoint independently demands an integrity token.
+## Confirmed by dynamic capture (2026-08-23)
 
-An initial hypothesis was that this could be done purely in a browser (an OAuth2
-authorization-code exchange, no device). **Dynamic recon disproved it:** the
-`authorize` endpoint returns `400 Invalid Request` until the app's
-device-registration handshake (`registeruser` / `deviceauth`) supplies
-runtime-minted values, so a browser-only code exchange is **not** sufficient — the
-exact request contract must be observed from the real app (rooted device/emulator +
-frida), per `docs/PROCESS.md` §3–§4. This is the step where the account owner's
-credentials are needed (they complete the SMS OTP).
+Booted the app on an arm64 Cuttlefish (Android 17) and MITM'd its real sign-in
+(mitmproxy + frida unpinning; see `docs/PROCESS.md` §7). Results:
+
+- **VIABLE holds — no device attestation observed.** No Play Integrity / attestation
+  challenge appeared on any captured call: the device-OTP send, `otp/validate`, the
+  token exchange, or the authenticated API calls that followed.
+- **Auth path prefix is `/auth/frisco/…`** for the device-auth calls (not `/frisco/…`),
+  a cause of the earlier blind `400`s.
+- **Device-auth requests are signed.** `x-signature` = HMAC-SHA256 (hex) over request
+  **metadata** — `AppVersion + SourceApp + x-transaction-id + method + x-timestamp +
+  x-appuuid` (NOT the body) — keyed by an app-embedded secret recovered from the APK
+  (`BuildConfig.HMAC_SIGNING_SECRET`). Per-request signing, **not** attestation, and
+  replicable. The token exchange and authenticated API calls are *not* signed.
+- **Login is a hybrid, multi-stage flow** (see `docs/PROCESS.md` §9): it **begins** with
+  the signed device-OTP API (`POST …/user/auth/otp` → `otp/validate` → a
+  `login_recom_token`), then hands off to OAuth authorize + the hosted My Verizon web
+  login + account 2FA, and finally a token exchange returns the real `access`/`refresh`/
+  `id` tokens.
+- **API auth:** `Authorization: <id_token>` (raw JWT, no `Bearer`) for config/content
+  endpoints; AWS SigV4 (Cognito temp creds) for the parental-control operations.
+
+The signing algorithm and full token model are recovered and verified — see
+`docs/PROCESS.md` §9–§10.
