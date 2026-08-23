@@ -371,30 +371,23 @@ x-signature = hex( HMAC-SHA256( key = <app signing key, supplied at runtime>,
 It signs request **metadata**, not the body. `x-transaction-id` comes from
 `com.verizon.network.TransactionId.get()`.
 
-**The key is not shipped with this tool.** It is an app-embedded build constant
-(`com.verizon.familybase.feature.identity.BuildConfig.HMAC_SIGNING_SECRET`). Publishing
-the algorithm is interoperability code; committing the vendor's live shared credential
-is a different thing with no clean legal authority — so the repo carries neither the key
-nor any per-session capture (see `CLAUDE.md` § Secrets). Instead the operator supplies
-it at runtime from **their own licensed copy of the app**. Never put the value on a
-shell command line (e.g. `export KEY=<hex>`) — it lands in shell history. Two safe
-paths:
+**The key is not shipped with this tool** — the repo carries the algorithm, not the
+vendor's credential (`com.verizon.familybase.feature.identity.BuildConfig.HMAC_SIGNING_SECRET`).
+Publishing interoperability code is different from committing the vendor's live shared
+credential, and the repo carries neither the key nor any per-session capture (see
+`CLAUDE.md` § Secrets). The operator supplies it at runtime from **their own licensed
+copy of the app** — the APK is already on their machine, so no special handling ceremony
+is needed. Read the constant out of the decompiled APK and hand it to the CLI:
 
-- **Preferred (planned): `safe_cli auth extract-key --apk <your.apk>`** reads the
-  constant out of the APK straight into the signing path in memory — the hex never
-  appears in your shell, its history, or on disk.
-- **Interim:** pipe the value from the decompiled source into a private, mode-600 file
-  the CLI reads, without ever echoing it to the terminal:
+```bash
+jadx -d out <your com.verizon.familybase.parent.apk>
+export SAFE_CLI_SIGNING_KEY=$(grep HMAC_SIGNING_SECRET \
+  out/sources/com/verizon/familybase/feature/identity/BuildConfig.java \
+  | grep -oE '[0-9a-f]{64}')
+```
 
-  ```bash
-  # On your own device/APK. The value never enters this repo and is never printed.
-  jadx -d out <your com.verizon.familybase.parent.apk>
-  install -m 600 /dev/null ~/.config/safe_cli/signing.key
-  grep HMAC_SIGNING_SECRET \
-    out/sources/com/verizon/familybase/feature/identity/BuildConfig.java \
-    | grep -oE '[0-9a-f]{64}' > ~/.config/safe_cli/signing.key   # not echoed
-  # point the CLI at it: SAFE_CLI_SIGNING_KEY_FILE=~/.config/safe_cli/signing.key
-  ```
+A planned `safe_cli auth extract-key --apk <your.apk>` will do this in one step. The
+CLI itself never persists, logs, or prints the key.
 
 If the vendor rotates the key in a later app version, re-extract from the newer APK
 (and update the pinned `AppVersion`).
