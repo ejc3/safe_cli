@@ -83,6 +83,19 @@ Before pushing: `make lint` and `make test` must pass.
 
 ## Secrets
 
-Never commit: the APK or anything extracted from it (`*.apk/*.xapk/*.dex`),
-`.env`, OAuth tokens, or the user's Verizon credentials. All are git-ignored. The
-only extracted value in the repo is the app's public OAuth `client_id`.
+Never commit: the APK or anything extracted from it (`*.apk/*.xapk/*.dex`), `.env`,
+OAuth tokens, the user's Verizon credentials, or any per-user / per-session value
+(device `appUUID`, transaction ids, timestamps) — in code **or tests**. All are
+git-ignored; tests use synthetic inputs with independently-computed expected values.
+
+**The app's HMAC request-signing key is NOT committed.** It is the vendor's shared
+build constant; publishing interoperability *code* is different from redistributing a
+live shared credential, and there is no clean authority that committing it is lawful.
+So `internal/signing` ships the algorithm only, keyed by a secret the operator
+supplies at runtime from their **own licensed copy of the app** (extraction is a local
+step the operator runs — see `docs/PROCESS.md` §11). The CLI must never persist, log,
+or print the key.
+
+**The one embedded constant is the OAuth `client_id`** — a public OAuth *client
+identifier*, not a secret: it grants nothing on its own, and a real login still needs
+the owner's Verizon credentials + SMS/2FA.
