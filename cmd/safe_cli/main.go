@@ -37,6 +37,8 @@ type CLI struct {
 	Version  versionCmd  `cmd:"" help:"Print the CLI version and the descriptor it targets."`
 	Entities entitiesCmd `cmd:"" help:"List the entities in the SafePath data model."`
 	Describe describeCmd `cmd:"" help:"Show the operations and actions for one entity."`
+	Auth     authCmd     `cmd:"" help:"Manage authentication (import/status/logout)."`
+	Raw      rawCmd      `cmd:"" help:"Call any backend path with the stored id_token."`
 }
 
 type versionCmd struct{}
