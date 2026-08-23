@@ -13,10 +13,11 @@ machine-readable `--json` output.
 
 ## Status
 
-Early. The command surface and data model are generated from a protocol
-descriptor built by static analysis of the app (see `docs/FINDINGS.md`), which
-established that the SafePath backend uses **plain OAuth2 bearer auth with no
-per-request device attestation** — so a durable scripted client is viable.
+Early. The command surface and data model are generated from a protocol descriptor
+(see `docs/FINDINGS.md`). A full dynamic capture confirmed the backend has **no
+per-request device attestation**, that authenticated API calls use a bearer-style
+`id_token`, and that login is a hybrid, multi-stage flow — so a durable scripted
+client is viable.
 
 Working today (no credentials needed):
 
@@ -37,8 +38,8 @@ block_site (action)   POST    /frisco/parental-control/v5/website             no
 ...
 ```
 
-Coming next: `auth login` (OAuth2/PKCE), the generated
-`print/info/create/update/delete` + action commands (`pause`, `block-site`,
+Coming next: `auth login` (the hybrid device-OTP + assisted My Verizon web login), the
+generated `print/info/create/update/delete` + action commands (`pause`, `block-site`,
 `locate`, …), `analyze` (static APK triage), and `capture` (mitmproxy addon).
 
 ## Build
