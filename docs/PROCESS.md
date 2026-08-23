@@ -114,6 +114,7 @@ sudo install /tmp/bazelisk /usr/local/bin/bazel
 
 ```bash
 git clone https://github.com/google/android-cuttlefish && cd android-cuttlefish
+git checkout 786f4ac2be42519fd4b023a36114dd6ae7ffc04b   # the revision this build was validated on (v1.57.0-dev)
 for d in base frontend; do
   ( cd "$d"
     sudo mk-build-deps -i -t 'apt-get -y'   # build-deps install *with* sudo …
@@ -126,7 +127,8 @@ done
 ```bash
 sudo apt-get install -y ./cuttlefish-base_*.deb ./cuttlefish-user_*.deb ./cuttlefish-orchestration_*.deb
 sudo usermod -aG kvm,cvdnetwork,render "$USER"
-newgrp cvdnetwork    # or re-login, so the new groups take effect
+# Log out and back in so ALL three groups apply — a plain `newgrp` only switches one
+# group, leaving kvm/render inactive. Scripted equivalent: exec su -l "$USER"
 ```
 
 **4. Fetch an image + launch headless:**
