@@ -254,3 +254,45 @@ POST https://api.prd.vsf.aws.vz-connect.com/auth/frisco/frisco-iam-device-auth/v
   so the app spams `SecurityException: Invalid mkdirs path` and can misbehave mid-flow
   (contributes to the app losing state). To investigate: ensure `/sdcard` is mounted /
   `EXTERNAL_STORAGE` is set before launching.
+
+## 9. The full authentication flow (captured end-to-end)
+
+Driving the real sign-in through the MITM showed login is a **three-factor,
+multi-service chain**, not one API call. Captured request sequence (Akamai bot-sensor
+noise omitted):
+
+1. **SafePath device OTP** (line verification), signed frisco API —
+   `POST /auth/frisco/frisco-iam-device-auth/v7/user/auth/otp` body `{"mdn":"<phone>"}`
+   → `200 {"state":"OTP_SENT"}`  (SMS #1 to the line).
+2. **Validate device OTP** —
+   `POST /auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate`
+   body `{"mdn":"<phone>","otp":"<code>"}`
+   → `207 {"state":"AM_LOGIN_PAGE","tokens":[{"token_type":"login_recom_token",
+   "id_token":"…","expires_in":1800}]}`.
+3. **Hand off to Verizon Account-Management (AM) login** —
+   `GET /frisco/frisco-iam-device-auth/v5/oauth2/authorize` → `302` → the My Verizon
+   hosted login at `secure.verizon.com/signin/oauth2/vendor/authorize` (loads in a
+   WebView; its TLS is decrypted too because the WebView is in-process).
+4. **My Verizon account login** (User ID / mobile + password), Akamai-protected —
+   `GET …/vendor/api/v1/verifymdn`, `POST …/getconfig`, `GET …/getmvaurlswithflags`,
+   then `POST secure.verizon.com/signin/gw/oauth2/vendor/api/v1/authenticate` → `200`.
+5. **My Verizon account 2FA** — a *second* SMS, separate from step 1:
+   `POST …/api/v1/initialize2fa` → `200` (SMS #2), then `POST …/api/v1/update2fa` with
+   the code → an OAuth authorization code.
+6. **Token exchange** — the code is exchanged back through frisco for the real
+   `access`/`refresh`/`id` tokens the parental-control API accepts as
+   `Authorization: Bearer`.
+
+Notes:
+
+- Every frisco call is **signed**: `x-signature` (HMAC-SHA256) over the body +
+  `x-timestamp` + `x-transaction-id` + `x-appuuid`, with `x-source-app: AndroidMAPP`
+  and `x-mobile-app-version`.
+- **Mixed path prefixes:** `/auth/frisco/…` for the OTP steps, `/frisco/…` for the OAuth
+  authorize. `/auth/frisco/…/v5/user/login/audit` returns `400` and is non-blocking.
+- **Architectural consequence for the CLI:** steps 3–5 are a *hosted web login*
+  (secure.verizon.com, Akamai bot protection, **two** SMS factors) — not cheaply
+  automated headlessly. So `auth login` should run this chain **once** via an assisted
+  browser/WebView, capture the resulting **`refresh_token`**, and thereafter use the
+  refresh token + the signed REST API directly. Everyday commands never repeat the full
+  chain.
