@@ -1,0 +1,123 @@
+// Command safe_cli is a comprehensive, gog/GAM-style CLI for Verizon Family
+// (Smith Micro SafePath). It is unofficial and intended for administering your
+// own family account. The command surface and data model are generated from a
+// protocol descriptor (internal/descriptor); network operations are added in
+// later phases behind the same descriptor. See README.md and docs/FINDINGS.md.
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/alecthomas/kong"
+
+	"github.com/ejc3/safe_cli/internal/descriptor"
+	"github.com/ejc3/safe_cli/internal/outfmt"
+)
+
+var version = "0.1.0-dev"
+
+// Globals are flags shared by every subcommand.
+type Globals struct {
+	JSON bool `name:"json" help:"Machine-readable JSON output (stdout-as-API)."`
+}
+
+// runContext is bound into each command's Run method by kong.
+type runContext struct {
+	D   *descriptor.Descriptor
+	G   *Globals
+	Out io.Writer
+}
+
+// CLI is the top-level command grammar.
+type CLI struct {
+	Globals
+
+	Version  versionCmd  `cmd:"" help:"Print the CLI version and the descriptor it targets."`
+	Entities entitiesCmd `cmd:"" help:"List the entities in the SafePath data model."`
+	Describe describeCmd `cmd:"" help:"Show the operations and actions for one entity."`
+}
+
+type versionCmd struct{}
+
+func (c *versionCmd) Run(rc *runContext) error {
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, map[string]string{
+			"version":     version,
+			"descriptor":  rc.D.Name,
+			"app_package": rc.D.AppPackage,
+			"app_version": rc.D.AppVersion,
+			"base_url":    rc.D.BaseURL,
+		})
+	}
+	fmt.Fprintf(rc.Out, "safe_cli %s\n", version)
+	fmt.Fprintf(rc.Out, "descriptor: %s (targets %s %s at %s)\n",
+		rc.D.Name, rc.D.AppPackage, rc.D.AppVersion, rc.D.BaseURL)
+	return nil
+}
+
+type entitiesCmd struct{}
+
+func (c *entitiesCmd) Run(rc *runContext) error {
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, rc.D.EntityNames())
+	}
+	var rows [][]string
+	for _, name := range rc.D.EntityNames() {
+		e, _ := rc.D.Entity(name)
+		rows = append(rows, []string{name, fmt.Sprintf("%d", len(e.Operations)+len(e.Actions)), e.Summary})
+	}
+	return outfmt.Table(rc.Out, []string{"ENTITY", "OPS", "SUMMARY"}, rows)
+}
+
+type describeCmd struct {
+	Entity string `arg:"" help:"Entity name (see 'safe_cli entities')."`
+}
+
+func (c *describeCmd) Run(rc *runContext) error {
+	e, ok := rc.D.Entity(c.Entity)
+	if !ok {
+		return fmt.Errorf("unknown entity %q; run 'safe_cli entities'", c.Entity)
+	}
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, e)
+	}
+	fmt.Fprintf(rc.Out, "%s — %s\n", c.Entity, e.Summary)
+	if e.IDField != "" {
+		fmt.Fprintf(rc.Out, "  id: %s\n", e.IDField)
+	}
+	var rows [][]string
+	for _, k := range e.OperationNames() {
+		op := e.Operations[k]
+		rows = append(rows, []string{k, op.Method, op.Path, confirmed(op.Confirmed)})
+	}
+	for _, k := range e.ActionNames() {
+		op := e.Actions[k]
+		rows = append(rows, []string{k + " (action)", op.Method, op.Path, confirmed(op.Confirmed)})
+	}
+	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "CONFIRMED"}, rows)
+}
+
+func confirmed(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no (static)"
+}
+
+func main() {
+	d, err := descriptor.Default()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "safe_cli:", err)
+		os.Exit(1)
+	}
+	var cli CLI
+	ctx := kong.Parse(&cli,
+		kong.Name("safe_cli"),
+		kong.Description("Unofficial CLI for Verizon Family (Smith Micro SafePath) — administer your own family account."),
+		kong.UsageOnError(),
+	)
+	rc := &runContext{D: d, G: &cli.Globals, Out: os.Stdout}
+	ctx.FatalIfErrorf(ctx.Run(rc))
+}

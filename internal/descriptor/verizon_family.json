@@ -1,0 +1,147 @@
+{
+  "name": "verizon-family-safepath",
+  "app_package": "com.verizon.familybase.parent",
+  "app_version": "8.101.30",
+  "app_build": "810100030",
+  "engine": "smithmicro-safepath",
+  "base_url": "https://api.prd.vsf.aws.vz-connect.com",
+  "discovery": {
+    "status": "static",
+    "source": "static analysis of the signed APK (dex string constants / Retrofit annotations)",
+    "note": "Paths are confirmed present in the client. HTTP methods and request/response bodies are best-inferred and must be confirmed by one dynamic capture (see docs/FINDINGS.md). Full harvested list: docs/discovered-endpoints.txt (183 paths)."
+  },
+  "auth": {
+    "style": "oauth2_pkce_bearer",
+    "client_id": "6ebckm2cmaijai6kfb7251ar9a",
+    "redirect_uri": "vsfapp://com.verizon.familybase.parent/signin",
+    "scope": "openid profile",
+    "header": "Authorization",
+    "scheme": "Bearer",
+    "endpoints": {
+      "authorize": "/frisco/frisco-iam-device-auth/v6/oauth2/authorize",
+      "user_auth_token": "/frisco/frisco-iam-device-auth/v7/user/auth/token",
+      "refresh": "/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
+      "otp_request": "/frisco/frisco-iam-device-auth/v7/user/auth/otp",
+      "otp_validate": "/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
+      "logout": "/frisco/frisco-iam-device-auth/v5/user/auth/logout"
+    },
+    "attestation": {
+      "required": false,
+      "confidence": "static-medium",
+      "note": "Play Integrity refs belong to the Nok Nok FIDO/UAF SDK (com.noknok / com.fido.uaf), used only in the optional biometric login path. No Firebase App Check, no X-Integrity/X-AppCheck header on the API. Confirm 'required=false' with one live login + one control call."
+    }
+  },
+  "common_headers": {
+    "x-source-app": "AndroidMAPP",
+    "x-mobile-app-version": "8.101.30"
+  },
+  "entities": {
+    "account": {
+      "summary": "The Verizon Family account (subscriber) and its lines.",
+      "id_field": "accountId",
+      "operations": {
+        "info":  { "method": "GET", "path": "/vsf/account-management/v1/accounts", "confirmed": false },
+        "lines": { "method": "GET", "path": "/vsf/account-management/v1/accounts/lines", "confirmed": false }
+      }
+    },
+    "profile": {
+      "summary": "A family member profile (a child or the parent).",
+      "id_field": "profileId",
+      "operations": {
+        "print":  { "method": "GET",    "path": "/vsf/account-management/v1/profiles", "confirmed": false },
+        "create": { "method": "POST",   "path": "/vsf/account-management/v1/profiles", "confirmed": false },
+        "invite": { "method": "POST",   "path": "/vsf/account-management/v1/profiles/invite", "confirmed": false }
+      }
+    },
+    "device": {
+      "summary": "A device belonging to a profile.",
+      "id_field": "deviceId",
+      "operations": {
+        "print":     { "method": "GET",  "path": "/frisco/v5/installed-apps", "confirmed": false },
+        "apps_sync": { "method": "POST", "path": "/frisco/v8/devices/{deviceId}/appsSync", "confirmed": false }
+      },
+      "actions": {
+        "pause":  { "method": "POST", "path": "/frisco/v6/device/pause", "body": { "paused": true }, "confirmed": false },
+        "resume": { "method": "POST", "path": "/frisco/v6/device/pause", "body": { "paused": false }, "confirmed": false }
+      }
+    },
+    "web_filter": {
+      "summary": "Website content filtering: category filters, allow/block lists, safe search.",
+      "id_field": "profileId",
+      "operations": {
+        "get":         { "method": "GET", "path": "/frisco/v7/filterContent", "confirmed": false },
+        "categories":  { "method": "GET", "path": "/frisco/v8/categories", "confirmed": false },
+        "subcategory": { "method": "GET", "path": "/frisco/v8/subcategory", "confirmed": false }
+      },
+      "actions": {
+        "block_site":  { "method": "POST", "path": "/frisco/parental-control/v5/website", "body": { "url": "{url}", "action": "block" }, "confirmed": false },
+        "allow_site":  { "method": "POST", "path": "/frisco/parental-control/v5/website", "body": { "url": "{url}", "action": "allow" }, "confirmed": false },
+        "safe_search": { "method": "POST", "path": "/frisco/parental-control/v5/website/safesearch", "body": { "enabled": "{enabled}" }, "confirmed": false }
+      }
+    },
+    "app_limit": {
+      "summary": "Per-app time limits and block status.",
+      "id_field": "profileId",
+      "operations": {
+        "print":  { "method": "GET",  "path": "/frisco/v8/app-limits", "confirmed": false },
+        "set":    { "method": "POST", "path": "/frisco/v8/app-limits", "confirmed": false },
+        "ask_time": { "method": "POST", "path": "/frisco/v8/app-limits/askTime", "confirmed": false },
+        "block_status": { "method": "GET", "path": "/frisco/v8/androidApps/blockStatus", "confirmed": false }
+      }
+    },
+    "screen_time": {
+      "summary": "Daily screen-time limits and schedules (bedtime/offtime/downtime).",
+      "id_field": "profileId",
+      "operations": {
+        "get":       { "method": "GET",  "path": "/frisco/v7/screen-time-limits", "confirmed": false },
+        "set":       { "method": "POST", "path": "/frisco/v7/screen-time-limits", "confirmed": false },
+        "schedules": { "method": "GET",  "path": "/frisco/v6/schedules", "confirmed": false },
+        "ask_time":  { "method": "POST", "path": "/frisco/v7/screen-time-limits/askTime", "confirmed": false }
+      }
+    },
+    "activity": {
+      "summary": "Web and app activity: history, categories, insights, top apps.",
+      "id_field": "profileId",
+      "operations": {
+        "web":        { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/websites", "confirmed": false },
+        "apps":       { "method": "GET", "path": "/frisco/v7/web-app-activity/apps", "confirmed": false },
+        "top_apps":   { "method": "GET", "path": "/frisco/v5/web-app-activity/topApps", "confirmed": false },
+        "categories": { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/categories", "confirmed": false },
+        "insights":   { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/insights", "confirmed": false },
+        "app_usage":  { "method": "GET", "path": "/frisco/parental-control/v1/app-usage", "confirmed": false }
+      }
+    },
+    "location": {
+      "summary": "Real-time location of a profile's device.",
+      "id_field": "profileId",
+      "operations": {
+        "get": { "method": "GET", "path": "/frisco/parental-control/v5/provider/account/location", "confirmed": false }
+      }
+    },
+    "notification": {
+      "summary": "Alerts and notifications feed.",
+      "id_field": "notificationId",
+      "operations": {
+        "print":        { "method": "GET", "path": "/frisco/v6/notifications", "confirmed": false },
+        "unread_count": { "method": "GET", "path": "/frisco/v6/notifications/unreadCount", "confirmed": false },
+        "filters":      { "method": "GET", "path": "/frisco/v5/notifications/filters", "confirmed": false }
+      }
+    },
+    "driving": {
+      "summary": "Driving insights: crash notifications and settings (SafePath Drive).",
+      "id_field": "profileId",
+      "operations": {
+        "settings":     { "method": "GET", "path": "/frisco/driving-insights/v5/settings", "confirmed": false },
+        "crash_alerts": { "method": "GET", "path": "/frisco/driving-insights/v5/crash-notifications", "confirmed": false }
+      }
+    },
+    "accessibility_pin": {
+      "summary": "The parental-control accessibility PIN (anti-tamper).",
+      "id_field": "profileId",
+      "operations": {
+        "retrieve": { "method": "GET",  "path": "/frisco/parental-control/v5/accessibility/pin/retrieve", "confirmed": false },
+        "validate": { "method": "POST", "path": "/frisco/parental-control/v5/accessibility/pin/validate", "confirmed": false }
+      }
+    }
+  }
+}

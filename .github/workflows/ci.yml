@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Nothing here writes to the repo. Keep the token read-only and do not let
+# actions/checkout leave credentials in the local git config for later steps.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: go (build, vet, test, lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          # Matches the toolchain the CLI is developed against on the dev box.
+          go-version: "1.22"
+          cache: true
+
+      # gofmt is not part of `go vet`; a formatting drift should fail CI, not be
+      # silently reformatted later. `-l` lists offenders; any output => fail.
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      # -race catches the data races that a descriptor-driven dispatcher plus
+      # concurrent HTTP is prone to; it is cheap for a suite this size.
+      - name: go test
+        run: go test -race ./...
+
+      - name: build
+        run: go build ./...
+
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
