@@ -45,6 +45,7 @@ func loadTokens() (*tokenstore.Store, *tokenstore.TokenSet, error) {
 
 type authCmd struct {
 	Login      authLoginCmd      `cmd:"" help:"One-time assisted login: device OTP, hosted Verizon login + 2FA, token exchange."`
+	Refresh    authRefreshCmd    `cmd:"" help:"Refresh the id_token using the stored offline refresh_token (no OTP)."`
 	Import     authImportCmd     `cmd:"" help:"Import a captured frisco token JSON and persist it (0600)."`
 	Status     authStatusCmd     `cmd:"" help:"Show stored token status."`
 	Logout     authLogoutCmd     `cmd:"" help:"Delete stored tokens."`
