@@ -46,12 +46,17 @@ jobs:
       # rather than being silently committed.
       - name: go mod tidy check
         run: |
+          cp go.mod go.mod.tidybak && cp go.sum go.sum.tidybak
           go mod tidy
-          if ! git diff --quiet go.mod go.sum; then
+          rc=0
+          if ! cmp -s go.mod go.mod.tidybak || ! cmp -s go.sum go.sum.tidybak; then
             echo "go.mod / go.sum are not tidy — run 'go mod tidy' and commit:"
-            git --no-pager diff go.mod go.sum
-            exit 1
+            diff go.mod.tidybak go.mod || true
+            diff go.sum.tidybak go.sum || true
+            rc=1
           fi
+          mv go.mod.tidybak go.mod; mv go.sum.tidybak go.sum
+          exit $rc
 
       # -race catches the data races that a descriptor-driven dispatcher plus
       # concurrent HTTP is prone to; it is cheap for a suite this size.

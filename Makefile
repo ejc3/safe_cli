@@ -23,18 +23,29 @@ lint: vet tidy-check
 vet:
 	go vet ./...
 
-# go.mod / go.sum must stay tidy (also gated in CI).
+# go.mod / go.sum must stay tidy (also gated in CI). Snapshot before tidying and
+# compare against that — not the git index — so an unstaged but already-tidy
+# dependency change does not fail the check.
 tidy-check:
-	@go mod tidy; \
-	if ! git diff --quiet go.mod go.sum; then \
+	@cp go.mod go.mod.tidybak && cp go.sum go.sum.tidybak; \
+	go mod tidy; \
+	rc=0; \
+	if ! cmp -s go.mod go.mod.tidybak || ! cmp -s go.sum go.sum.tidybak; then \
 		echo "go.mod / go.sum not tidy — run 'go mod tidy' and commit:"; \
-		git --no-pager diff go.mod go.sum; exit 1; \
-	fi
+		diff go.mod.tidybak go.mod || true; diff go.sum.tidybak go.sum || true; rc=1; \
+	fi; \
+	mv go.mod.tidybak go.mod; mv go.sum.tidybak go.sum; \
+	exit $$rc
 
-# Vulnerability scan (also gated in CI). Installs govulncheck on demand.
+# Vulnerability scan (also gated in CI). Installs govulncheck on demand and runs it
+# by its install path, since $(go env GOPATH)/bin may not be on PATH.
 vuln:
-	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
-	govulncheck ./...
+	@if command -v govulncheck >/dev/null 2>&1; then \
+		govulncheck ./...; \
+	else \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+		bin="$$(go env GOBIN)"; "$${bin:-$$(go env GOPATH)/bin}/govulncheck" ./...; \
+	fi
 
 fmt:
 	gofmt -w .
