@@ -226,3 +226,17 @@ func TestRunCallGeneratesTraceHeader(t *testing.T) {
 		t.Errorf("x-trace-transaction-id not generated (got %q)", gotTrace)
 	}
 }
+
+// runCall refuses an op whose path is a runtime-resolved @Url placeholder rather than
+// requesting the literal placeholder text from the production host.
+func TestRunCallRejectsDynamicURL(t *testing.T) {
+	d, err := descriptor.Parse([]byte(`{"name":"t","base_url":"https://h","entities":{"config":{"id_field":"","operations":{"getX":{"method":"GET","path":"/(dynamic @Url)"}}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// No server: the guard must fire before any request is attempted.
+	err = runCall(context.Background(), client.New("T").DoH, d, "config", "getX", "", "", nil, nil, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "@Url") {
+		t.Errorf("want an @Url rejection error, got %v", err)
+	}
+}
