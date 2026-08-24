@@ -99,6 +99,9 @@ func (c *describeCmd) Run(rc *runContext) error {
 	}
 	var rows [][]string
 	row := func(name string, op descriptor.Operation) []string {
+		if op.Destructive {
+			name = "⚠ " + name // catastrophic: requires --confirm
+		}
 		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), confirmed(op.Confirmed)}
 	}
 	for _, k := range e.OperationNames() {

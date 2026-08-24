@@ -268,7 +268,7 @@ func TestRunCallFillsNamedPathParams(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	args := callArgs{
-		entity: "messaging", op: "deleteGroupMember", id: "G1",
+		entity: "messaging", op: "deleteGroupMember", id: "G1", confirm: true,
 		idHeaders:  map[string]string{"x-fp-identifier-target-serviceid": "svc"},
 		pathParams: map[string]string{"member-id": "M2"},
 	}
@@ -340,5 +340,34 @@ func TestParseQueryKeepsDuplicates(t *testing.T) {
 	}
 	if q.Get("exclude") != "x" {
 		t.Errorf("exclude = %q", q.Get("exclude"))
+	}
+}
+
+// A destructive op is refused up front without --confirm, and proceeds with it.
+func TestRunCallGuardsDestructive(t *testing.T) {
+	d, _ := descriptor.Default()
+	// Without --confirm: must error before any request (no server wired).
+	err := runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: "account", op: "deleteProfile"}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "--confirm") {
+		t.Errorf("want a --confirm guard error, got %v", err)
+	}
+	// With --confirm: the request is actually sent.
+	var hit bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hit = true
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	if err := runCall(context.Background(), cl.DoH, d,
+		callArgs{entity: "account", op: "deleteProfile", confirm: true,
+			idHeaders: map[string]string{"x-fp-identifier-target-serviceid": "svc"}}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall with --confirm: %v", err)
+	}
+	if !hit {
+		t.Error("with --confirm the request should have been sent")
 	}
 }
