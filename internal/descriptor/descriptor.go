@@ -33,6 +33,9 @@ type Operation struct {
 	Query        []string       `json:"query,omitempty"`
 	Placeholders []string       `json:"placeholders,omitempty"`
 	Confirmed    bool           `json:"confirmed"`
+	// Destructive marks a catastrophic, effectively irreversible op (deleting a user,
+	// device, or subscription; wiping messages). `call` refuses these without --confirm.
+	Destructive bool `json:"destructive,omitempty"`
 }
 
 // Entity is one type in the data model, with its CRUD operations and actions. Tier marks

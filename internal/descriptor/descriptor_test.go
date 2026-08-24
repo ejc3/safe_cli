@@ -82,3 +82,79 @@ func TestDeclaredHeadersPreserved(t *testing.T) {
 		}
 	}
 }
+
+// The catastrophic, irreversible ops must stay marked Destructive so `call`'s --confirm
+// guard covers them (Codex flagged pairing.deleteMediaBackupEntries slipping through).
+func TestDestructiveOpsMarked(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]string{
+		{"account", "deleteProfile"}, {"account", "deleteMyself"},
+		{"account", "selfRemoveProfile"}, {"account", "deleteDevice"},
+		{"subscription", "cancelSubscription"}, {"pairing", "unlinkGizmoAccount"},
+		{"pairing", "deleteMediaBackupEntries"},
+		{"messaging", "deleteMessages"}, {"messaging", "deleteGroupChat"},
+		{"messaging", "clearAllGroupChatMessages"}, {"messaging", "deleteGroupMember"},
+		{"contacts", "bulkDeleteContacts"},
+		{"family_line", "deProvisionFamilyLine"}, {"family_line", "removeUserFromFamilyLine"},
+		{"professional_monitoring", "deactivateProfile"},
+	}
+	for _, w := range want {
+		e, ok := d.Entity(w[0])
+		if !ok {
+			t.Errorf("no entity %q", w[0])
+			continue
+		}
+		op, ok := e.Operations[w[1]]
+		if !ok {
+			t.Errorf("no op %s.%s", w[0], w[1])
+			continue
+		}
+		if !op.Destructive {
+			t.Errorf("%s.%s must be marked Destructive (irreversible)", w[0], w[1])
+		}
+	}
+}
+
+// Every op sharing a wire route (method+path) with a destructive op must ALSO be
+// destructive — the backend sees only the route + body, so an unmarked alias would let a
+// caller reach the destructive route without --confirm (Codex: professional_monitoring
+// reactivateProfile shares deactivateProfile's PATCH route).
+func TestDestructiveRoutesFullyGated(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type route struct{ m, p string }
+	byRoute := map[route][]Operation{}
+	names := map[route][]string{}
+	for en, e := range d.Entities {
+		add := func(opn string, op Operation) {
+			r := route{op.Method, op.Path}
+			byRoute[r] = append(byRoute[r], op)
+			names[r] = append(names[r], en+"."+opn)
+		}
+		for opn, op := range e.Operations {
+			add(opn, op)
+		}
+		for opn, op := range e.Actions {
+			add(opn, op)
+		}
+	}
+	for r, ops := range byRoute {
+		anyDest := false
+		for _, op := range ops {
+			anyDest = anyDest || op.Destructive
+		}
+		if !anyDest {
+			continue
+		}
+		for i, op := range ops {
+			if !op.Destructive {
+				t.Errorf("%s shares destructive route %s %s but is not gated", names[r][i], r.m, r.p)
+			}
+		}
+	}
+}

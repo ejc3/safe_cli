@@ -160,7 +160,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "deleteMyself": {
           "method": "DELETE",
@@ -168,7 +169,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "deleteProfile": {
           "method": "DELETE",
@@ -176,7 +178,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "getAccountDetails": {
           "method": "GET",
@@ -200,7 +203,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "updateDeviceName": {
           "method": "PATCH",
@@ -742,7 +746,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "bulkUpdateContacts": {
           "method": "PUT",
@@ -1522,7 +1527,8 @@
         "deProvisionFamilyLine": {
           "method": "DELETE",
           "path": "/account/fam/userprofile-management/v5/accounts/subscriptions/feature/FAMILYLINE",
-          "confirmed": false
+          "confirmed": false,
+          "destructive": true
         },
         "getAddress": {
           "method": "GET",
@@ -1562,7 +1568,8 @@
         "removeUserFromFamilyLine": {
           "method": "DELETE",
           "path": "/callandtext/frisco/familyline/v1/fl/line",
-          "confirmed": false
+          "confirmed": false,
+          "destructive": true
         },
         "saveAddress": {
           "method": "POST",
@@ -2216,7 +2223,8 @@
           ],
           "query": [
             "chatGroupId"
-          ]
+          ],
+          "destructive": true
         },
         "createNewGroup": {
           "method": "POST",
@@ -2235,7 +2243,8 @@
           ],
           "placeholders": [
             "group-id"
-          ]
+          ],
+          "destructive": true
         },
         "deleteGroupMember": {
           "method": "DELETE",
@@ -2247,7 +2256,8 @@
           "placeholders": [
             "group-id",
             "member-id"
-          ]
+          ],
+          "destructive": true
         },
         "exitGroup": {
           "method": "DELETE",
@@ -2358,7 +2368,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "getMediaMessage": {
           "method": "GET",
@@ -2779,7 +2790,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "getGizmoDevices": {
           "method": "GET",
@@ -2921,7 +2933,8 @@
           "confirmed": false,
           "headers": [
             "x-trace-transaction-id"
-          ]
+          ],
+          "destructive": true
         },
         "updateProfileImage": {
           "method": "PUT",
@@ -3244,7 +3257,8 @@
           ],
           "placeholders": [
             "subscriber-id"
-          ]
+          ],
+          "destructive": true
         },
         "getRemoteProfessionalMonitoringAddress": {
           "method": "GET",
@@ -3272,7 +3286,8 @@
           ],
           "placeholders": [
             "subscriber-id"
-          ]
+          ],
+          "destructive": true
         },
         "updateAddress": {
           "method": "PUT",
@@ -4148,7 +4163,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         }
       }
     },

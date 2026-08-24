@@ -29,6 +29,7 @@ type callCmd struct {
 	Query     []string `name:"query" short:"q" help:"Query parameter as name=value (repeatable), for operations that declare query params (see 'safe_cli describe <entity>')."`
 	Path      []string `name:"path" short:"p" help:"Path placeholder as name=value (repeatable), for paths with more than one {name} segment."`
 	Header    []string `name:"header" short:"H" help:"Extra request header as name=value (repeatable), for headers a op declares that no flag covers (e.g. timezone, schedule-type, If-None-Match)."`
+	Confirm   bool     `name:"confirm" help:"Required to run a catastrophic, effectively irreversible operation (deleting a user/device/subscription, wiping messages)."`
 }
 
 func (c *callCmd) Run(rc *runContext) error {
@@ -64,6 +65,7 @@ func (c *callCmd) Run(rc *runContext) error {
 		query:       query,
 		pathParams:  pathParams,
 		userHeaders: userHeaders,
+		confirm:     c.Confirm,
 	}
 	return runCall(context.Background(), authedRequest(rc, st, ts), rc.D, args, rc.Out, rc.G.JSON)
 }
@@ -76,6 +78,7 @@ type callArgs struct {
 	query                url.Values        // extra query params (ordered, multi-value)
 	pathParams           map[string]string // {name} path placeholder values
 	userHeaders          map[string]string // arbitrary extra request headers
+	confirm              bool              // set by --confirm; required for destructive ops
 }
 
 // parseQuery turns repeated name=value flags into url.Values, preserving duplicate keys
@@ -127,6 +130,9 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	o, err := resolveOp(d, a.entity, a.op)
 	if err != nil {
 		return err
+	}
+	if o.Destructive && !a.confirm {
+		return fmt.Errorf("%s %s is catastrophic and effectively irreversible (%s) — re-run with --confirm to proceed", a.entity, a.op, o.Method)
 	}
 	if strings.Contains(o.Path, "@") {
 		return fmt.Errorf("%s %s has a runtime-resolved (@Url) path the CLI cannot construct: %q", a.entity, a.op, o.Path)
