@@ -159,10 +159,10 @@ func (c *Client) DumpDoH(ctx context.Context, method, path string, body []byte, 
 	if err != nil {
 		return nil, err
 	}
-	// Redact the bearer id_token from the printed dump — the diff cares about the header's
-	// presence and casing, not the secret value (which differs per session anyway).
-	if c.IDToken != "" {
-		dump = bytes.Replace(dump, []byte(c.IDToken), []byte("<id_token redacted>"), 1)
+	// Redact whatever ended up as the Authorization value — the id_token, or a caller
+	// override via --header Authorization=… — so --dry-run never prints a credential.
+	if auth := req.Header.Get("Authorization"); auth != "" {
+		dump = bytes.Replace(dump, []byte(auth), []byte("<redacted>"), 1)
 	}
 	return dump, nil
 }

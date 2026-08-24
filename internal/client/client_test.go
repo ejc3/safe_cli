@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/ejc3/safe_cli/internal/signing"
@@ -256,5 +257,23 @@ func TestSetHeaderPreservesCustomHeaders(t *testing.T) {
 		if h[http.CanonicalHeaderKey(k)] != nil && http.CanonicalHeaderKey(k) != k {
 			t.Errorf("custom header %q was canonicalized to %q", k, http.CanonicalHeaderKey(k))
 		}
+	}
+}
+
+// --dry-run must redact whatever ends up as the Authorization value, including a
+// caller-supplied --header Authorization override, not just the stored id_token.
+func TestDumpDoHRedactsCallerAuth(t *testing.T) {
+	c := New("stored-token")
+	dump, err := c.DumpDoH(context.Background(), "GET", "/x", nil,
+		map[string]string{"Authorization": "caller-secret-abc"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(dump)
+	if strings.Contains(s, "caller-secret-abc") || strings.Contains(s, "stored-token") {
+		t.Errorf("dry-run leaked a credential:\n%s", s)
+	}
+	if !strings.Contains(s, "Authorization: <redacted>") {
+		t.Errorf("Authorization not redacted:\n%s", s)
 	}
 }
