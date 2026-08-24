@@ -217,3 +217,21 @@ func TestSetHeaderCanonicalizesAcceptEncoding(t *testing.T) {
 		t.Errorf("Accept-Encoding = %q, want identity", got)
 	}
 }
+
+// A standard header the transport inspects by canonical key (Range) is canonicalized, not
+// stored raw — otherwise Transport would add gzip and could corrupt a partial response.
+func TestSetHeaderCanonicalizesRange(t *testing.T) {
+	h := http.Header{}
+	setHeader(h, "range", "bytes=0-99")
+	if h["range"] != nil { //nolint:staticcheck // SA1008: verifies no raw lowercase key
+		t.Errorf("range stored under raw lowercase key: %v", h)
+	}
+	if got := h.Get("Range"); got != "bytes=0-99" {
+		t.Errorf("Range = %q, want bytes=0-99", got)
+	}
+	// app-specific still preserved
+	setHeader(h, "x-source-app", "AndroidMAPP")
+	if h["x-source-app"] == nil { //nolint:staticcheck // SA1008: verifies app casing kept
+		t.Error("x-source-app casing not preserved")
+	}
+}

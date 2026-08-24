@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ejc3/safe_cli/internal/signing"
@@ -139,26 +140,32 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 	return c.send(req)
 }
 
-// reservedHeaders are standard headers the transport manages or that must never be
-// duplicated. A caller-supplied value for one of these is canonicalized (replacing the
-// default) rather than sent under a second, lowercase key.
-var reservedHeaders = map[string]bool{
-	"Accept": true, "Content-Type": true, "Content-Length": true,
-	"User-Agent": true, "Authorization": true, "Host": true,
-	"Connection": true, "Transfer-Encoding": true, "Accept-Encoding": true,
+// appRawHeader reports whether key is an app-specific header the app sends with exact
+// (non-canonical) casing: the x-* family, or one of a few lowercase custom headers the
+// decompiled Retrofit interfaces declare. Everything else is a standard HTTP header —
+// net/http's transport inspects those by canonical key (Content-Length, Accept-Encoding,
+// Range, Connection, …), so they must be canonicalized, not preserved raw.
+func appRawHeader(key string) bool {
+	lk := strings.ToLower(key)
+	if strings.HasPrefix(lk, "x-") {
+		return true
+	}
+	switch lk {
+	case "timezone", "schedule-type", "usage-type", "duration":
+		return true
+	}
+	return false
 }
 
-// setHeader sets a caller-supplied header. App-specific names (x-*, timezone, …) keep
-// their exact lowercase wire casing via setRaw; reserved/standard names are canonicalized
-// with Header.Set so they replace the default instead of producing a duplicate on HTTP/1.1.
+// setHeader sets a caller-supplied header. App-specific names keep their exact wire casing
+// via setRaw (dropping any case-insensitive duplicate first, so a caller override replaces
+// the app default); every other name is canonicalized with Header.Set so the transport
+// handles it correctly and it can't be duplicated.
 func setHeader(h http.Header, key, value string) {
-	if reservedHeaders[http.CanonicalHeaderKey(key)] {
+	if !appRawHeader(key) {
 		h.Set(key, value)
 		return
 	}
-	// Drop any existing case-insensitive match first, so a caller's differently-cased
-	// override replaces the app default instead of coexisting with it (e.g. --header
-	// X-Transaction-Id=… must not leave the generated lowercase x-transaction-id behind).
 	canon := http.CanonicalHeaderKey(key)
 	for k := range h {
 		if http.CanonicalHeaderKey(k) == canon {
