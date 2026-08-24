@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +21,8 @@ type sfield struct {
 	name  string
 	isStr bool
 	str   string // when isStr
-	ival  uint32 // when !isStr
+	ival  uint32 // when !isStr && !arr
+	arr   bool   // emit an (empty) VALUE_ARRAY constant instead
 }
 
 func appendUleb(b []byte, v uint64) []byte {
@@ -59,10 +61,17 @@ func encString(idx uint32) []byte {
 	return append([]byte{byte(len(lb)-1)<<5 | valueString}, lb...)
 }
 
-// dexOpts injects malformed static_fields layouts for robustness tests.
+func encArray() []byte { // an empty VALUE_ARRAY: 0x1c then uleb size 0
+	return []byte{valueArray, 0x00}
+}
+
+// dexOpts injects malformed or edge-case layouts for robustness tests.
 type dexOpts struct {
-	staticFieldsSize *uint64  // override the declared static_fields_size
-	diffs            []uint64 // override the field_idx_diff sequence
+	staticFieldsSize  *uint64  // override the declared static_fields_size
+	diffs             []uint64 // override the field_idx_diff sequence
+	padStrings        int      // add N filler strings so field-value indices exceed 255
+	staticValuesCount *uint64  // override the encoded_array size (e.g. shorter than fields)
+	zeroClassData     bool     // write class_data_off = 0 in the class_def
 }
 
 // buildDex assembles a single-class dex with the given static fields, in order.
@@ -85,6 +94,9 @@ func buildDexEx(className string, fields []sfield, opts dexOpts) []byte {
 	classDescIdx := addStr(className)
 	addStr("Ljava/lang/String;")
 	addStr("I")
+	for i := 0; i < opts.padStrings; i++ {
+		addStr(fmt.Sprintf("__pad_%d__", i)) // filler so field-value string indices exceed 255
+	}
 	for _, f := range fields {
 		addStr(f.name)
 		if f.isStr {
@@ -135,11 +147,18 @@ func buildDexEx(className string, fields []sfield, opts dexOpts) []byte {
 	}
 
 	staticValuesOff := off()
-	data = appendUleb(data, uint64(F)) // encoded_array size
+	svCount := uint64(F)
+	if opts.staticValuesCount != nil {
+		svCount = *opts.staticValuesCount
+	}
+	data = appendUleb(data, svCount) // encoded_array size
 	for _, f := range fields {
-		if f.isStr {
+		switch {
+		case f.arr:
+			data = append(data, encArray()...)
+		case f.isStr:
 			data = append(data, encString(strIndex[f.str])...)
-		} else {
+		default:
 			data = append(data, encInt(f.ival)...)
 		}
 	}
@@ -187,7 +206,11 @@ func buildDexEx(className string, fields []sfield, opts dexOpts) []byte {
 	put(cb+12, 0)          // interfaces_off
 	put(cb+16, 0xffffffff) // source_file_idx
 	put(cb+20, 0)          // annotations_off
-	put(cb+24, uint32(classDataOff))
+	cdOff := uint32(classDataOff)
+	if opts.zeroClassData {
+		cdOff = 0
+	}
+	put(cb+24, cdOff)
 	put(cb+28, uint32(staticValuesOff))
 	return buf
 }
@@ -251,6 +274,89 @@ func TestExtractScansSecondaryDex(t *testing.T) {
 	}
 	if got != goodKey {
 		t.Fatalf("got %q, want %q", got, goodKey)
+	}
+}
+
+// A same-named field on a different class (wrong package) must be ignored; only the
+// exact BuildConfig descriptor counts.
+func TestExtractIgnoresWrongPackageBuildConfig(t *testing.T) {
+	const wrong = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	other := buildDex("Lcom/other/BuildConfig;", []sfield{{name: SigningFieldName, isStr: true, str: wrong}})
+	target := buildDex(BuildConfigClass, []sfield{{name: SigningFieldName, isStr: true, str: goodKey}})
+	apk := writeAPK(t, map[string][]byte{"classes.dex": other, "classes2.dex": target})
+	got, err := ExtractSigningKey(apk)
+	if err != nil {
+		t.Fatalf("ExtractSigningKey: %v", err)
+	}
+	if got != goodKey {
+		t.Fatalf("got %q, want the verizon BuildConfig value %q, not the wrong-package one", got, goodKey)
+	}
+}
+
+// The value's string_id index may need more than one byte (VALUE_STRING with value_arg>0).
+func TestExtractMultiByteStringIndex(t *testing.T) {
+	dex := buildDexEx(BuildConfigClass,
+		[]sfield{{name: SigningFieldName, isStr: true, str: goodKey}},
+		dexOpts{padStrings: 400}, // pushes goodKey's string index past 255 -> 2-byte index
+	)
+	got, err := ExtractSigningKey(writeAPK(t, map[string][]byte{"classes.dex": dex}))
+	if err != nil {
+		t.Fatalf("ExtractSigningKey: %v", err)
+	}
+	if got != goodKey {
+		t.Fatalf("got %q, want %q (multi-byte string index)", got, goodKey)
+	}
+}
+
+// If the field exists but its constant is not a string, it must not be mis-decoded.
+func TestTargetNonStringConstant(t *testing.T) {
+	dex := buildDex(BuildConfigClass, []sfield{{name: SigningFieldName, ival: 42}})
+	_, err := ExtractSigningKey(writeAPK(t, map[string][]byte{"classes.dex": dex}))
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found for a non-string constant, got %v", err)
+	}
+}
+
+// A VALUE_ARRAY-typed field declared before the target must be skipped correctly by
+// the encoded_array reader's recursion.
+func TestArrayValuedFieldBeforeTarget(t *testing.T) {
+	dex := buildDex(BuildConfigClass, []sfield{
+		{name: "SOME_ARRAY", arr: true},
+		{name: SigningFieldName, isStr: true, str: goodKey},
+	})
+	got, err := ExtractSigningKey(writeAPK(t, map[string][]byte{"classes.dex": dex}))
+	if err != nil {
+		t.Fatalf("ExtractSigningKey: %v", err)
+	}
+	if got != goodKey {
+		t.Fatalf("got %q, want %q (array-valued field before target)", got, goodKey)
+	}
+}
+
+// When static_values is shorter than static_fields (trailing default values), a target
+// beyond the array is treated as absent, not read out of bounds.
+func TestTrailingDefaultShorterArray(t *testing.T) {
+	two := uint64(2)
+	dex := buildDexEx(BuildConfigClass, []sfield{
+		{name: "A", ival: 1},
+		{name: "B", ival: 2},
+		{name: SigningFieldName, isStr: true, str: goodKey}, // position 2, but array declares only 2
+	}, dexOpts{staticValuesCount: &two})
+	_, err := ExtractSigningKey(writeAPK(t, map[string][]byte{"classes.dex": dex}))
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found when the value is a trailing default, got %v", err)
+	}
+}
+
+// A matching class with class_data_off == 0 carries no static constants.
+func TestZeroClassData(t *testing.T) {
+	dex := buildDexEx(BuildConfigClass,
+		[]sfield{{name: SigningFieldName, isStr: true, str: goodKey}},
+		dexOpts{zeroClassData: true},
+	)
+	_, err := ExtractSigningKey(writeAPK(t, map[string][]byte{"classes.dex": dex}))
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found when class_data_off is 0, got %v", err)
 	}
 }
 
