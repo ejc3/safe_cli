@@ -24,24 +24,30 @@ func refreshServer(t *testing.T, path, body string) *httptest.Server {
 	}))
 }
 
+// The refresh renews the ONLINE token, so the stored set must carry an online
+// refresh_token; the offline entry is the durable anchor carried forward.
 func oldTokens() *tokenstore.TokenSet {
 	return &tokenstore.TokenSet{
 		MDN:     "5551234567",
 		AppUUID: "old-uuid",
-		Tokens:  []tokenstore.Token{{FriscoTokenType: "offline", IDToken: "OLDID", RefreshToken: "OLD_RT"}},
+		Tokens: []tokenstore.Token{
+			{FriscoTokenType: "online", IDToken: "OLDON", RefreshToken: "OLD_ON_RT"},
+			{FriscoTokenType: "offline", IDToken: "OLDID", RefreshToken: "OLD_RT"},
+		},
 	}
 }
 
+func tokenEndpoint(d *descriptor.Descriptor) string { return d.Auth.Endpoints["user_auth_token"] }
+
 func TestRefreshTokensCarriesIdentityAndParses(t *testing.T) {
 	d, _ := descriptor.Default()
-	rp := d.Auth.Endpoints["refresh"]
-	srv := refreshServer(t, rp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800},{"frisco_token_type":"offline","id_token":"OFF2","refresh_token":"RToff2","expires_in":86400}]}`)
+	tp := tokenEndpoint(d)
+	srv := refreshServer(t, tp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800},{"frisco_token_type":"offline","id_token":"OFF2","refresh_token":"RToff2","expires_in":86400}]}`)
 	defer srv.Close()
 	cl := client.New("")
 	cl.BaseURL = srv.URL
 
-	ts, err := refreshTokens(context.Background(), cl, rp, "CID", oldTokens(),
-		"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "app-uuid")
+	ts, err := refreshTokens(context.Background(), cl, tp, "CID", "vsfapp://x/signin", oldTokens(), "app-uuid")
 	if err != nil {
 		t.Fatalf("refreshTokens: %v", err)
 	}
@@ -61,13 +67,13 @@ func TestRefreshTokensCarriesIdentityAndParses(t *testing.T) {
 // refresh still has a durable credential.
 func TestRefreshTokensPreservesOldOffline(t *testing.T) {
 	d, _ := descriptor.Default()
-	rp := d.Auth.Endpoints["refresh"]
-	srv := refreshServer(t, rp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800}]}`)
+	tp := tokenEndpoint(d)
+	srv := refreshServer(t, tp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800}]}`)
 	defer srv.Close()
 	cl := client.New("")
 	cl.BaseURL = srv.URL
 
-	ts, err := refreshTokens(context.Background(), cl, rp, "CID", oldTokens(), "K", "U")
+	ts, err := refreshTokens(context.Background(), cl, tp, "CID", "vsfapp://x/signin", oldTokens(), "U")
 	if err != nil {
 		t.Fatalf("refreshTokens: %v", err)
 	}
@@ -77,10 +83,12 @@ func TestRefreshTokensPreservesOldOffline(t *testing.T) {
 	}
 }
 
-func TestRefreshTokensNoOfflineToStart(t *testing.T) {
-	old := &tokenstore.TokenSet{Tokens: []tokenstore.Token{{FriscoTokenType: "online", IDToken: "X"}}}
-	if _, err := refreshTokens(context.Background(), client.New(""), "/x", "C", old, "K", "U"); err == nil {
-		t.Error("want error when there is no stored offline refresh_token")
+// The refresh renews the online token, so a set with no online refresh_token can't be
+// refreshed — it must error rather than silently do nothing.
+func TestRefreshTokensRequiresOnlineRefresh(t *testing.T) {
+	old := &tokenstore.TokenSet{Tokens: []tokenstore.Token{{FriscoTokenType: "offline", IDToken: "X", RefreshToken: "OFF"}}}
+	if _, err := refreshTokens(context.Background(), client.New(""), "/x", "C", "R", old, "U"); err == nil {
+		t.Error("want error when there is no stored online refresh_token")
 	}
 }
 
@@ -107,13 +115,13 @@ func TestWriteRefreshResult(t *testing.T) {
 // refresh_token must be carried into it — else the next refresh has no credential.
 func TestRefreshTokensPreservesWhenOfflineRefreshEmpty(t *testing.T) {
 	d, _ := descriptor.Default()
-	rp := d.Auth.Endpoints["refresh"]
-	srv := refreshServer(t, rp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800},{"frisco_token_type":"offline","id_token":"OFF2","expires_in":86400}]}`)
+	tp := tokenEndpoint(d)
+	srv := refreshServer(t, tp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800},{"frisco_token_type":"offline","id_token":"OFF2","expires_in":86400}]}`)
 	defer srv.Close()
 	cl := client.New("")
 	cl.BaseURL = srv.URL
 
-	ts, err := refreshTokens(context.Background(), cl, rp, "CID", oldTokens(), "K", "U")
+	ts, err := refreshTokens(context.Background(), cl, tp, "CID", "vsfapp://x/signin", oldTokens(), "U")
 	if err != nil {
 		t.Fatalf("refreshTokens: %v", err)
 	}

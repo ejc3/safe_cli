@@ -29,6 +29,7 @@ type authLoginCmd struct {
 	APK       string `name:"apk" type:"existingfile" help:"Extract the signing key from this APK instead of SAFE_CLI_SIGNING_KEY[_FILE]."`
 	Redirect  string `name:"redirect" help:"Override the OAuth redirect_uri (advanced; e.g. an RFC 8252 loopback)."`
 	NoBrowser bool   `name:"no-browser" help:"Do not try to open a browser; just print the URL."`
+	Paste     bool   `name:"paste" help:"Paste the vsfapp:// redirect manually instead of the macOS scheme handler."`
 }
 
 func (c *authLoginCmd) Run(rc *runContext) error {
@@ -48,7 +49,7 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 	if c.NoBrowser {
 		open = nil
 	}
-	ts, err := runLogin(context.Background(), loginDeps{
+	deps := loginDeps{
 		Client:   cl,
 		Desc:     rc.D,
 		Key:      key,
@@ -59,7 +60,22 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 		Out:      os.Stderr, // interactive prompts/messages go to stderr; stdout stays the API
 		OpenURL:  open,
 		Now:      time.Now(),
-	})
+	}
+	// On macOS, register the vsfapp:// handler and capture the redirect automatically —
+	// unless --paste is set or --redirect points somewhere other than the vsfapp scheme.
+	if !c.Paste && runtime.GOOS == "darwin" && (c.Redirect == "" || strings.HasPrefix(c.Redirect, vsfappScheme+"://")) {
+		_, redirectFile, err := registerScheme(os.Stderr)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(redirectFile) // drop any stale capture before we start
+		deps.WaitRedirect = func(ctx context.Context) (string, error) {
+			wctx, cancel := context.WithTimeout(ctx, defaultRedirectTo)
+			defer cancel()
+			return waitForRedirect(wctx, redirectFile, time.Second)
+		}
+	}
+	ts, err := runLogin(context.Background(), deps)
 	if err != nil {
 		return err
 	}
@@ -111,14 +127,14 @@ type loginDeps struct {
 	OpenURL  func(string) error
 	Now      time.Time
 
-	genState func() (string, error)
-	genPKCE  func() (oauth.PKCE, error)
+	// WaitRedirect, when set, captures the browser's vsfapp:// redirect automatically
+	// (the macOS scheme handler) instead of prompting the operator to paste it.
+	WaitRedirect func(context.Context) (string, error)
+
+	genPKCE func() (oauth.PKCE, error)
 }
 
 func runLogin(ctx context.Context, d loginDeps) (*tokenstore.TokenSet, error) {
-	if d.genState == nil {
-		d.genState = oauth.State
-	}
 	if d.genPKCE == nil {
 		d.genPKCE = oauth.GeneratePKCE
 	}
@@ -160,24 +176,33 @@ func runLogin(ctx context.Context, d loginDeps) (*tokenstore.TokenSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	state, err := d.genState()
+	authURL, _, err := settings.AuthorizeURL(d.Desc.BaseURL, redirect, d.AppUUID, pkce.Challenge)
 	if err != nil {
 		return nil, err
 	}
-	authURL := settings.AuthorizeURL(d.Desc.BaseURL, redirect, state, pkce.Challenge,
-		map[string]string{"login_recom_token": dev.LoginRecomToken})
 	_, _ = fmt.Fprintf(d.Out, "\nOpen this URL and complete the Verizon account login and 2FA:\n\n  %s\n\n", authURL)
 	if d.OpenURL != nil {
 		if err := d.OpenURL(authURL); err != nil {
 			_, _ = fmt.Fprintf(d.Out, "(couldn't open a browser automatically: %v — open the URL above manually)\n", err)
 		}
 	}
-	_, _ = fmt.Fprintf(d.Out, "After signing in, the browser is redirected to a %s… URL it cannot open.\n", redirect)
-	redirected, err := promptLine(d.In, d.Out, "Paste that full redirect URL here: ")
+
+	// Capture the vsfapp://…?code=… redirect: automatically via the OS scheme handler
+	// when wired (macOS), else by paste. State is checked leniently — the frisco backend
+	// rebinds state per app_uuid, so the returned value need not match ours; the code is
+	// worthless without our PKCE verifier and the recom token at exchange.
+	var redirected string
+	if d.WaitRedirect != nil {
+		_, _ = fmt.Fprintf(d.Out, "Waiting for the browser redirect (the vsfapp:// handler will capture it automatically)…\n")
+		redirected, err = d.WaitRedirect(ctx)
+	} else {
+		_, _ = fmt.Fprintf(d.Out, "After signing in, the browser is redirected to a %s… URL it cannot open.\n", redirect)
+		redirected, err = promptLine(d.In, d.Out, "Paste that full redirect URL here: ")
+	}
 	if err != nil {
 		return nil, err
 	}
-	code, err := oauth.ParseRedirect(redirected, redirect, state)
+	code, err := oauth.ParseRedirect(redirected, redirect, "")
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +215,7 @@ func runLogin(ctx context.Context, d loginDeps) (*tokenstore.TokenSet, error) {
 		ClientID:    settings.ClientID,
 		RedirectURI: redirect,
 		AppUUID:     d.AppUUID,
+		Token:       dev.LoginRecomToken,
 	})
 	if err != nil {
 		return nil, err

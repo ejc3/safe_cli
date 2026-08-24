@@ -20,7 +20,7 @@
     "endpoints": {
       "authorize": "/frisco/frisco-iam-device-auth/v5/oauth2/authorize",
       "user_auth_token": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
-      "refresh": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
+      "refresh": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
       "otp_request": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp",
       "otp_validate": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
       "logout": "/auth/frisco/frisco-iam-device-auth/v5/user/auth/logout"

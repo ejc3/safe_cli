@@ -8,22 +8,18 @@ import (
 
 	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/deviceid"
+	"github.com/ejc3/safe_cli/internal/oauth"
 	"github.com/ejc3/safe_cli/internal/outfmt"
 	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
-// authRefreshCmd refreshes the id_token using the stored offline refresh_token — the
-// signed device-auth refresh (docs/PROCESS.md §10). No OTP or browser needed.
-type authRefreshCmd struct {
-	APK string `name:"apk" type:"existingfile" help:"Extract the signing key from this APK instead of SAFE_CLI_SIGNING_KEY[_FILE]."`
-}
+// authRefreshCmd renews the id_token using the stored online refresh_token — the
+// unsigned token-endpoint refresh (docs/PROCESS.md §10). No OTP, browser, or signing
+// key needed; it returns a fresh online+offline set.
+type authRefreshCmd struct{}
 
 func (c *authRefreshCmd) Run(rc *runContext) error {
 	st, old, err := loadTokens()
-	if err != nil {
-		return err
-	}
-	key, err := signingKey(c.APK)
 	if err != nil {
 		return err
 	}
@@ -37,7 +33,8 @@ func (c *authRefreshCmd) Run(rc *runContext) error {
 	if rc.D.BaseURL != "" {
 		cl.BaseURL = rc.D.BaseURL
 	}
-	ts, err := refreshTokens(context.Background(), cl, rc.D.Auth.Endpoints["refresh"], rc.D.Auth.ClientID, old, key, appUUID)
+	settings := oauth.FromDescriptor(rc.D.Auth)
+	ts, err := refreshTokens(context.Background(), cl, rc.D.Auth.Endpoints["user_auth_token"], settings.ClientID, settings.RedirectURI, old, appUUID)
 	if err != nil {
 		return err
 	}
@@ -48,18 +45,21 @@ func (c *authRefreshCmd) Run(rc *runContext) error {
 }
 
 // refreshTokens performs the refresh against cl and returns the new set, carrying over
-// identity fields and preserving the offline refresh_token if the response omits one.
-func refreshTokens(ctx context.Context, cl *client.Client, refreshPath, clientID string, old *tokenstore.TokenSet, key, appUUID string) (*tokenstore.TokenSet, error) {
-	off, ok := old.Offline()
-	if !ok || off.RefreshToken == "" {
-		return nil, fmt.Errorf("no offline refresh_token in the stored tokens; run `safe_cli auth login`")
+// identity fields. It refreshes the ONLINE token (online refresh_token + friscoType
+// "online"), which returns a fresh online+offline pair; if the response somehow omits
+// the offline entry, the old one is carried forward so the durable credential survives.
+func refreshTokens(ctx context.Context, cl *client.Client, tokenPath, clientID, redirectURI string, old *tokenstore.TokenSet, appUUID string) (*tokenstore.TokenSet, error) {
+	on, ok := old.Online()
+	if !ok || on.RefreshToken == "" {
+		return nil, fmt.Errorf("no online refresh_token in the stored tokens; run `safe_cli auth login`")
 	}
 	ts, err := cl.Refresh(ctx, client.RefreshRequest{
-		Path:         refreshPath,
-		RefreshToken: off.RefreshToken,
+		Path:         tokenPath,
+		RefreshToken: on.RefreshToken,
 		ClientID:     clientID,
 		AppUUID:      appUUID,
-		Key:          key,
+		RedirectURI:  redirectURI,
+		FriscoType:   "online",
 	})
 	if err != nil {
 		return nil, err
@@ -70,15 +70,19 @@ func refreshTokens(ctx context.Context, cl *client.Client, refreshPath, clientID
 	if ts.AppUUID == "" {
 		ts.AppUUID = old.AppUUID
 	}
-	// Keep a durable credential for the next refresh: if the response has no offline
-	// entry, carry the old one wholesale; if it has one but WITHOUT a refresh_token
-	// (e.g. the existing credential stays valid), copy the old refresh_token into it.
+	// An online refresh returns a fresh offline set too. Defend the durable credential:
+	// if the response omits the offline entry, carry the old one wholesale; if it has an
+	// offline entry WITHOUT a refresh_token, copy the old refresh_token into it.
 	if newOff, ok := ts.Offline(); !ok {
-		ts.Tokens = append(ts.Tokens, off)
+		if off, ok := old.Offline(); ok {
+			ts.Tokens = append(ts.Tokens, off)
+		}
 	} else if newOff.RefreshToken == "" {
-		for i := range ts.Tokens {
-			if ts.Tokens[i].FriscoTokenType == "offline" {
-				ts.Tokens[i].RefreshToken = off.RefreshToken
+		if off, ok := old.Offline(); ok {
+			for i := range ts.Tokens {
+				if ts.Tokens[i].FriscoTokenType == "offline" {
+					ts.Tokens[i].RefreshToken = off.RefreshToken
+				}
 			}
 		}
 	}

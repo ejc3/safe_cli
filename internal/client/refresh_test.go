@@ -9,14 +9,18 @@ import (
 	"testing"
 )
 
-const refreshPath = "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken"
+// The refresh hits the same token endpoint as the exchange (confirmed live), not the
+// old /v6/deviceauth/refreshtoken.
+const userAuthTokenPath = "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token"
 
 func TestRefresh(t *testing.T) {
 	var gotBody map[string]string
-	var gotSig, gotPath string
+	var gotSig, gotPath, gotSrc, gotTrace string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotSig = r.Header.Get("x-signature")
+		gotSrc = r.Header.Get("x-source-app")
+		gotTrace = r.Header.Get("x-trace-transaction-id")
 		b, _ := io.ReadAll(r.Body)
 		_ = json.Unmarshal(b, &gotBody)
 		w.WriteHeader(http.StatusOK)
@@ -29,20 +33,37 @@ func TestRefresh(t *testing.T) {
 	c := New("")
 	c.BaseURL = srv.URL
 	ts, err := c.Refresh(context.Background(), RefreshRequest{
-		Path: refreshPath, RefreshToken: "RToff", ClientID: "CID", AppUUID: daAppUUID, Key: daKey,
+		Path: userAuthTokenPath, RefreshToken: "RTon", ClientID: "CID", AppUUID: daAppUUID,
+		RedirectURI: "vsfapp://x/signin", FriscoType: "online",
 	})
 	if err != nil {
 		t.Fatalf("Refresh: %v", err)
 	}
-	if gotPath != refreshPath {
-		t.Errorf("path = %q", gotPath)
+	if gotPath != userAuthTokenPath {
+		t.Errorf("path = %q, want %q", gotPath, userAuthTokenPath)
 	}
-	if len(gotSig) != 64 {
-		t.Errorf("refresh must be signed; x-signature len = %d", len(gotSig))
+	// The refresh is UNSIGNED (it uses the token endpoint, not the signed device-auth
+	// route) — the old signed contract must not come back.
+	if gotSig != "" {
+		t.Errorf("refresh must be unsigned; got x-signature %q", gotSig)
 	}
-	if gotBody["grant_type"] != "refresh_token" || gotBody["code"] != "RToff" ||
-		gotBody["client_id"] != "CID" || gotBody["frisco_token_type"] != "offline" {
+	if gotSrc != "AndroidMAPP" {
+		t.Errorf("x-source-app = %q, want AndroidMAPP", gotSrc)
+	}
+	// The token endpoint rejects a refresh without x-trace-transaction-id (400) — it
+	// must be present on every token-endpoint request.
+	if gotTrace == "" {
+		t.Error("missing x-trace-transaction-id header; the token endpoint requires it")
+	}
+	// camelCase body: grantType=refresh_token, the refreshToken echoed, and the
+	// friscoTokenType matching the refresh token's type — with no snake_case leftovers.
+	if gotBody["grantType"] != "refresh_token" || gotBody["refreshToken"] != "RTon" ||
+		gotBody["clientId"] != "CID" || gotBody["friscoTokenType"] != "online" ||
+		gotBody["appUuid"] != daAppUUID || gotBody["identityProvider"] != "vz-am-provider" {
 		t.Errorf("body = %v", gotBody)
+	}
+	if _, snake := gotBody["grant_type"]; snake {
+		t.Errorf("body must be camelCase, found snake_case grant_type: %v", gotBody)
 	}
 	if id, ok := ts.IDToken(); !ok || id != "NEWID" {
 		t.Errorf("id_token = %q ok=%v, want NEWID", id, ok)
@@ -51,7 +72,7 @@ func TestRefresh(t *testing.T) {
 
 func TestRefreshRequiresRefreshToken(t *testing.T) {
 	c := New("")
-	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: refreshPath, ClientID: "C", AppUUID: "U", Key: "K"}); err == nil {
+	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthTokenPath, ClientID: "C", AppUUID: "U"}); err == nil {
 		t.Error("want error without a refresh_token")
 	}
 }
@@ -64,7 +85,7 @@ func TestRefreshNoIDToken(t *testing.T) {
 	defer srv.Close()
 	c := New("")
 	c.BaseURL = srv.URL
-	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: refreshPath, RefreshToken: "RT", ClientID: "C", AppUUID: "U", Key: "K"}); err == nil {
+	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthTokenPath, RefreshToken: "RT", ClientID: "C", AppUUID: "U"}); err == nil {
 		t.Error("want error when the refresh response carries no id_token")
 	}
 }
