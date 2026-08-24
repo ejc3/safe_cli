@@ -147,6 +147,11 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	if err != nil {
 		return err
 	}
+	// Guide the caller when an op is known (from the decompiled model) to require a body
+	// but none was supplied — show the example payload rather than sending an empty request.
+	if o.BodyExample != "" && len(body) == 0 {
+		return fmt.Errorf("%s %s needs a JSON body — pass --data. Example: %s", a.entity, a.op, o.BodyExample)
+	}
 	headers := make(map[string]string)
 	var missingSvc []string
 	for _, h := range o.Headers {

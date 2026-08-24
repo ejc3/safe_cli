@@ -36,6 +36,10 @@ type Operation struct {
 	// Destructive marks a catastrophic, effectively irreversible op (deleting a user,
 	// device, or subscription; wiping messages). `call` refuses these without --confirm.
 	Destructive bool `json:"destructive,omitempty"`
+	// BodyExample is a minimal valid request body derived from the app's decompiled model
+	// class, for ops that take one. `call` shows it when --data is omitted; it documents
+	// the payload shape rather than being sent verbatim.
+	BodyExample string `json:"body_example,omitempty"`
 }
 
 // Entity is one type in the data model, with its CRUD operations and actions. Tier marks
