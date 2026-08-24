@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/ejc3/safe_cli/internal/signing"
@@ -140,29 +139,25 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 	return c.send(req)
 }
 
-// appRawHeader reports whether key is an app-specific header the app sends with exact
-// (non-canonical) casing: the x-* family, or one of a few lowercase custom headers the
-// decompiled Retrofit interfaces declare. Everything else is a standard HTTP header —
-// net/http's transport inspects those by canonical key (Content-Length, Accept-Encoding,
-// Range, Connection, …), so they must be canonicalized, not preserved raw.
-func appRawHeader(key string) bool {
-	lk := strings.ToLower(key)
-	if strings.HasPrefix(lk, "x-") {
-		return true
-	}
-	switch lk {
-	case "timezone", "schedule-type", "usage-type", "duration":
-		return true
-	}
-	return false
+// stdHeaders are canonicalized rather than sent with raw casing: the standard headers
+// net/http's transport inspects by canonical key (so a raw-lowercase spelling would break
+// its gzip / content-length / host / connection handling) plus the headers the client sets
+// itself (so a caller override replaces the default and Header.Get finds it). EVERY other
+// header — the app's custom x-* and lowercase names (app-name, addressType, timezone, …) —
+// keeps its exact wire casing, which is what matches the app; there is no need to enumerate
+// those, since a custom header the server treats case-insensitively is safe to send raw.
+var stdHeaders = map[string]bool{
+	"Accept": true, "Content-Type": true, "User-Agent": true, "Authorization": true,
+	"Content-Length": true, "Host": true, "Connection": true, "Transfer-Encoding": true,
+	"Accept-Encoding": true, "Range": true, "Te": true, "Trailer": true,
+	"Upgrade": true, "Expect": true, "Referer": true, "Cookie": true,
 }
 
-// setHeader sets a caller-supplied header. App-specific names keep their exact wire casing
-// via setRaw (dropping any case-insensitive duplicate first, so a caller override replaces
-// the app default); every other name is canonicalized with Header.Set so the transport
-// handles it correctly and it can't be duplicated.
+// setHeader sets a caller-supplied header. Standard headers (stdHeaders) are canonicalized
+// with Header.Set; every other name keeps its exact wire casing via setRaw, after dropping
+// any case-insensitive duplicate so a caller override replaces the app default.
 func setHeader(h http.Header, key, value string) {
-	if !appRawHeader(key) {
+	if stdHeaders[http.CanonicalHeaderKey(key)] {
 		h.Set(key, value)
 		return
 	}

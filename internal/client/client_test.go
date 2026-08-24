@@ -220,7 +220,7 @@ func TestSetHeaderCanonicalizesAcceptEncoding(t *testing.T) {
 
 // A standard header the transport inspects by canonical key (Range) is canonicalized, not
 // stored raw — otherwise Transport would add gzip and could corrupt a partial response.
-func TestSetHeaderCanonicalizesRange(t *testing.T) {
+func TestSetHeaderCanonicalizesRangeAndReferer(t *testing.T) {
 	h := http.Header{}
 	setHeader(h, "range", "bytes=0-99")
 	if h["range"] != nil { //nolint:staticcheck // SA1008: verifies no raw lowercase key
@@ -229,9 +229,32 @@ func TestSetHeaderCanonicalizesRange(t *testing.T) {
 	if got := h.Get("Range"); got != "bytes=0-99" {
 		t.Errorf("Range = %q, want bytes=0-99", got)
 	}
+	setHeader(h, "referer", "https://x")
+	if h["referer"] != nil { //nolint:staticcheck // SA1008: verifies no raw lowercase key
+		t.Errorf("referer stored raw: %v", h)
+	}
+	if h.Get("Referer") != "https://x" {
+		t.Errorf("Referer = %q", h.Get("Referer"))
+	}
 	// app-specific still preserved
 	setHeader(h, "x-source-app", "AndroidMAPP")
 	if h["x-source-app"] == nil { //nolint:staticcheck // SA1008: verifies app casing kept
 		t.Error("x-source-app casing not preserved")
+	}
+}
+
+// Custom descriptor-declared headers (app-name, addressType, gizmo-device-model, …) must
+// keep their exact wire casing — they are not standard headers, so Header.Set would rewrite
+// them (app-name -> App-Name) and diverge from the app (Codex #21 post-merge).
+func TestSetHeaderPreservesCustomHeaders(t *testing.T) {
+	for _, k := range []string{"app-name", "addressType", "gizmo-device-model", "user-profile-id", "crash-date-time"} {
+		h := http.Header{}
+		setHeader(h, k, "v")
+		if h[k] == nil { //nolint:staticcheck // SA1008: verifies the exact custom key is kept
+			t.Errorf("custom header %q was not preserved raw: %v", k, h)
+		}
+		if h[http.CanonicalHeaderKey(k)] != nil && http.CanonicalHeaderKey(k) != k {
+			t.Errorf("custom header %q was canonicalized to %q", k, http.CanonicalHeaderKey(k))
+		}
 	}
 }
