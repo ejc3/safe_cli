@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,13 +15,13 @@ import (
 
 func TestResolveOp(t *testing.T) {
 	d, _ := descriptor.Default()
-	if _, err := resolveOp(d, "account", "info"); err != nil {
-		t.Errorf("account info: %v", err)
+	if _, err := resolveOp(d, "account", "getAccountDetails"); err != nil {
+		t.Errorf("account getAccountDetails: %v", err)
 	}
-	if _, err := resolveOp(d, "web_filter", "block_site"); err != nil { // an action
-		t.Errorf("web_filter block_site (action): %v", err)
+	if _, err := resolveOp(d, "content_filter", "getFilterContent"); err != nil {
+		t.Errorf("content_filter getFilterContent: %v", err)
 	}
-	if _, err := resolveOp(d, "nope", "info"); err == nil {
+	if _, err := resolveOp(d, "nope", "getAccountDetails"); err == nil {
 		t.Error("want error for unknown entity")
 	}
 	if _, err := resolveOp(d, "account", "nope"); err == nil {
@@ -42,65 +42,78 @@ func TestFillPath(t *testing.T) {
 	if got, err := fillPath("/frisco/v7/filterContent", "profileId", "P1"); err != nil || got != "/frisco/v7/filterContent?profileId=P1" {
 		t.Errorf("query append: %q %v", got, err)
 	}
-	// fixed path + existing query -> &
-	if got, _ := fillPath("/x?a=b", "profileId", "P1"); got != "/x?a=b&profileId=P1" {
-		t.Errorf("query &: %q", got)
+	// fixed path that already has a query -> append with '&'
+	if got, err := fillPath("/frisco/v7/filterContent?scope=all", "profileId", "P1"); err != nil || got != "/frisco/v7/filterContent?scope=all&profileId=P1" {
+		t.Errorf("amp append: %q %v", got, err)
+	}
+	// multi-placeholder path: the leading {id_field} is filled but another remains -> error
+	if _, err := fillPath("/groups/{groupId}/members/{memberId}", "groupId", "G1"); err == nil {
+		t.Error("want error: path still has an unfilled placeholder")
 	}
 	// no id, fixed path -> unchanged
 	if got, err := fillPath("/vsf/account-management/v1/accounts", "accountId", ""); err != nil || got != "/vsf/account-management/v1/accounts" {
 		t.Errorf("no id: %q %v", got, err)
 	}
-	// unrelated unfilled placeholder
-	if _, err := fillPath("/x/{other}", "profileId", ""); err == nil {
-		t.Error("want error for unfilled placeholder")
-	}
 }
 
+// An op that needs no x-fp-identifier header just sends the id_token.
 func TestRunCallGET(t *testing.T) {
 	d, _ := descriptor.Default()
 	var gotPath, gotAuth, gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.RequestURI()
-		gotAuth = r.Header.Get("Authorization")
-		gotMethod = r.Method
+		gotPath, gotAuth, gotMethod = r.URL.RequestURI(), r.Header.Get("Authorization"), r.Method
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"accounts":[{"id":"acc1"}]}`))
+		_, _ = w.Write([]byte(`{"account":{"id":"acc1"}}`))
 	}))
 	defer srv.Close()
 	cl := client.New("THE.ID.TOKEN")
 	cl.BaseURL = srv.URL
 
 	var out strings.Builder
-	if err := runCall(context.Background(), cl, d, "account", "info", "", "", &out, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, &out, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotMethod != "GET" || gotAuth != "THE.ID.TOKEN" {
 		t.Errorf("method=%q auth=%q", gotMethod, gotAuth)
 	}
-	if gotPath != "/vsf/account-management/v1/accounts" {
+	if gotPath != "/account/fam/userprofile-management/v8/accounts/userprofiles" {
 		t.Errorf("path = %q", gotPath)
 	}
-	if !strings.Contains(out.String(), `"accounts"`) {
+	if !strings.Contains(out.String(), `"account"`) {
 		t.Errorf("output = %q", out.String())
 	}
 }
 
-func TestRunCallAppendsIDQuery(t *testing.T) {
+// A parental-control op sends the x-fp-identifier-target-serviceid header when a service id
+// is supplied.
+func TestRunCallSendsServiceIDHeader(t *testing.T) {
 	d, _ := descriptor.Default()
-	var gotPath string
+	var gotSvc string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.RequestURI()
+		gotSvc = r.Header.Get("x-fp-identifier-target-serviceid")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
-	if err := runCall(context.Background(), cl, d, "web_filter", "get", "PROF1", "", &strings.Builder{}, true); err != nil {
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "1234567"}
+	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
-	if !strings.Contains(gotPath, "profileId=PROF1") {
-		t.Errorf("path %q missing profileId query", gotPath)
+	if gotSvc != "1234567" {
+		t.Errorf("x-fp-identifier-target-serviceid = %q, want 1234567", gotSvc)
+	}
+}
+
+// If an op needs a service id and none is supplied, it errors up front with guidance
+// rather than sending a request that would 403.
+func TestRunCallMissingServiceID(t *testing.T) {
+	d, _ := descriptor.Default()
+	cl := client.New("T") // no server: must fail before any request
+	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", nil, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "service-id") {
+		t.Errorf("want a --service-id guidance error, got %v", err)
 	}
 }
 
@@ -108,12 +121,13 @@ func TestRunCallErrorStatus(t *testing.T) {
 	d, _ := descriptor.Default()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"error":"nope"}`))
+		_, _ = w.Write([]byte(`{"errors":[{"details":"no permissions on this serviceId"}]}`))
 	}))
 	defer srv.Close()
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
-	err := runCall(context.Background(), cl, d, "account", "info", "", "", &strings.Builder{}, true)
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
+	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Errorf("want a 403 error, got %v", err)
 	}
@@ -122,48 +136,9 @@ func TestRunCallErrorStatus(t *testing.T) {
 func TestRunCallRejectsBadData(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T")
-	// device pause is a non-parental-control action; bad --data must still be rejected.
-	if err := runCall(context.Background(), cl, d, "device", "pause", "D1", "{not json", &strings.Builder{}, true); err == nil {
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
+	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "setCFCategories", "", "{not json", idh, &strings.Builder{}, true); err == nil {
 		t.Error("want error for invalid --data JSON")
-	}
-}
-
-// Parental-control operations must be rejected up front (they need SigV4), not sent
-// with the id_token to fail as a 403.
-func TestRunCallRejectsParentalControl(t *testing.T) {
-	d, _ := descriptor.Default()
-	cl := client.New("T") // no server: must fail before any request
-	err := runCall(context.Background(), cl, d, "web_filter", "block_site", "P1", `{}`, &strings.Builder{}, true)
-	if err == nil || !strings.Contains(err.Error(), "SigV4") {
-		t.Errorf("want a SigV4 rejection for a parental-control op, got %v", err)
-	}
-}
-
-// A named action must send its descriptor default body; pause and resume must differ.
-func TestRunCallAppliesDefaultBody(t *testing.T) {
-	d, _ := descriptor.Default()
-	var gotBody string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, _ := io.ReadAll(r.Body)
-		gotBody = string(b)
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer srv.Close()
-	cl := client.New("T")
-	cl.BaseURL = srv.URL
-
-	if err := runCall(context.Background(), cl, d, "device", "pause", "D1", "", &strings.Builder{}, true); err != nil {
-		t.Fatalf("pause: %v", err)
-	}
-	if gotBody != `{"paused":true}` {
-		t.Errorf("pause body = %q, want {\"paused\":true}", gotBody)
-	}
-	if err := runCall(context.Background(), cl, d, "device", "resume", "D1", "", &strings.Builder{}, true); err != nil {
-		t.Fatalf("resume: %v", err)
-	}
-	if gotBody != `{"paused":false}` {
-		t.Errorf("resume body = %q, want {\"paused\":false}", gotBody)
 	}
 }
 
@@ -178,5 +153,27 @@ func TestBuildBodyMergesUserOverDefault(t *testing.T) {
 	}
 	if m["foo"] != "bar" || m["paused"] != false { // user overrides the default
 		t.Errorf("merged = %v, want foo=bar paused=false", m)
+	}
+}
+
+// identityHeaders fills the service id and app-uuid from the args and the profile id from
+// the id_token claims, and emits only header names some op declares.
+func TestIdentityHeaders(t *testing.T) {
+	// {"custom:identifier-profileid":"7654321"}
+	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"custom:identifier-profileid":"7654321"}`))
+	jwt := "hdr." + payload + ".sig"
+	m := identityHeaders(jwt, "1234567", "", "", "APP-UUID-1")
+	if m["x-fp-identifier-target-serviceid"] != "1234567" {
+		t.Errorf("service id = %q", m["x-fp-identifier-target-serviceid"])
+	}
+	if m["x-fp-identifier-profileid"] != "7654321" {
+		t.Errorf("profile id from claims = %q", m["x-fp-identifier-profileid"])
+	}
+	if m["x-fp-identifier-app-uuid"] != "APP-UUID-1" {
+		t.Errorf("app-uuid = %q", m["x-fp-identifier-app-uuid"])
+	}
+	// A header name no op declares must never be emitted.
+	if _, ok := m["x-fp-identifier-mdn"]; ok {
+		t.Error("x-fp-identifier-mdn must not be emitted (no op declares it)")
 	}
 }

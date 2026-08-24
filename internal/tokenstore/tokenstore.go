@@ -13,26 +13,53 @@ import (
 	"time"
 )
 
-// jwtClaimInt parses an (unverified) JWT and returns an integer claim such as
-// "exp" or "iat". The token is a bearer artifact we already hold, so we read its
-// payload for timing without verifying the signature.
-func jwtClaimInt(token, claim string) (int64, bool) {
+// decodeJWTPayload parses an (unverified) JWT and returns its payload claims. The token
+// is a bearer artifact we already hold, so we read the payload without verifying the
+// signature; ok is false for a malformed token.
+func decodeJWTPayload(token string) (map[string]any, bool) {
 	parts := strings.Split(token, ".")
 	if len(parts) < 2 {
-		return 0, false
+		return nil, false
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return 0, false
+		return nil, false
 	}
 	var m map[string]any
 	if json.Unmarshal(payload, &m) != nil {
+		return nil, false
+	}
+	return m, true
+}
+
+// jwtClaimInt returns an integer claim such as "exp" or "iat" from an (unverified) JWT.
+func jwtClaimInt(token, claim string) (int64, bool) {
+	m, ok := decodeJWTPayload(token)
+	if !ok {
 		return 0, false
 	}
 	if v, ok := m[claim].(float64); ok {
 		return int64(v), true
 	}
 	return 0, false
+}
+
+// Claims returns the STRING claims of an (unverified) JWT payload — the x-fp-identifier-*
+// values the parental-control API needs are all strings, so non-string claims are ignored
+// (this also sidesteps float64 precision loss on large numeric ids). A malformed token
+// yields an empty map; it never errors.
+func Claims(token string) map[string]string {
+	out := map[string]string{}
+	m, ok := decodeJWTPayload(token)
+	if !ok {
+		return out
+	}
+	for k, v := range m {
+		if s, ok := v.(string); ok {
+			out[k] = s
+		}
+	}
+	return out
 }
 
 // Token is one entry of the frisco token response.

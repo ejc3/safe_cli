@@ -11,6 +11,7 @@ import (
 
 	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/descriptor"
+	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
 // callCmd invokes any entity operation or action from the descriptor against the
@@ -18,40 +19,45 @@ import (
 // It is the generic engine behind the data model; the descriptor is the source of the
 // method, path, and id placeholder.
 type callCmd struct {
-	Entity string `arg:"" help:"Entity (see 'safe_cli entities')."`
-	Op     string `arg:"" help:"Operation or action (see 'safe_cli describe <entity>')."`
-	ID     string `arg:"" optional:"" help:"Resource id to fill the path placeholder."`
-	Data   string `name:"data" help:"JSON request body (for create/update/action operations)."`
+	Entity    string `arg:"" help:"Entity (see 'safe_cli entities')."`
+	Op        string `arg:"" help:"Operation or action (see 'safe_cli describe <entity>')."`
+	ID        string `arg:"" optional:"" help:"Resource id to fill a {placeholder} in the path."`
+	Data      string `name:"data" help:"JSON request body (for create/update/action operations)."`
+	ServiceID string `name:"service-id" help:"Target (child's) service id for the x-fp-identifier-target-serviceid header."`
+	ProfileID string `name:"profile-id" help:"Target profile id (defaults to the id_token's own profile)."`
+	DeviceID  string `name:"device-id" help:"Target device id (defaults to the id_token's own device)."`
 }
 
 func (c *callCmd) Run(rc *runContext) error {
-	_, ts, err := loadTokens()
+	st, ts, err := loadTokens()
 	if err != nil {
 		return err
 	}
-	idToken, ok := ts.IDToken()
+	idt, ok := ts.IDToken()
 	if !ok {
 		return fmt.Errorf("no id_token in the stored tokens; run `safe_cli auth login`")
 	}
-	cl := client.New(idToken)
-	if rc.D.BaseURL != "" {
-		cl.BaseURL = rc.D.BaseURL
-	}
-	return runCall(context.Background(), cl, rc.D, c.Entity, c.Op, c.ID, c.Data, rc.Out, rc.G.JSON)
+	// Best-effort: only the two services_hub ops need app-uuid, so a missing device id
+	// must not block every other call — identityHeaders just omits the header.
+	appUUID, _ := resolveAppUUID(ts)
+	hdrs := identityHeaders(idt, c.ServiceID, c.ProfileID, c.DeviceID, appUUID)
+	return runCall(context.Background(), authedRequest(rc, st, ts), rc.D, c.Entity, c.Op, c.ID, c.Data, hdrs, rc.Out, rc.G.JSON)
 }
 
-// runCall resolves the operation, fills the path, sends the request, and writes the
-// response. It is the testable core (the caller supplies an authenticated client).
-func runCall(ctx context.Context, cl *client.Client, d *descriptor.Descriptor, entity, op, id, data string, out io.Writer, asJSON bool) error {
+// doFunc sends an HTTP request (with the given extra request-identity headers) and returns
+// the response. Production wires it to an id_token-authenticated client that refreshes on
+// 401 (authedRequest); tests inject a direct client.
+type doFunc func(ctx context.Context, method, path string, body []byte, headers map[string]string) (*client.Response, error)
+
+// runCall resolves the operation, fills the path, attaches the request-identity headers the
+// descriptor declares for it (from idHeaders), sends via do, and writes the response.
+// Parental-control endpoints are plain id_token-authed (confirmed from the decompiled
+// TokenAwareInterceptor — Authorization: <id_token>, no SigV4); each declares which
+// x-fp-identifier-* headers it needs (the child's service id is the near-universal one).
+func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, entity, op, id, data string, idHeaders map[string]string, out io.Writer, asJSON bool) error {
 	o, err := resolveOp(d, entity, op)
 	if err != nil {
 		return err
-	}
-	// Parental-control operations require AWS SigV4 (Cognito temp creds), not the
-	// id_token (docs/PROCESS.md §10). Reject them explicitly until that client exists,
-	// rather than sending an id_token that the backend answers with 403.
-	if strings.Contains(o.Path, "/parental-control/") {
-		return fmt.Errorf("%s %s targets a parental-control endpoint, which needs AWS SigV4 (Cognito) — not yet implemented; see docs/PROCESS.md §10", entity, op)
 	}
 	ent, _ := d.Entity(entity)
 	path, err := fillPath(o.Path, ent.IDField, id)
@@ -62,11 +68,51 @@ func runCall(ctx context.Context, cl *client.Client, d *descriptor.Descriptor, e
 	if err != nil {
 		return err
 	}
-	resp, err := cl.Do(ctx, o.Method, path, body)
+	headers := make(map[string]string)
+	var missingSvc []string
+	for _, h := range o.Headers {
+		if v := idHeaders[h]; v != "" {
+			headers[h] = v
+		} else if strings.Contains(h, "serviceid") {
+			missingSvc = append(missingSvc, h)
+		}
+	}
+	if len(missingSvc) > 0 {
+		return fmt.Errorf("%s %s needs %s — pass --service-id with the TARGET (child's) service id (parental-control acts on a child, not the parent's own service)", entity, op, strings.Join(missingSvc, ", "))
+	}
+	resp, err := do(ctx, o.Method, path, body, headers)
 	if err != nil {
 		return err
 	}
 	return writeAPIResponse(out, asJSON, resp)
+}
+
+// identityHeaders builds the x-fp-identifier-* header VALUES keyed by the wire header
+// name each op declares: the target service id from --service-id, the install's app-uuid,
+// and profile/device from the flags or, when omitted, the id_token's own claims. runCall
+// attaches only the ones each op lists, so only the four names below are ever emitted.
+func identityHeaders(idToken, serviceID, profileID, deviceID, appUUID string) map[string]string {
+	claims := tokenstore.Claims(idToken)
+	pick := func(flag, claim string) string {
+		if flag != "" {
+			return flag
+		}
+		return claims[claim]
+	}
+	m := make(map[string]string)
+	if serviceID != "" {
+		m["x-fp-identifier-target-serviceid"] = serviceID
+	}
+	if v := pick(profileID, "custom:identifier-profileid"); v != "" {
+		m["x-fp-identifier-profileid"] = v
+	}
+	if v := pick(deviceID, "custom:identifier-deviceid"); v != "" {
+		m["x-fp-identifier-deviceid"] = v
+	}
+	if appUUID != "" {
+		m["x-fp-identifier-app-uuid"] = appUUID
+	}
+	return m
 }
 
 // buildBody starts from the operation's descriptor default body (e.g. {"paused":true}
