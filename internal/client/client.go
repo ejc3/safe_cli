@@ -150,7 +150,7 @@ var stdHeaders = map[string]bool{
 	"Accept": true, "Content-Type": true, "User-Agent": true, "Authorization": true,
 	"Content-Length": true, "Host": true, "Connection": true, "Transfer-Encoding": true,
 	"Accept-Encoding": true, "Range": true, "Te": true, "Trailer": true,
-	"Upgrade": true, "Expect": true,
+	"Upgrade": true, "Expect": true, "Referer": true, "Cookie": true,
 }
 
 // setHeader sets a caller-supplied header. Standard headers (stdHeaders) are canonicalized
