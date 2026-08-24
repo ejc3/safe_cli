@@ -132,7 +132,11 @@
         "addOnboardingDevice": {
           "method": "POST",
           "path": "/account/fam/userprofile-management/v5/onboarding/device",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-pairing-required"
+          ]
         },
         "attestDob": {
           "method": "PATCH",
@@ -177,12 +181,18 @@
         "getAccountDetails": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v8/accounts/userprofiles",
-          "confirmed": true
+          "confirmed": true,
+          "headers": [
+            "(@HeaderMap dynamic)"
+          ]
         },
         "getProfileImage": {
           "method": "GET",
           "path": "/account/frisco/userprofile-management/v6/accounts/userprofiles/images",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(@HeaderMap dynamic)"
+          ]
         },
         "selfRemoveProfile": {
           "method": "DELETE",
@@ -205,7 +215,8 @@
           "path": "/fam/userprofile-management/v5/accounts",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-pending-activation"
           ]
         },
         "updatePlan": {
@@ -240,7 +251,8 @@
           "path": "/fam/userprofile-management/v5/accounts/userprofiles",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-pending-activation"
           ]
         }
       }
@@ -254,8 +266,10 @@
           "path": "/comms/fam/v1/device/activities",
           "confirmed": false,
           "headers": [
+            "x-fp-identifier-target-serviceid",
             "If-None-Match",
-            "x-fp-identifier-target-serviceid"
+            "timezone",
+            "schedule-type"
           ]
         },
         "getDailyActivities": {
@@ -263,8 +277,10 @@
           "path": "/comms/fam/v1/device/activities",
           "confirmed": false,
           "headers": [
+            "x-fp-identifier-target-serviceid",
             "If-None-Match",
-            "x-fp-identifier-target-serviceid"
+            "timezone",
+            "schedule-type"
           ]
         }
       }
@@ -300,7 +316,8 @@
           "path": "/account/fam/userprofile-management/v5/userprofiles/age/verify",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "user-profile-id"
           ],
           "query": [
             "user-profile-id"
@@ -372,8 +389,10 @@
           "path": "/comms/fam/v1/device/app/management/usage",
           "confirmed": false,
           "headers": [
-            "If-None-Match",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "timezone",
+            "usage-type",
+            "If-None-Match"
           ]
         },
         "updateAppStatus": {
@@ -381,8 +400,8 @@
           "path": "/account/fam/device-management/v5/device/app/management",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-profileid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-profileid"
           ]
         },
         "getAppStatus": {
@@ -405,12 +424,18 @@
           "confirmed": false,
           "query": [
             "schoolId"
+          ],
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
           ]
         },
         "createCalendarSelection": {
           "method": "POST",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "deleteCalendarSelection": {
           "method": "DELETE",
@@ -419,6 +444,9 @@
           "query": [
             "schoolId",
             "subscriptionType"
+          ],
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
           ]
         },
         "getCalendarEvents": {
@@ -428,27 +456,42 @@
           "query": [
             "filter",
             "timezone"
+          ],
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
           ]
         },
         "getCalendarSelection": {
           "method": "GET",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "getGoogleCalendarTokens": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "getSchoolSelection": {
           "method": "GET",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "getSchoolSuggestion": {
           "method": "GET",
           "path": "/geocal/frisco/v1/school/calendar/suggestions",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "getSchoolsForZipCode": {
           "method": "GET",
@@ -456,17 +499,26 @@
           "confirmed": false,
           "query": [
             "zipcode"
+          ],
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
           ]
         },
         "updateCalendarSelection": {
           "method": "PUT",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "updateCalendarSyncPreferences": {
           "method": "PATCH",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         }
       }
     },
@@ -487,8 +539,8 @@
           "path": "/frisco/callandtext/v5/addressbook",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-deviceid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-deviceid"
           ]
         },
         "addNamesToAddressBook": {
@@ -496,8 +548,8 @@
           "path": "/frisco/callandtext/v5/addressbook",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-deviceid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-deviceid"
           ]
         },
         "deleteContactFromTheList": {
@@ -612,6 +664,9 @@
           "confirmed": false,
           "query": [
             "(@QueryMap dynamic)"
+          ],
+          "headers": [
+            "(@HeaderMap dynamic)"
           ]
         },
         "getConfigData (Call variant)": {
@@ -635,6 +690,9 @@
           "confirmed": false,
           "query": [
             "(@QueryMap dynamic)"
+          ],
+          "headers": [
+            "(@HeaderMap dynamic)"
           ]
         },
         "getServiceKeys": {
@@ -643,6 +701,9 @@
           "confirmed": false,
           "query": [
             "keys"
+          ],
+          "headers": [
+            "x-fp-identifier-target-serviceid"
           ]
         }
       }
@@ -700,7 +761,8 @@
           ],
           "query": [
             "contactType",
-            "filterAvailableMdns"
+            "filterAvailableMdns",
+            "filterPermissions"
           ]
         },
         "getGizmoContactImage": {
@@ -708,8 +770,8 @@
           "path": "/vsf/callandtext/v5/gizmo/managecontacts/image",
           "confirmed": false,
           "headers": [
-            "If-None-Match",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "If-None-Match"
           ],
           "query": [
             "contactType",
@@ -726,6 +788,7 @@
           ],
           "query": [
             "contactType",
+            "filterAvailableMdns",
             "filterPermissions"
           ]
         },
@@ -942,6 +1005,7 @@
           "path": "/parental-control/frisco/v7/filterContent",
           "confirmed": false,
           "headers": [
+            "app-name",
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
@@ -961,6 +1025,7 @@
           "path": "/parental-control/vsf/v7/categories",
           "confirmed": false,
           "headers": [
+            "app-name",
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
@@ -978,6 +1043,7 @@
           "path": "/parental-control/frisco/v7/subcategory",
           "confirmed": false,
           "headers": [
+            "app-name",
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
@@ -1091,7 +1157,10 @@
         "getEligibility": {
           "method": "GET",
           "path": "/fam/userprofile-management/v5/accounts/features/eligibility",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "x-user-action"
+          ]
         },
         "getReportSetting": {
           "method": "GET",
@@ -1099,6 +1168,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
           ]
         },
         "getReportSettings": {
@@ -1107,6 +1179,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
           ]
         },
         "getSubscriptions": {
@@ -1148,6 +1223,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
           ]
         },
         "postReportSettings": {
@@ -1156,6 +1234,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
           ]
         },
         "putRestrictionsBackOn": {
@@ -1204,8 +1285,8 @@
           "path": "/comms/fam/v1/device/logs/download",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "id"
@@ -1216,8 +1297,8 @@
           "path": "/comms/fam/v1/device/logs/list",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "getDeviceSettings": {
@@ -1225,8 +1306,8 @@
           "path": "/fam/comms/v1/device/settings",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "settingsType",
@@ -1238,8 +1319,8 @@
           "path": "/fam/comms/v1/device/settings",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "triggerLogUpload": {
@@ -1247,8 +1328,8 @@
           "path": "/comms/fam/v1/device/logs/retrieve",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         }
       }
@@ -1357,6 +1438,7 @@
           "path": "/frisco/driving-insights/v5/crash-notifications",
           "confirmed": false,
           "headers": [
+            "crash-date-time",
             "x-fp-identifier-target-serviceid"
           ]
         },
@@ -1629,7 +1711,8 @@
           ],
           "query": [
             "eventType",
-            "withGeofence"
+            "withGeofence",
+            "strategy"
           ]
         },
         "getSavedLocations": {
@@ -1651,6 +1734,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "operation=configGeoDevice"
           ]
         }
       }
@@ -1681,7 +1767,10 @@
         "refreshToken": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "(dynamic @HeaderMap Map<String,Object>)"
+          ]
         },
         "getAppLoginTokens": {
           "method": "POST",
@@ -1798,7 +1887,8 @@
           "path": "/account/fam/userprofile-management/v6/accounts/userprofiles",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
           ]
         },
         "sendStandaloneInvite": {
@@ -1806,7 +1896,8 @@
           "path": "/account/fam/userprofile-management/v5/onboarding/device",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-pairing-required"
           ]
         },
         "updateFeaturePermissions": {
@@ -1822,7 +1913,8 @@
           "path": "/account/fam/userprofile-management/v6/accounts/userprofiles",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
           ]
         },
         "getAccountLines2": {
@@ -1919,7 +2011,11 @@
           "query": [
             "eventType=pickMeUp",
             "profileRole=CHILD",
-            "operation=getAvailableParents"
+            "operation=getAvailableParents",
+            "profileId",
+            "eventType",
+            "eventStatus",
+            "profileRole"
           ]
         },
         "getDashboardDetails": {
@@ -1956,6 +2052,9 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
+            "eventType=pickMeUp",
+            "profileRole=CHILD",
+            "operation=getAvailableParents",
             "profileId",
             "eventType",
             "eventStatus",
@@ -2291,9 +2390,9 @@
           "path": "/comms/fam/v1/messageMedia",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
+            "x-transaction-id",
             "x-trace-transaction-id",
-            "x-transaction-id"
+            "x-fp-identifier-target-serviceid"
           ]
         }
       }
@@ -2354,6 +2453,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
           ]
         },
         "getFilters": {
@@ -2605,7 +2707,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "onDemand"
+            "onDemand",
+            "statusType"
           ]
         },
         "upgrade": {
@@ -2621,7 +2724,8 @@
           "path": "/comms/fam/v1/device/mediaList",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "gizmo-device-model"
           ]
         },
         "getInteractionData": {
@@ -2690,7 +2794,8 @@
           "path": "/frisco/comms/v1/gizmo-mdn-lookup",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-mdn"
           ]
         },
         "getMediaBackupList": {
@@ -2715,6 +2820,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
+            "onDemand",
             "statusType"
           ]
         },
@@ -2723,8 +2829,9 @@
           "path": "/account/fam/userprofile-management/v5/user-profiles/gizmo-devices",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "x-transaction-id",
+            "x-identifier-mdn",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "eligibility-check"
@@ -2735,8 +2842,9 @@
           "path": "/account/fam/userprofile-management/v5/user-profiles/gizmo-devices",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "x-transaction-id",
+            "x-identifier-mdn",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "eligibility-check"
@@ -2747,8 +2855,8 @@
           "path": "/account/fam/userprofile-management/v5/gizmo/import/devices",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "x-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "canLink"
@@ -2770,8 +2878,8 @@
           "path": "/account/fam/userprofile-management/v5/gizmo/import/eligibility",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "x-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "gizmoImportEligibilityNotSignedInUser": {
@@ -2787,8 +2895,8 @@
           "path": "/account/fam/userprofile-management/v5/gizmo/import/initiate",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "x-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "gizmoImportInitiateNotSignedInUser": {
@@ -2855,8 +2963,8 @@
           "path": "/comms/fam/v1/device/logs/download",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "id"
@@ -2867,8 +2975,8 @@
           "path": "/comms/fam/v1/device/logs/list",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "getDeviceSettings": {
@@ -2876,8 +2984,8 @@
           "path": "/fam/comms/v1/device/settings",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "settingsType",
@@ -2889,8 +2997,8 @@
           "path": "/fam/comms/v1/device/settings",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         },
         "triggerLogUpload": {
@@ -2898,8 +3006,8 @@
           "path": "/comms/fam/v1/device/logs/retrieve",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid",
-            "x-trace-transaction-id"
+            "x-trace-transaction-id",
+            "x-fp-identifier-target-serviceid"
           ]
         }
       }
@@ -3013,12 +3121,18 @@
         "getActivity": {
           "method": "GET",
           "path": "/tracker/fam/v1/pet/activity",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "duration"
+          ]
         },
         "getActivityV2": {
           "method": "GET",
           "path": "/tracker/fam/v1/pet/activity",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "duration"
+          ]
         },
         "getBreeds": {
           "method": "GET",
@@ -3041,7 +3155,10 @@
         "getPurchaseLink": {
           "method": "GET",
           "path": "/tracker/fam/v1/purchaseLink",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
         },
         "getReportingToken": {
           "method": "POST",
@@ -3051,7 +3168,10 @@
         "getRest": {
           "method": "GET",
           "path": "/tracker/fam/v1/pet/rest",
-          "confirmed": false
+          "confirmed": false,
+          "headers": [
+            "duration"
+          ]
         },
         "getSdkToken": {
           "method": "POST",
@@ -3131,7 +3251,8 @@
           "path": "/fam/userprofile-management/v5/userprofiles/address",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "addressType"
           ]
         },
         "getSubscriberSetupInfo": {
@@ -3688,6 +3809,9 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "requestType"
           ]
         },
         "actionOnScreenTimeData": {
@@ -3728,6 +3852,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
+            "<QueryMap: HashMap<String,String>>",
             "<@QueryMap HashMap<String,String> — dynamic query keys>"
           ]
         },
@@ -3839,8 +3964,8 @@
           "path": "/servicecatalog/fam/servicescatalog/v6/eligibleservices",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-app-uuid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-app-uuid"
           ]
         },
         "getSetupStatus": {
@@ -3848,9 +3973,9 @@
           "path": "/servicecatalog/fam/servicescatalog/v5/setupstatus",
           "confirmed": false,
           "headers": [
-            "If-None-Match",
+            "x-fp-identifier-target-serviceid",
             "x-fp-identifier-app-uuid",
-            "x-fp-identifier-target-serviceid"
+            "If-None-Match"
           ],
           "query": [
             "tile-id"
@@ -3875,8 +4000,8 @@
           "path": "/account/fam/task-management/v5/userprofiles/tasks",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-profileid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-profileid"
           ]
         },
         "updateUserTask": {
@@ -3884,8 +4009,8 @@
           "path": "/account/fam/task-management/v5/userprofiles/tasks",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-profileid",
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "x-fp-identifier-profileid"
           ]
         }
       }
@@ -3996,8 +4121,10 @@
           "path": "/comms/frisco/v1/stepsTracking",
           "confirmed": false,
           "headers": [
+            "x-transaction-id",
             "x-fp-identifier-target-serviceid",
-            "x-transaction-id"
+            "timezone",
+            "schedule-type"
           ]
         },
         "setStepGoals": {
@@ -4005,6 +4132,7 @@
           "path": "/fam/comms/v1/device/settings",
           "confirmed": false,
           "headers": [
+            "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ]
         }
@@ -4179,7 +4307,8 @@
           "path": "/comms/fam/v1/todos",
           "confirmed": false,
           "headers": [
-            "x-fp-identifier-target-serviceid"
+            "x-fp-identifier-target-serviceid",
+            "timezone"
           ]
         },
         "updateTodo": {
@@ -4323,7 +4452,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String>>"
+            "<QueryMap: HashMap<String,String>>",
+            "<@QueryMap HashMap<String,String> — dynamic query keys>"
           ]
         },
         "getInsights": {

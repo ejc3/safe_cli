@@ -53,3 +53,32 @@ func TestNamesAreSorted(t *testing.T) {
 		}
 	}
 }
+
+// The descriptor must preserve every statically-known header name for an op — Codex #20
+// flagged that activity_tracking getDailyActivities dropped its required timezone /
+// schedule-type headers, leaving the single source of truth incomplete.
+func TestDeclaredHeadersPreserved(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, ok := d.Entity("activity_tracking")
+	if !ok {
+		t.Fatal("no activity_tracking entity")
+	}
+	op, ok := e.Operations["getDailyActivities"]
+	if !ok {
+		t.Fatal("no getDailyActivities op")
+	}
+	want := map[string]bool{"timezone": false, "schedule-type": false, "x-fp-identifier-target-serviceid": false}
+	for _, h := range op.Headers {
+		if _, ok := want[h]; ok {
+			want[h] = true
+		}
+	}
+	for h, seen := range want {
+		if !seen {
+			t.Errorf("getDailyActivities is missing the declared header %q (have %v)", h, op.Headers)
+		}
+	}
+}
