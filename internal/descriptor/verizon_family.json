@@ -4400,7 +4400,7 @@
         "disableSafeSearch": {
           "method": "DELETE",
           "path": "/frisco/parental-control/v5/website/safesearch",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ]
@@ -4408,7 +4408,7 @@
         "enableSafeSearch": {
           "method": "POST",
           "path": "/frisco/parental-control/v5/website/safesearch",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ]
