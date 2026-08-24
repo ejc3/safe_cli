@@ -145,7 +145,7 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 var reservedHeaders = map[string]bool{
 	"Accept": true, "Content-Type": true, "Content-Length": true,
 	"User-Agent": true, "Authorization": true, "Host": true,
-	"Connection": true, "Transfer-Encoding": true,
+	"Connection": true, "Transfer-Encoding": true, "Accept-Encoding": true,
 }
 
 // setHeader sets a caller-supplied header. App-specific names (x-*, timezone, …) keep

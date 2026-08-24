@@ -204,3 +204,16 @@ func TestSetHeaderDedupsCaseInsensitively(t *testing.T) {
 		t.Errorf("x-transaction-id values = %v, want exactly [caller]", vals)
 	}
 }
+
+// Accept-Encoding must go through the reserved (canonicalized) path so the transport
+// sees the caller's override and does not also add gzip (Codex #21).
+func TestSetHeaderCanonicalizesAcceptEncoding(t *testing.T) {
+	h := http.Header{}
+	setHeader(h, "accept-encoding", "identity")
+	if h["accept-encoding"] != nil { //nolint:staticcheck // SA1008: verifies no lowercase raw key
+		t.Errorf("accept-encoding stored under raw lowercase key: %v", h)
+	}
+	if got := h.Get("Accept-Encoding"); got != "identity" {
+		t.Errorf("Accept-Encoding = %q, want identity", got)
+	}
+}
