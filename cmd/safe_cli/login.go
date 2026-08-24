@@ -16,6 +16,7 @@ import (
 	"github.com/ejc3/safe_cli/internal/descriptor"
 	"github.com/ejc3/safe_cli/internal/deviceid"
 	"github.com/ejc3/safe_cli/internal/oauth"
+	"github.com/ejc3/safe_cli/internal/outfmt"
 	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
@@ -55,7 +56,7 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 		MDN:      c.MDN,
 		Redirect: c.Redirect,
 		In:       bufio.NewReader(os.Stdin),
-		Out:      rc.Out,
+		Out:      os.Stderr, // interactive prompts/messages go to stderr; stdout stays the API
 		OpenURL:  open,
 		Now:      time.Now(),
 	})
@@ -69,7 +70,20 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 	if err := st.Save(ts, time.Now()); err != nil {
 		return fmt.Errorf("save tokens: %w", err)
 	}
-	_, err = fmt.Fprintf(rc.Out, "Logged in. Tokens saved to %s.\n", st.Path)
+	return writeLoginResult(rc.Out, rc.G.JSON, ts.MDN, st.Path)
+}
+
+// writeLoginResult emits the final result to stdout: a JSON object under --json, else a
+// human line. Interactive prompts/progress went to stderr, so stdout stays clean.
+func writeLoginResult(out io.Writer, asJSON bool, mdn, path string) error {
+	if asJSON {
+		return outfmt.JSON(out, map[string]string{
+			"status":      "ok",
+			"mdn":         mdn,
+			"tokens_path": path,
+		})
+	}
+	_, err := fmt.Fprintf(out, "Logged in as %s. Tokens saved to %s.\n", mdn, path)
 	return err
 }
 
@@ -198,21 +212,27 @@ func promptLine(in *bufio.Reader, out io.Writer, label string) (string, error) {
 	return line, nil
 }
 
+// browserCommand returns the opener for goos and the argv to pass url. It avoids
+// cmd.exe on Windows: the authorize URL's `&` separators would be treated as command
+// separators by `cmd /c start`, truncating the URL. rundll32's FileProtocolHandler
+// takes the URL as a single argv element with no shell interpretation.
+func browserCommand(goos, url string) (string, []string) {
+	switch goos {
+	case "darwin":
+		return "open", []string{url}
+	case "windows":
+		return "rundll32", []string{"url.dll,FileProtocolHandler", url}
+	default:
+		return "xdg-open", []string{url}
+	}
+}
+
 // openBrowser best-effort opens url in the operator's default browser.
 func openBrowser(url string) error {
-	var name string
-	var args []string
-	switch runtime.GOOS {
-	case "darwin":
-		name, args = "open", []string{url}
-	case "windows":
-		name, args = "cmd", []string{"/c", "start", "", url}
-	default:
-		name, args = "xdg-open", []string{url}
-	}
+	name, args := browserCommand(runtime.GOOS, url)
 	// Background context: this is a fire-and-forget Start(); we do not want to kill the
 	// browser when the login context ends.
-	// #nosec G204 -- name is one of three fixed values; args are argv (no shell), so
+	// #nosec G204 -- name is a fixed value chosen by GOOS; args are argv (no shell), so
 	// the authorize URL cannot be interpreted as a command.
 	return exec.CommandContext(context.Background(), name, args...).Start()
 }

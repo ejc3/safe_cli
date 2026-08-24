@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -109,5 +110,52 @@ func TestRunLoginRejectsBadRedirectState(t *testing.T) {
 
 	if _, err := runLogin(context.Background(), deps); err == nil {
 		t.Fatal("want an error on a state mismatch in the pasted redirect")
+	}
+}
+
+// The Windows opener must not route the authorize URL through cmd.exe, whose `&`
+// handling would split the URL; the URL must reach the opener as one intact arg.
+func TestBrowserCommandNoShell(t *testing.T) {
+	const u = "https://api/authorize?client_id=a&state=b&code_challenge=c"
+	name, args := browserCommand("windows", u)
+	if name == "cmd" {
+		t.Error("windows opener uses cmd.exe; the URL's & would split it")
+	}
+	intact := false
+	for _, a := range args {
+		if a == u {
+			intact = true
+		}
+	}
+	if !intact {
+		t.Errorf("URL not passed intact as a single argv element: %v", args)
+	}
+	if n, _ := browserCommand("darwin", u); n != "open" {
+		t.Errorf("darwin opener = %q, want open", n)
+	}
+	if n, _ := browserCommand("linux", u); n != "xdg-open" {
+		t.Errorf("linux opener = %q, want xdg-open", n)
+	}
+}
+
+func TestWriteLoginResult(t *testing.T) {
+	var jb strings.Builder
+	if err := writeLoginResult(&jb, true, "5551234567", "/cfg/tokens.json"); err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]string
+	if err := json.Unmarshal([]byte(jb.String()), &m); err != nil {
+		t.Fatalf("--json output is not JSON: %v (%q)", err, jb.String())
+	}
+	if m["status"] != "ok" || m["mdn"] != "5551234567" || m["tokens_path"] != "/cfg/tokens.json" {
+		t.Errorf("json result = %v", m)
+	}
+
+	var pb strings.Builder
+	if err := writeLoginResult(&pb, false, "5551234567", "/cfg/tokens.json"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(strings.TrimSpace(pb.String()), "{") {
+		t.Errorf("non-json result should be a human line, got %q", pb.String())
 	}
 }
