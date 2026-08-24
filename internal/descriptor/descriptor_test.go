@@ -82,3 +82,38 @@ func TestDeclaredHeadersPreserved(t *testing.T) {
 		}
 	}
 }
+
+// The catastrophic, irreversible ops must stay marked Destructive so `call`'s --confirm
+// guard covers them (Codex flagged pairing.deleteMediaBackupEntries slipping through).
+func TestDestructiveOpsMarked(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := [][2]string{
+		{"account", "deleteProfile"}, {"account", "deleteMyself"},
+		{"account", "selfRemoveProfile"}, {"account", "deleteDevice"},
+		{"subscription", "cancelSubscription"}, {"pairing", "unlinkGizmoAccount"},
+		{"pairing", "deleteMediaBackupEntries"},
+		{"messaging", "deleteMessages"}, {"messaging", "deleteGroupChat"},
+		{"messaging", "clearAllGroupChatMessages"}, {"messaging", "deleteGroupMember"},
+		{"contacts", "bulkDeleteContacts"},
+		{"family_line", "deProvisionFamilyLine"}, {"family_line", "removeUserFromFamilyLine"},
+		{"professional_monitoring", "deactivateProfile"},
+	}
+	for _, w := range want {
+		e, ok := d.Entity(w[0])
+		if !ok {
+			t.Errorf("no entity %q", w[0])
+			continue
+		}
+		op, ok := e.Operations[w[1]]
+		if !ok {
+			t.Errorf("no op %s.%s", w[0], w[1])
+			continue
+		}
+		if !op.Destructive {
+			t.Errorf("%s.%s must be marked Destructive (irreversible)", w[0], w[1])
+		}
+	}
+}

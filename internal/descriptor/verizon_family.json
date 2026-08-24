@@ -2790,7 +2790,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "destructive": true
         },
         "getGizmoDevices": {
           "method": "GET",
