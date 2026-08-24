@@ -18,18 +18,30 @@ import (
 //go:embed verizon_family.json
 var embedded []byte
 
-// Operation is one HTTP call: a CRUD verb on an entity or a named action.
+// Operation is one HTTP call: a CRUD verb on an entity or a named action. Headers and
+// Query list the request-identity headers (e.g. x-fp-identifier-target-serviceid) and
+// query-parameter names the decompiled Retrofit interface declares for this call; the
+// CLI fills them from flags/token claims. Placeholders are {name} path segments.
+// Headers drives runCall today; Query and Placeholders are carried from the Retrofit
+// interfaces but not yet consumed (fillPath handles only the single {id_field} segment,
+// so multi-placeholder paths are not yet callable — a documented follow-up).
 type Operation struct {
-	Method    string         `json:"method"`
-	Path      string         `json:"path"`
-	Body      map[string]any `json:"body,omitempty"`
-	Confirmed bool           `json:"confirmed"`
+	Method       string         `json:"method"`
+	Path         string         `json:"path"`
+	Body         map[string]any `json:"body,omitempty"`
+	Headers      []string       `json:"headers,omitempty"`
+	Query        []string       `json:"query,omitempty"`
+	Placeholders []string       `json:"placeholders,omitempty"`
+	Confirmed    bool           `json:"confirmed"`
 }
 
-// Entity is one type in the data model, with its CRUD operations and actions.
+// Entity is one type in the data model, with its CRUD operations and actions. Tier marks
+// peripheral/secondary surfaces ("p2") — e.g. Driving Insights, which is the one feature
+// backed by its own AWS/S3 credential path rather than the shared id_token API.
 type Entity struct {
 	Summary    string               `json:"summary"`
 	IDField    string               `json:"id_field"`
+	Tier       string               `json:"tier,omitempty"`
 	Operations map[string]Operation `json:"operations"`
 	Actions    map[string]Operation `json:"actions,omitempty"`
 }

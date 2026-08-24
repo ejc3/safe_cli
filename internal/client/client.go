@@ -11,9 +11,10 @@
 //   - ExchangeCode: the OAuth code→token exchange, which is neither authenticated nor
 //     signed (docs/PROCESS.md §9 step 6, §10) — just the mundane app headers.
 //
-// NOTE: the parental-control operations use AWS SigV4 (Cognito temp creds), not the
-// id_token — see docs/PROCESS.md §10. Those are handled by a separate signer added
-// in a later phase.
+// NOTE: the parental-control operations are plain id_token calls (via DoH) that also
+// carry the x-fp-identifier-* request-identity headers (the target child's service id,
+// etc.). They are NOT AWS SigV4/Cognito — that premise was disproven by an empty memory
+// scan and the decompiled TokenAwareInterceptor (docs/PROCESS.md §12).
 package client
 
 import (
@@ -30,9 +31,9 @@ import (
 	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
-// traceID returns a random v4 UUID for the x-trace-transaction-id header the token
+// TraceID returns a random v4 UUID for the x-trace-transaction-id header the token
 // endpoint requires.
-func traceID() (string, error) {
+func TraceID() (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", err
@@ -103,6 +104,12 @@ func (c *Client) newAppRequest(ctx context.Context, method, path string, body []
 // Do performs an id_token-authenticated request. path is joined onto BaseURL; body
 // may be nil.
 func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Response, error) {
+	return c.DoH(ctx, method, path, body, nil)
+}
+
+// DoH is Do with additional request headers — the x-fp-identifier-* request-identity
+// headers the parental-control endpoints require alongside the id_token.
+func (c *Client) DoH(ctx context.Context, method, path string, body []byte, headers map[string]string) (*Response, error) {
 	if c.IDToken == "" {
 		return nil, fmt.Errorf("not authenticated: no id_token (run `safe_cli auth import` or `auth login`)")
 	}
@@ -112,6 +119,9 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Res
 	}
 	// The app sends the raw id_token as Authorization — no "Bearer " prefix.
 	req.Header.Set("Authorization", c.IDToken)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 	return c.send(req)
 }
 
@@ -192,7 +202,7 @@ func (c *Client) postTokenRequest(ctx context.Context, path string, pr parentTok
 	// The token endpoint requires a trace id: without x-trace-transaction-id it rejects
 	// the refresh with 400 "Invalid Request" (confirmed live). The app supplies it from
 	// HeaderProvider.getAuthTokenHeaders; a fresh v4 UUID satisfies it.
-	trace, err := traceID()
+	trace, err := TraceID()
 	if err != nil {
 		return nil, err
 	}

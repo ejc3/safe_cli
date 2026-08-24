@@ -64,15 +64,17 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 	// On macOS, register the vsfapp:// handler and capture the redirect automatically —
 	// unless --paste is set or --redirect points somewhere other than the vsfapp scheme.
 	if !c.Paste && runtime.GOOS == "darwin" && (c.Redirect == "" || strings.HasPrefix(c.Redirect, vsfappScheme+"://")) {
-		_, redirectFile, err := registerScheme(os.Stderr)
-		if err != nil {
-			return err
-		}
-		_ = os.Remove(redirectFile) // drop any stale capture before we start
-		deps.WaitRedirect = func(ctx context.Context) (string, error) {
-			wctx, cancel := context.WithTimeout(ctx, defaultRedirectTo)
-			defer cancel()
-			return waitForRedirect(wctx, redirectFile, time.Second)
+		// If the handler can't be registered (locked-down Mac, MDM, missing dev tools),
+		// fall back to manual paste (WaitRedirect stays nil) rather than aborting login.
+		if _, redirectFile, err := registerScheme(os.Stderr); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "(couldn't register the vsfapp:// handler: %v — falling back to manual paste)\n", err)
+		} else {
+			_ = os.Remove(redirectFile) // drop any stale capture before we start
+			deps.WaitRedirect = func(ctx context.Context) (string, error) {
+				wctx, cancel := context.WithTimeout(ctx, defaultRedirectTo)
+				defer cancel()
+				return waitForRedirect(wctx, redirectFile, time.Second)
+			}
 		}
 	}
 	ts, err := runLogin(context.Background(), deps)

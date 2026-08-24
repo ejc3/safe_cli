@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ejc3/safe_cli/internal/client"
+	"github.com/ejc3/safe_cli/internal/descriptor"
 	"github.com/ejc3/safe_cli/internal/deviceid"
 	"github.com/ejc3/safe_cli/internal/oauth"
 	"github.com/ejc3/safe_cli/internal/outfmt"
@@ -23,18 +24,11 @@ func (c *authRefreshCmd) Run(rc *runContext) error {
 	if err != nil {
 		return err
 	}
-	appUUID := old.AppUUID
-	if appUUID == "" {
-		if appUUID, err = deviceid.AppUUID(); err != nil {
-			return fmt.Errorf("app uuid: %w", err)
-		}
+	appUUID, err := resolveAppUUID(old)
+	if err != nil {
+		return fmt.Errorf("app uuid: %w", err)
 	}
-	cl := client.New("")
-	if rc.D.BaseURL != "" {
-		cl.BaseURL = rc.D.BaseURL
-	}
-	settings := oauth.FromDescriptor(rc.D.Auth)
-	ts, err := refreshTokens(context.Background(), cl, rc.D.Auth.Endpoints["user_auth_token"], settings.ClientID, settings.RedirectURI, old, appUUID)
+	ts, err := refreshOnce(context.Background(), rc.D, old, appUUID)
 	if err != nil {
 		return err
 	}
@@ -42,6 +36,27 @@ func (c *authRefreshCmd) Run(rc *runContext) error {
 		return fmt.Errorf("save tokens: %w", err)
 	}
 	return writeRefreshResult(rc.Out, rc.G.JSON, ts)
+}
+
+// resolveAppUUID returns this install's app_uuid: the value saved with the tokens if
+// present, else the device's persisted value.
+func resolveAppUUID(ts *tokenstore.TokenSet) (string, error) {
+	if ts != nil && ts.AppUUID != "" {
+		return ts.AppUUID, nil
+	}
+	return deviceid.AppUUID()
+}
+
+// refreshOnce renews the token set against the backend using the stored refresh token and
+// returns the fresh set WITHOUT persisting it — callers save per their own error policy
+// (the interactive command treats a save failure as fatal; the on-401 retry does not).
+func refreshOnce(ctx context.Context, d *descriptor.Descriptor, old *tokenstore.TokenSet, appUUID string) (*tokenstore.TokenSet, error) {
+	cl := client.New("")
+	if d.BaseURL != "" {
+		cl.BaseURL = d.BaseURL
+	}
+	settings := oauth.FromDescriptor(d.Auth)
+	return refreshTokens(ctx, cl, d.Auth.Endpoints["user_auth_token"], settings.ClientID, settings.RedirectURI, old, appUUID)
 }
 
 // refreshTokens performs the refresh against cl and returns the new set, carrying over

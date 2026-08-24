@@ -58,9 +58,6 @@ func GeneratePKCE() (PKCE, error) {
 	return PKCE{Verifier: v, Challenge: base64.RawURLEncoding.EncodeToString(sum[:])}, nil
 }
 
-// State returns a random opaque state value for CSRF protection.
-func State() (string, error) { return randB64URL(24) }
-
 func randB64URL(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
