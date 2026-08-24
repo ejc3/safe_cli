@@ -404,3 +404,66 @@ func TestRunCallDryRunJSON(t *testing.T) {
 		t.Errorf("request field missing dump: %q", m["request"])
 	}
 }
+
+// A body-op known (from the decompiled model) to need a payload refuses an empty --data
+// with its example, and proceeds when given one.
+func TestRunCallRequiresBodyWithExample(t *testing.T) {
+	d, _ := descriptor.Default()
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	err := runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: "content_filter", op: "updateSubcategory", idHeaders: idh}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "needs a JSON body") {
+		t.Errorf("want a body-required error with example, got %v", err)
+	}
+	var hit bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hit = true
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	if err := runCall(context.Background(), cl.DoH, d,
+		callArgs{entity: "content_filter", op: "updateSubcategory", data: `{"subcategory":{"id":1}}`, idHeaders: idh}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall with --data: %v", err)
+	}
+	if !hit {
+		t.Error("with --data the request should have been sent")
+	}
+}
+
+// A body-op with no extracted example is STILL guarded (TakesBody).
+func TestRunCallGuardsExamplelessBodyOp(t *testing.T) {
+	d, _ := descriptor.Default()
+	var en, opn string
+	for name, e := range d.Entities {
+		for k, op := range e.Operations {
+			if op.TakesBody && op.BodyExample == "" && !op.Multipart {
+				en, opn = name, k
+			}
+		}
+	}
+	if en == "" {
+		t.Skip("no example-less body op")
+	}
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	err := runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: en, op: opn, idHeaders: idh, confirm: true}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "needs a JSON body") {
+		t.Errorf("%s.%s: want a body-required guard, got %v", en, opn, err)
+	}
+}
+
+// Multipart uploads are refused outright, even with --data.
+func TestRunCallRejectsMultipart(t *testing.T) {
+	d, _ := descriptor.Default()
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	for _, op := range []string{"sendGroupMediaMessage", "postMessageMedia"} {
+		err := runCall(context.Background(), client.New("T").DoH, d,
+			callArgs{entity: "messaging", op: op, data: `{"x":1}`, idHeaders: idh, confirm: true}, &strings.Builder{}, true)
+		if err == nil || !strings.Contains(err.Error(), "multipart") {
+			t.Errorf("%s: want a multipart rejection even with --data, got %v", op, err)
+		}
+	}
+}

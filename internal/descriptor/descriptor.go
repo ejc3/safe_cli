@@ -36,6 +36,15 @@ type Operation struct {
 	// Destructive marks a catastrophic, effectively irreversible op (deleting a user,
 	// device, or subscription; wiping messages). `call` refuses these without --confirm.
 	Destructive bool `json:"destructive,omitempty"`
+	// TakesBody is true for every op the decompiled interface declares a request body for,
+	// independent of whether an example was extracted — the guard and describe rely on it.
+	TakesBody bool `json:"takes_body,omitempty"`
+	// Multipart marks an op whose body is multipart/form-data (@Multipart). `call` sends
+	// application/json, so it cannot construct these and refuses them outright.
+	Multipart bool `json:"multipart,omitempty"`
+	// BodyExample is a minimal valid request body derived from the app's decompiled model
+	// class, when one was extractable. `call` shows it when --data is omitted.
+	BodyExample string `json:"body_example,omitempty"`
 }
 
 // Entity is one type in the data model, with its CRUD operations and actions. Tier marks

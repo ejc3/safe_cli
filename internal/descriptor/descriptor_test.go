@@ -1,6 +1,9 @@
 package descriptor
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
@@ -156,5 +159,30 @@ func TestDestructiveRoutesFullyGated(t *testing.T) {
 				t.Errorf("%s shares destructive route %s %s but is not gated", names[r][i], r.m, r.p)
 			}
 		}
+	}
+}
+
+// Body examples come from each op's own model (not a route-sibling), and multipart ops
+// carry no JSON example (Codex #24).
+func TestBodyExampleAccuracy(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := func(en, name string) Operation {
+		e, _ := d.Entity(en)
+		if o, ok := e.Operations[name]; ok {
+			return o
+		}
+		return e.Actions[name]
+	}
+	if ex := op("schedules", "putScreenTimeData").BodyExample; !strings.Contains(ex, "weeklyLimits") {
+		t.Errorf("putScreenTimeData example = %q, want weeklyLimits", ex)
+	}
+	if ex := op("schedules", "acceptDeclineAskTimeRequest").BodyExample; !strings.Contains(ex, "additionalTimeAction") {
+		t.Errorf("acceptDeclineAskTimeRequest example = %q, want the decision field", ex)
+	}
+	if o := op("messaging", "sendGroupMediaMessage"); o.BodyExample != "" || !o.Multipart {
+		t.Errorf("sendGroupMediaMessage must be multipart with no JSON example: multipart=%v ex=%q", o.Multipart, o.BodyExample)
 	}
 }
