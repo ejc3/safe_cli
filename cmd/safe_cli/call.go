@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"sort"
 	"strings"
 
 	"github.com/ejc3/safe_cli/internal/client"
@@ -44,7 +43,7 @@ func (c *callCmd) Run(rc *runContext) error {
 	// Best-effort: only the two services_hub ops need app-uuid, so a missing device id
 	// must not block every other call — identityHeaders just omits the header.
 	appUUID, _ := resolveAppUUID(ts)
-	query, err := parseKV("query", c.Query)
+	query, err := parseQuery(c.Query)
 	if err != nil {
 		return err
 	}
@@ -74,9 +73,26 @@ func (c *callCmd) Run(rc *runContext) error {
 type callArgs struct {
 	entity, op, id, data string
 	idHeaders            map[string]string // x-fp-identifier-* values keyed by header name
-	query                map[string]string // extra query params (name=value)
+	query                url.Values        // extra query params (ordered, multi-value)
 	pathParams           map[string]string // {name} path placeholder values
 	userHeaders          map[string]string // arbitrary extra request headers
+}
+
+// parseQuery turns repeated name=value flags into url.Values, preserving duplicate keys
+// (some ops send the same query key more than once, e.g. productType=VSF&productType=GIZMO).
+func parseQuery(pairs []string) (url.Values, error) {
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	q := url.Values{}
+	for _, p := range pairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok || k == "" {
+			return nil, fmt.Errorf("--query %q must be name=value", p)
+		}
+		q.Add(k, v)
+	}
+	return q, nil
 }
 
 // parseKV turns repeated name=value flags into a map (nil for none); flag names the flag
@@ -161,31 +177,17 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	return writeAPIResponse(out, asJSON, resp)
 }
 
-// appendQuery appends query parameters (sorted, for deterministic URLs) onto path,
-// choosing ? or & as needed.
-func appendQuery(path string, query map[string]string) string {
+// appendQuery appends query parameters onto path, choosing ? or & as needed. url.Values
+// keeps every value for a repeated key and encodes deterministically (keys sorted).
+func appendQuery(path string, query url.Values) string {
 	if len(query) == 0 {
 		return path
 	}
-	keys := make([]string, 0, len(query))
-	for k := range query {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&"
 	}
-	var b strings.Builder
-	b.WriteString(path)
-	for _, k := range keys {
-		b.WriteString(sep)
-		b.WriteString(url.QueryEscape(k))
-		b.WriteByte('=')
-		b.WriteString(url.QueryEscape(query[k]))
-		sep = "&"
-	}
-	return b.String()
+	return path + sep + query.Encode()
 }
 
 // identityHeaders builds the x-fp-identifier-* header VALUES keyed by the wire header

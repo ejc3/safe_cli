@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -197,12 +198,19 @@ func TestRunCallAppendsQuery(t *testing.T) {
 	defer srv.Close()
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
-	q := map[string]string{"pin": "1234", "foo": "b ar"}
+	q := url.Values{}
+	q.Add("pin", "1234")
+	q.Add("foo", "b ar")
+	q.Add("productType", "VSF") // duplicate key must survive
+	q.Add("productType", "GIZMO")
 	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "account", op: "getAccountDetails", query: q}, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if !strings.Contains(gotURI, "pin=1234") || !strings.Contains(gotURI, "foo=b+ar") {
 		t.Errorf("query not appended to URL: %q", gotURI)
+	}
+	if !strings.Contains(gotURI, "productType=VSF") || !strings.Contains(gotURI, "productType=GIZMO") {
+		t.Errorf("duplicate query key not preserved: %q", gotURI)
 	}
 }
 
@@ -317,5 +325,20 @@ func TestRunCallPostsBody(t *testing.T) {
 	}
 	if gotMethod != "POST" || gotSvc != "svc" || !strings.Contains(gotBody, `"category":"social"`) {
 		t.Errorf("method=%q svc=%q body=%q", gotMethod, gotSvc, gotBody)
+	}
+}
+
+// parseQuery keeps duplicate keys (some ops send the same query key twice, e.g.
+// productType=VSF&productType=GIZMO) — a map would drop the first.
+func TestParseQueryKeepsDuplicates(t *testing.T) {
+	q, err := parseQuery([]string{"productType=VSF", "productType=GIZMO", "exclude=x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := q["productType"]; len(got) != 2 || got[0] != "VSF" || got[1] != "GIZMO" {
+		t.Errorf("productType = %v, want [VSF GIZMO]", got)
+	}
+	if q.Get("exclude") != "x" {
+		t.Errorf("exclude = %q", q.Get("exclude"))
 	}
 }
