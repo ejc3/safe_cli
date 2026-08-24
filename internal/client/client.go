@@ -155,16 +155,14 @@ func (c *Client) DumpDoH(ctx context.Context, method, path string, body []byte, 
 	for k, v := range headers {
 		setHeader(req.Header, k, v)
 	}
-	dump, err := httputil.DumpRequestOut(req, true)
-	if err != nil {
-		return nil, err
+	// Redact the Authorization credential STRUCTURALLY before dumping — set it to a
+	// placeholder in the request rather than string-matching the serialized bytes, so any
+	// value (an id_token, a caller override, one with surrounding whitespace the serializer
+	// trims) is covered. The request is never sent, so mutating it here is safe.
+	if req.Header.Get("Authorization") != "" {
+		req.Header.Set("Authorization", "<redacted>")
 	}
-	// Redact the bearer id_token from the printed dump — the diff cares about the header's
-	// presence and casing, not the secret value (which differs per session anyway).
-	if c.IDToken != "" {
-		dump = bytes.Replace(dump, []byte(c.IDToken), []byte("<id_token redacted>"), 1)
-	}
-	return dump, nil
+	return httputil.DumpRequestOut(req, true)
 }
 
 // stdHeaders are canonicalized rather than sent with raw casing: the standard headers

@@ -382,7 +382,7 @@ func TestRunCallDryRun(t *testing.T) {
 		t.Fatalf("dry-run: %v", err)
 	}
 	s := out.String()
-	if !strings.Contains(s, "DELETE ") || !strings.Contains(s, "x-source-app: AndroidMAPP") || !strings.Contains(s, "Authorization: <id_token redacted>") || strings.Contains(s, "THE.ID.TOKEN") {
+	if !strings.Contains(s, "DELETE ") || !strings.Contains(s, "x-source-app: AndroidMAPP") || !strings.Contains(s, "Authorization: <redacted>") || strings.Contains(s, "THE.ID.TOKEN") {
 		t.Errorf("dry-run dump wrong:\n%s", s)
 	}
 }
