@@ -276,4 +276,13 @@ func TestDumpDoHRedactsCallerAuth(t *testing.T) {
 	if !strings.Contains(s, "Authorization: <redacted>") {
 		t.Errorf("Authorization not redacted:\n%s", s)
 	}
+	// A whitespace-padded token (which Go trims when serializing) must also be redacted.
+	dump2, err := c.DumpDoH(context.Background(), "GET", "/x", nil,
+		map[string]string{"Authorization": " padded-secret "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(dump2), "padded-secret") {
+		t.Errorf("whitespace-padded token leaked:\n%s", string(dump2))
+	}
 }
