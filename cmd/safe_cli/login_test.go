@@ -39,7 +39,7 @@ func mockBackend(t *testing.T, ep map[string]string, hits map[string]bool) *http
 	}))
 }
 
-func testLoginDeps(t *testing.T, srvURL string, stdin string, state string, opened *string) loginDeps {
+func testLoginDeps(t *testing.T, srvURL string, stdin string, opened *string) loginDeps {
 	t.Helper()
 	d, err := descriptor.Default()
 	if err != nil {
@@ -48,16 +48,15 @@ func testLoginDeps(t *testing.T, srvURL string, stdin string, state string, open
 	cl := client.New("")
 	cl.BaseURL = srvURL
 	return loginDeps{
-		Client:   cl,
-		Desc:     d,
-		Key:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-		AppUUID:  "00000000-0000-4000-8000-000000000000",
-		In:       bufio.NewReader(strings.NewReader(stdin)),
-		Out:      &strings.Builder{},
-		OpenURL:  func(u string) error { *opened = u; return nil },
-		Now:      time.Unix(1700000000, 0),
-		genState: func() (string, error) { return state, nil },
-		genPKCE:  func() (oauth.PKCE, error) { return oauth.PKCE{Verifier: "VER", Challenge: "CHAL"}, nil },
+		Client:  cl,
+		Desc:    d,
+		Key:     "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		AppUUID: "00000000-0000-4000-8000-000000000000",
+		In:      bufio.NewReader(strings.NewReader(stdin)),
+		Out:     &strings.Builder{},
+		OpenURL: func(u string) error { *opened = u; return nil },
+		Now:     time.Unix(1700000000, 0),
+		genPKCE: func() (oauth.PKCE, error) { return oauth.PKCE{Verifier: "VER", Challenge: "CHAL"}, nil },
 	}
 }
 
@@ -68,11 +67,11 @@ func TestRunLoginHappyPath(t *testing.T) {
 	srv := mockBackend(t, ep, hits)
 	defer srv.Close()
 
-	const state = "TESTSTATE123"
 	settings := oauth.FromDescriptor(d.Auth)
-	paste := settings.RedirectURI + "?code=AUTHCODE&state=" + state
+	// State is lenient now (the backend rebinds it), so any state on the paste works.
+	paste := settings.RedirectURI + "?code=AUTHCODE&state=backend_rebound"
 	var opened string
-	deps := testLoginDeps(t, srv.URL, "5551234567\n071480\n"+paste+"\n", state, &opened)
+	deps := testLoginDeps(t, srv.URL, "5551234567\n071480\n"+paste+"\n", &opened)
 
 	ts, err := runLogin(context.Background(), deps)
 	if err != nil {
@@ -83,10 +82,20 @@ func TestRunLoginHappyPath(t *testing.T) {
 			t.Errorf("endpoint not hit: %s", p)
 		}
 	}
-	for _, want := range []string{"state=" + state, "code_challenge=CHAL", "login_recom_token=RECOM"} {
+	// The authorize URL carries the confirmed-live params — not the old login_recom_token.
+	for _, want := range []string{
+		"code_challenge=CHAL",
+		"identity_provider=vz-am-provider",
+		"frisco_token_type=online",
+		"x-source-app=AndroidMAPP",
+		"app_uuid=00000000-0000-4000-8000-000000000000",
+	} {
 		if !strings.Contains(opened, want) {
 			t.Errorf("authorize URL missing %q: %s", want, opened)
 		}
+	}
+	if strings.Contains(opened, "login_recom_token") {
+		t.Errorf("authorize URL must not carry login_recom_token: %s", opened)
 	}
 	off, ok := ts.Offline()
 	if !ok || off.RefreshToken != "RToff" {
@@ -97,19 +106,48 @@ func TestRunLoginHappyPath(t *testing.T) {
 	}
 }
 
-func TestRunLoginRejectsBadRedirectState(t *testing.T) {
+// A redirect to the wrong target (not our registered vsfapp:// URI) must abort before any
+// code is exchanged — even though the state check itself is lenient.
+func TestRunLoginRejectsBadRedirectTarget(t *testing.T) {
 	d, _ := descriptor.Default()
 	srv := mockBackend(t, d.Auth.Endpoints, map[string]bool{})
 	defer srv.Close()
 
-	settings := oauth.FromDescriptor(d.Auth)
-	// Paste carries the WRONG state — a CSRF mismatch must abort the login.
-	paste := settings.RedirectURI + "?code=AUTHCODE&state=WRONG"
+	paste := "vsfapp://evil.app/signin?code=AUTHCODE&state=x"
 	var opened string
-	deps := testLoginDeps(t, srv.URL, "5551234567\n071480\n"+paste+"\n", "REALSTATE", &opened)
+	deps := testLoginDeps(t, srv.URL, "5551234567\n071480\n"+paste+"\n", &opened)
 
 	if _, err := runLogin(context.Background(), deps); err == nil {
-		t.Fatal("want an error on a state mismatch in the pasted redirect")
+		t.Fatal("want an error on a redirect to the wrong target")
+	}
+}
+
+// When WaitRedirect is wired (the macOS scheme handler), the redirect is captured
+// automatically instead of prompting for a paste.
+func TestRunLoginSchemeCapture(t *testing.T) {
+	d, _ := descriptor.Default()
+	ep := d.Auth.Endpoints
+	hits := map[string]bool{}
+	srv := mockBackend(t, ep, hits)
+	defer srv.Close()
+
+	settings := oauth.FromDescriptor(d.Auth)
+	var opened string
+	// stdin only answers the device-OTP prompts; the redirect comes from WaitRedirect.
+	deps := testLoginDeps(t, srv.URL, "5551234567\n071480\n", &opened)
+	deps.WaitRedirect = func(context.Context) (string, error) {
+		return settings.RedirectURI + "?code=AUTHCODE&state=captured", nil
+	}
+
+	ts, err := runLogin(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("runLogin: %v", err)
+	}
+	if !hits[ep["user_auth_token"]] {
+		t.Error("exchange endpoint not hit via scheme capture")
+	}
+	if _, ok := ts.Offline(); !ok {
+		t.Error("no offline token after scheme-captured login")
 	}
 }
 

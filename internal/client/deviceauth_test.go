@@ -116,7 +116,7 @@ func TestExchangeCode(t *testing.T) {
 	c.BaseURL = srv.URL
 	ts, err := c.ExchangeCode(context.Background(), CodeExchange{
 		Path: exchangePath, Code: "AUTHCODE", Verifier: "VERIFIER",
-		ClientID: "CID", RedirectURI: "vsfapp://x/signin", AppUUID: daAppUUID,
+		ClientID: "CID", RedirectURI: "vsfapp://x/signin", AppUUID: daAppUUID, Token: "RECOM",
 	})
 	if err != nil {
 		t.Fatalf("ExchangeCode: %v", err)
@@ -131,8 +131,15 @@ func TestExchangeCode(t *testing.T) {
 	if gotSig != "" {
 		t.Errorf("x-signature = %q, want none on the token exchange", gotSig)
 	}
-	if gotBody["code"] != "AUTHCODE" || gotBody["code_verifier"] != "VERIFIER" {
-		t.Errorf("body missing code/verifier: %v", gotBody)
+	// Confirmed-live camelCase body: grantType, codeVerifier, and the recom token that
+	// fuses the two factors — with no snake_case leftovers from the old best-guess body.
+	if gotBody["grantType"] != "authorization_code" || gotBody["code"] != "AUTHCODE" ||
+		gotBody["codeVerifier"] != "VERIFIER" || gotBody["token"] != "RECOM" ||
+		gotBody["identityProvider"] != "vz-am-provider" || gotBody["friscoTokenType"] != "online" {
+		t.Errorf("body missing expected camelCase fields: %v", gotBody)
+	}
+	if _, snake := gotBody["code_verifier"]; snake {
+		t.Errorf("body must be camelCase, found snake_case code_verifier: %v", gotBody)
 	}
 	if len(ts.Tokens) != 2 {
 		t.Fatalf("tokens = %d, want 2 (online + offline)", len(ts.Tokens))
@@ -150,11 +157,15 @@ func TestExchangeCode(t *testing.T) {
 
 func TestExchangeCodeRequiresCodeAndVerifier(t *testing.T) {
 	c := New("")
-	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Verifier: "V"}); err == nil {
+	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Verifier: "V", Token: "R"}); err == nil {
 		t.Error("want error without a code")
 	}
-	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C"}); err == nil {
+	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Token: "R"}); err == nil {
 		t.Error("want error without a verifier")
+	}
+	// The loginRecommendation token is required too (it fuses the device + web factors).
+	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V"}); err == nil {
+		t.Error("want error without the loginRecommendation token")
 	}
 }
 
@@ -168,7 +179,7 @@ func TestExchangeCodeRequiresOfflineRefreshToken(t *testing.T) {
 	defer srv.Close()
 	c := New("")
 	c.BaseURL = srv.URL
-	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V"}); err == nil {
+	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V", Token: "R"}); err == nil {
 		t.Error("want error when the response has no OFFLINE refresh_token, even if an online one exists")
 	}
 }

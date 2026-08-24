@@ -56,8 +56,20 @@ func TestFromDescriptorMatchesDescriptor(t *testing.T) {
 
 func TestAuthorizeURL(t *testing.T) {
 	s := testSettings(t)
-	got := s.AuthorizeURL("https://api.example.com/", "", "STATE123", "CHAL456",
-		map[string]string{"login_recom_token": "RECOM"})
+	// Deterministic transaction ids so the composed state is predictable.
+	ids := []string{"trace-id", "xact-id"}
+	i := 0
+	orig := newUUID
+	newUUID = func() (string, error) { v := ids[i]; i++; return v, nil }
+	defer func() { newUUID = orig }()
+
+	got, state, err := s.AuthorizeURL("https://api.example.com/", "", "APPUUID-1", "CHAL456")
+	if err != nil {
+		t.Fatalf("AuthorizeURL: %v", err)
+	}
+	if state != "trace-id_xact-id" {
+		t.Errorf("state = %q, want trace-id_xact-id", state)
+	}
 	u, err := url.Parse(got)
 	if err != nil {
 		t.Fatalf("bad url: %v", err)
@@ -67,18 +79,28 @@ func TestAuthorizeURL(t *testing.T) {
 	}
 	q := u.Query()
 	for k, want := range map[string]string{
-		"response_type":         "code",
-		"client_id":             s.ClientID,
-		"redirect_uri":          s.RedirectURI,
-		"scope":                 s.Scope,
-		"code_challenge":        "CHAL456",
-		"code_challenge_method": "S256",
-		"state":                 "STATE123",
-		"login_recom_token":     "RECOM",
+		"response_type":          "code",
+		"client_id":              s.ClientID,
+		"redirect_uri":           s.RedirectURI,
+		"scope":                  s.Scope,
+		"code_challenge":         "CHAL456",
+		"code_challenge_method":  "S256",
+		"frisco_token_type":      "online",
+		"identity_provider":      "vz-am-provider",
+		"app_uuid":               "APPUUID-1",
+		"x-source-app":           "AndroidMAPP",
+		"x-mobile-app-version":   "8.101.30",
+		"x-transaction-id":       "xact-id",
+		"x-trace-transaction-id": "trace-id",
+		"state":                  "trace-id_xact-id",
 	} {
 		if q.Get(k) != want {
 			t.Errorf("%s = %q, want %q", k, q.Get(k), want)
 		}
+	}
+	// The old best-guess param must be gone (it made the backend answer 500).
+	if _, ok := q["login_recom_token"]; ok {
+		t.Error("authorize URL must not carry login_recom_token")
 	}
 }
 
@@ -86,7 +108,10 @@ func TestAuthorizeURL(t *testing.T) {
 func TestAuthorizeURLLoopbackOverride(t *testing.T) {
 	s := testSettings(t)
 	const cb = "http://127.0.0.1:8123/callback"
-	got := s.AuthorizeURL("https://api.example.com", cb, "S", "C", nil)
+	got, _, err := s.AuthorizeURL("https://api.example.com", cb, "APPUUID", "C")
+	if err != nil {
+		t.Fatal(err)
+	}
 	u, _ := url.Parse(got)
 	if u.Query().Get("redirect_uri") != cb {
 		t.Errorf("redirect_uri = %q, want the loopback override", u.Query().Get("redirect_uri"))
@@ -109,6 +134,22 @@ func TestParseRedirectLoopback(t *testing.T) {
 	code, err := ParseRedirect(cb+"?state=S&code=XYZ", cb, "S")
 	if err != nil || code != "XYZ" {
 		t.Fatalf("loopback: code=%q err=%v", code, err)
+	}
+}
+
+// With an empty wantState the state check is skipped (the frisco backend rebinds state),
+// but the redirect target and the presence of a code are still enforced.
+func TestParseRedirectLenientState(t *testing.T) {
+	s := testSettings(t)
+	code, err := ParseRedirect(s.RedirectURI+"?code=AUTHCODE&state=backend_rebound_value", s.RedirectURI, "")
+	if err != nil || code != "AUTHCODE" {
+		t.Fatalf("lenient state: code=%q err=%v", code, err)
+	}
+	if _, err := ParseRedirect("vsfapp://evil.app/signin?code=C&state=x", s.RedirectURI, ""); err == nil {
+		t.Error("wrong target must still error even under lenient state")
+	}
+	if _, err := ParseRedirect(s.RedirectURI+"?state=x", s.RedirectURI, ""); err == nil {
+		t.Error("missing code must still error under lenient state")
 	}
 }
 

@@ -49,7 +49,7 @@ func TestSaveStampsFromJWTIatNotImportTime(t *testing.T) {
 
 func sample() *TokenSet {
 	return &TokenSet{
-		MDN: "4088932383",
+		MDN: "5551234567",
 		Tokens: []Token{
 			{IDToken: "online-id", AccessToken: "acc", RefreshToken: "online-rt", FriscoTokenType: "online", ExpiresIn: 1800},
 			{IDToken: "offline-id", RefreshToken: "offline-rt", FriscoTokenType: "offline", ExpiresIn: 86400},
@@ -74,7 +74,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.MDN != "4088932383" || len(got.Tokens) != 2 {
+	if got.MDN != "5551234567" || len(got.Tokens) != 2 {
 		t.Fatalf("roundtrip mismatch: %+v", got)
 	}
 	if got.Tokens[0].ObtainedAt == 0 {

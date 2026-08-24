@@ -21,3 +21,4 @@
 
 # Ephemeral workflow worktrees (isolation: worktree)
 .claude/worktrees/
+livelogin/

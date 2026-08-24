@@ -336,17 +336,22 @@ Proven by replaying captured tokens **from outside the emulator**:
      (API Gateway IAM). The app trades the `id_token` for **temporary AWS credentials
      via a Cognito Identity Pool**, then **SigV4-signs** each control request (matches
      the `X-Amz-*` headers and the Cognito references in the APK).
-- **Refresh** (`…/v6/deviceauth/refreshtoken`) needs `grant_type` **and** `client_id`
-  (`6ebckm2cmaijai6kfb7251ar9a`), `app_uuid`, `x-trace-transaction-id`, and a `code`
-  field — a device-auth refresh, not a bare OAuth refresh.
+- **Refresh** (`POST …/frisco-iam-device-auth/v7/user/auth/token`) is an **unsigned**
+  camelCase request — `grantType: "refresh_token"`, `refreshToken`, `clientId`
+  (`6ebckm2cmaijai6kfb7251ar9a`), `appUuid`, and a `friscoTokenType` that **matches the
+  refresh token's own type** (`online`/`offline`) — plus an `x-trace-transaction-id`
+  header. An online refresh returns a fresh online+offline pair; an offline refresh
+  returns a new offline token. (Supersedes the earlier `/v6/deviceauth/refreshtoken` +
+  `code` guess; confirmed live, docs §9.)
 
 **Durable CLI auth design:**
 
 1. `login` (slow, one-time; assisted for the Akamai-protected My Verizon web step):
    run the 3-factor flow → capture the **offline** token set → persist the
    `refresh_token` (OS keyring / encrypted file).
-2. **Refresh** the `id_token` on demand via `deviceauth/refreshtoken` (client_id +
-   app_uuid + refresh_token). No OTP.
+2. **Refresh** the `id_token` on demand by POSTing the unsigned `refresh_token` grant to
+   `/v7/user/auth/token` (matching `friscoTokenType`; online preferred, offline fallback).
+   No OTP.
 3. **Call the API** by class: `Authorization: <id_token>` for config/content;
    `id_token → Cognito GetCredentialsForIdentity → SigV4` for parental-control ops.
 4. Persist tokens/creds; refresh transparently; re-run `login` only when the offline
