@@ -63,9 +63,10 @@ login. Full detail: `docs/PROCESS.md` §9.
 3. **Token exchange (the fusion).** `POST .../v7/user/auth/token` with the `code`, its PKCE
    `codeVerifier`, **and** the recom `token` mints the real `id_token` / `access_token`
    plus a 24 h **offline** `refresh_token`. Thereafter `safe_cli auth refresh` renews the
-   `id_token` from the stored online refresh token — no browser or OTP (the token endpoint
-   requires an `x-trace-transaction-id` header and a `friscoTokenType` that matches the
-   refresh token's type, or it answers 400).
+   `id_token` from the stored refresh token — online preferred, the durable offline token
+   as fallback — with no browser or OTP (the token endpoint requires an
+   `x-trace-transaction-id` header and a `friscoTokenType` that matches the refresh token's
+   type, or it answers 400).
 
 ### The browser leg and Browserbase
 
