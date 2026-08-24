@@ -158,15 +158,17 @@ func TestExchangeCodeRequiresCodeAndVerifier(t *testing.T) {
 	}
 }
 
-func TestExchangeCodeNoRefreshToken(t *testing.T) {
+// A set with only an online refresh_token (no offline entry) is not durable-login
+// usable, so it must be rejected — not accepted just because *a* refresh_token exists.
+func TestExchangeCodeRequiresOfflineRefreshToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"tokens":[{"frisco_token_type":"online","id_token":"ID1"}]}`))
+		_, _ = w.Write([]byte(`{"tokens":[{"frisco_token_type":"online","id_token":"ID1","refresh_token":"RT_ONLINE","expires_in":1800}]}`))
 	}))
 	defer srv.Close()
 	c := New("")
 	c.BaseURL = srv.URL
 	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V"}); err == nil {
-		t.Error("want error when the response carries no refresh_token")
+		t.Error("want error when the response has no OFFLINE refresh_token, even if an online one exists")
 	}
 }

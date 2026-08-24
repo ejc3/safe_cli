@@ -186,21 +186,12 @@ func (c *Client) ExchangeCode(ctx context.Context, ex CodeExchange) (*tokenstore
 	if err := json.Unmarshal(resp.Body, &ts); err != nil {
 		return nil, fmt.Errorf("parse token response: %w", err)
 	}
-	if refreshToken(&ts) == "" {
-		return nil, fmt.Errorf("token exchange returned no refresh_token")
+	// The durable login persists the OFFLINE (24h) refresh_token; an online-only set is
+	// not usable for it, so require the offline entry to carry a refresh_token.
+	if off, ok := ts.Offline(); !ok || off.RefreshToken == "" {
+		return nil, fmt.Errorf("token exchange returned no offline refresh_token (needed for durable login)")
 	}
 	return &ts, nil
-}
-
-// refreshToken returns the first refresh_token in the set (the offline set carries the
-// durable one).
-func refreshToken(ts *tokenstore.TokenSet) string {
-	for _, t := range ts.Tokens {
-		if t.RefreshToken != "" {
-			return t.RefreshToken
-		}
-	}
-	return ""
 }
 
 // send executes req and reads the full response body.
