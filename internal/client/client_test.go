@@ -113,3 +113,125 @@ func TestSignedDoRequiresKeyAndUUID(t *testing.T) {
 		t.Error("want error when app uuid is empty")
 	}
 }
+
+// newAppRequest must set the app's exact wire headers: lowercase x-* names (NOT Go's
+// canonicalized X-Source-App), and the app's values and User-Agent. This is what lets
+// the server see no delta between us and the real app.
+func TestNewAppRequestMatchesAppHeaders(t *testing.T) {
+	c := New("tok")
+	req, err := c.newAppRequest(context.Background(), "GET", "/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Exact lowercase names present (direct map access does not canonicalize).
+	want := map[string]string{
+		"x-source-app":         "AndroidMAPP",
+		"x-mobile-app-version": "8.101.30",
+		"User-Agent":           "okhttp/4.12.0",
+		"Accept":               "*/*",
+		"Content-Type":         "application/json",
+	}
+	for k, v := range want {
+		got := req.Header[k]
+		if len(got) != 1 || got[0] != v {
+			t.Errorf("header %q = %v, want [%q]", k, got, v)
+		}
+	}
+	if req.Header["x-transaction-id"] == nil { //nolint:staticcheck // SA1008: intentional non-canonical key — verifies the app's lowercase wire header
+		t.Error("missing x-transaction-id")
+	}
+	// The canonicalized spellings must NOT also be present (that would double the header
+	// and reveal us as a non-app client).
+	for _, canon := range []string{"X-Source-App", "X-Mobile-App-Version", "X-Transaction-Id"} {
+		if req.Header[canon] != nil {
+			t.Errorf("header was canonicalized to %q — differs from the app's lowercase wire name", canon)
+		}
+	}
+}
+
+// DoH keeps the caller's exact lowercase per-op header names (x-fp-identifier-*) rather
+// than canonicalizing them.
+func TestDoHKeepsLowercasePerOpHeaders(t *testing.T) {
+	c := New("tok")
+	req, err := c.newAppRequest(context.Background(), "GET", "/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setRaw(req.Header, "Authorization", c.IDToken)
+	for k, v := range map[string]string{"x-fp-identifier-target-serviceid": "svc"} {
+		setRaw(req.Header, k, v)
+	}
+	if req.Header["x-fp-identifier-target-serviceid"] == nil || req.Header["X-Fp-Identifier-Target-Serviceid"] != nil { //nolint:staticcheck // SA1008: intentional — asserts lowercase kept, canonical form absent
+		t.Errorf("per-op header casing not preserved: %v", req.Header)
+	}
+	if got := req.Header["Authorization"]; len(got) != 1 || got[0] != "tok" {
+		t.Errorf("Authorization = %v", got)
+	}
+}
+
+// A caller-supplied reserved header (user-agent) replaces the default instead of leaking a
+// lowercase duplicate; an app-specific header keeps its exact lowercase casing.
+func TestSetHeaderCanonicalizesReserved(t *testing.T) {
+	h := http.Header{}
+	setRaw(h, "User-Agent", "okhttp/4.12.0") // the app default
+	setHeader(h, "user-agent", "custom")     // caller override via --header
+	if h["user-agent"] != nil {              //nolint:staticcheck // SA1008: asserting no lowercase duplicate leaked
+		t.Errorf("lowercase user-agent duplicate leaked: %v", h)
+	}
+	if got := h.Get("User-Agent"); got != "custom" {
+		t.Errorf("User-Agent = %q, want custom (replaced)", got)
+	}
+	setHeader(h, "x-fp-identifier-target-serviceid", "svc")
+	if h["x-fp-identifier-target-serviceid"] == nil { //nolint:staticcheck // SA1008: verifies app casing preserved
+		t.Errorf("app-specific header casing not preserved: %v", h)
+	}
+}
+
+// A caller override with different casing than an app header replaces it (no duplicate,
+// case-insensitively) rather than sending both values.
+func TestSetHeaderDedupsCaseInsensitively(t *testing.T) {
+	h := http.Header{}
+	setRaw(h, "x-transaction-id", "app-generated") // the app default (lowercase)
+	setHeader(h, "X-Transaction-Id", "caller")     // caller override, different casing
+	// Exactly one value across all casings.
+	var vals []string
+	for k := range h {
+		if http.CanonicalHeaderKey(k) == "X-Transaction-Id" {
+			vals = append(vals, h[k]...)
+		}
+	}
+	if len(vals) != 1 || vals[0] != "caller" {
+		t.Errorf("x-transaction-id values = %v, want exactly [caller]", vals)
+	}
+}
+
+// Accept-Encoding must go through the reserved (canonicalized) path so the transport
+// sees the caller's override and does not also add gzip (Codex #21).
+func TestSetHeaderCanonicalizesAcceptEncoding(t *testing.T) {
+	h := http.Header{}
+	setHeader(h, "accept-encoding", "identity")
+	if h["accept-encoding"] != nil { //nolint:staticcheck // SA1008: verifies no lowercase raw key
+		t.Errorf("accept-encoding stored under raw lowercase key: %v", h)
+	}
+	if got := h.Get("Accept-Encoding"); got != "identity" {
+		t.Errorf("Accept-Encoding = %q, want identity", got)
+	}
+}
+
+// A standard header the transport inspects by canonical key (Range) is canonicalized, not
+// stored raw — otherwise Transport would add gzip and could corrupt a partial response.
+func TestSetHeaderCanonicalizesRange(t *testing.T) {
+	h := http.Header{}
+	setHeader(h, "range", "bytes=0-99")
+	if h["range"] != nil { //nolint:staticcheck // SA1008: verifies no raw lowercase key
+		t.Errorf("range stored under raw lowercase key: %v", h)
+	}
+	if got := h.Get("Range"); got != "bytes=0-99" {
+		t.Errorf("Range = %q, want bytes=0-99", got)
+	}
+	// app-specific still preserved
+	setHeader(h, "x-source-app", "AndroidMAPP")
+	if h["x-source-app"] == nil { //nolint:staticcheck // SA1008: verifies app casing kept
+		t.Error("x-source-app casing not preserved")
+	}
+}
