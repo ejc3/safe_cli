@@ -132,11 +132,31 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 	// The app sends the raw id_token as Authorization — no "Bearer " prefix.
 	setRaw(req.Header, "Authorization", c.IDToken)
 	// Per-op headers (x-fp-identifier-*, x-trace-transaction-id, …) keep their exact
-	// lowercase spelling from the caller.
+	// lowercase spelling; reserved/standard headers are canonicalized (see setHeader).
 	for k, v := range headers {
-		setRaw(req.Header, k, v)
+		setHeader(req.Header, k, v)
 	}
 	return c.send(req)
+}
+
+// reservedHeaders are standard headers the transport manages or that must never be
+// duplicated. A caller-supplied value for one of these is canonicalized (replacing the
+// default) rather than sent under a second, lowercase key.
+var reservedHeaders = map[string]bool{
+	"Accept": true, "Content-Type": true, "Content-Length": true,
+	"User-Agent": true, "Authorization": true, "Host": true,
+	"Connection": true, "Transfer-Encoding": true,
+}
+
+// setHeader sets a caller-supplied header. App-specific names (x-*, timezone, …) keep
+// their exact lowercase wire casing via setRaw; reserved/standard names are canonicalized
+// with Header.Set so they replace the default instead of producing a duplicate on HTTP/1.1.
+func setHeader(h http.Header, key, value string) {
+	if reservedHeaders[http.CanonicalHeaderKey(key)] {
+		h.Set(key, value)
+		return
+	}
+	setRaw(h, key, value)
 }
 
 // SignedDo performs a SIGNED device-auth request (OTP send/validate, token refresh).

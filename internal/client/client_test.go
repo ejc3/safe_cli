@@ -168,3 +168,21 @@ func TestDoHKeepsLowercasePerOpHeaders(t *testing.T) {
 		t.Errorf("Authorization = %v", got)
 	}
 }
+
+// A caller-supplied reserved header (user-agent) replaces the default instead of leaking a
+// lowercase duplicate; an app-specific header keeps its exact lowercase casing.
+func TestSetHeaderCanonicalizesReserved(t *testing.T) {
+	h := http.Header{}
+	setRaw(h, "User-Agent", "okhttp/4.12.0") // the app default
+	setHeader(h, "user-agent", "custom")     // caller override via --header
+	if h["user-agent"] != nil {              //nolint:staticcheck // SA1008: asserting no lowercase duplicate leaked
+		t.Errorf("lowercase user-agent duplicate leaked: %v", h)
+	}
+	if got := h.Get("User-Agent"); got != "custom" {
+		t.Errorf("User-Agent = %q, want custom (replaced)", got)
+	}
+	setHeader(h, "x-fp-identifier-target-serviceid", "svc")
+	if h["x-fp-identifier-target-serviceid"] == nil { //nolint:staticcheck // SA1008: verifies app casing preserved
+		t.Errorf("app-specific header casing not preserved: %v", h)
+	}
+}
