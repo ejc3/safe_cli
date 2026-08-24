@@ -389,8 +389,16 @@ SAFE_CLI_SIGNING_KEY=$KEY safe_cli <command>   # scoped to this one invocation
 ```
 
 Prefer the scoped form over `export` so the value isn't inherited by every other child
-process in the shell. A planned `safe_cli auth extract-key --apk <your.apk>` will do the
-extraction in one step. The CLI itself never persists, logs, or prints the key.
+process in the shell. Simpler still, `safe_cli auth extract-key --apk <your.apk>` does the
+extraction in one step and prints the 64-hex key to stdout (or `--json`), so you can
+capture it without the value ever touching a shell command line:
+
+```bash
+export SAFE_CLI_SIGNING_KEY=$(safe_cli auth extract-key --apk <your.apk>)
+```
+
+That command's explicit job is to hand you the key; aside from it, the CLI never writes
+the key to disk or logs it.
 
 If the vendor rotates the key in a later app version, re-extract from the newer APK
 (and update the pinned `AppVersion`).
