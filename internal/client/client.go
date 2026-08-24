@@ -1,10 +1,17 @@
-// Package client is the SafePath (Verizon Family) HTTP client. It sends the
-// id_token as the Authorization header (raw JWT, no "Bearer " prefix — that is how
-// the app authenticates config/content endpoints) plus the app's mundane headers.
+// Package client is the SafePath (Verizon Family) HTTP client. It has two request
+// paths:
+//
+//   - Do: id_token-authenticated calls. The app sends the raw id_token as the
+//     Authorization header (no "Bearer " prefix). Covers the config/content surface
+//     and `raw`.
+//   - SignedDo: the device-auth endpoints (OTP send/validate, token refresh). These
+//     are unauthenticated but require the x-signature HMAC over request metadata
+//     (see docs/PROCESS.md §11). The caller supplies the app signing key
+//     (apkkey.ResolveKey) and this install's app UUID.
 //
 // NOTE: the parental-control operations use AWS SigV4 (Cognito temp creds), not the
 // id_token — see docs/PROCESS.md §10. Those are handled by a separate signer added
-// in a later phase; this client covers the id_token-authed surface and `raw`.
+// in a later phase.
 package client
 
 import (
@@ -77,6 +84,46 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Res
 	req.Header.Set("x-transaction-id", txn)
 	req.Header.Set("user-agent", userAgent)
 
+	return c.send(req)
+}
+
+// SignedDo performs a SIGNED device-auth request (OTP send/validate, token refresh).
+// These endpoints are unauthenticated but require the x-signature header. key is the
+// app signing key (apkkey.ResolveKey); appUUID identifies this install (x-appuuid).
+func (c *Client) SignedDo(ctx context.Context, method, path string, body []byte, key, appUUID string) (*Response, error) {
+	if key == "" {
+		return nil, fmt.Errorf("no signing key: set SAFE_CLI_SIGNING_KEY (see `safe_cli auth extract-key`)")
+	}
+	if appUUID == "" {
+		return nil, fmt.Errorf("no app uuid for the signed request")
+	}
+	var r io.Reader
+	if body != nil {
+		r = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, r)
+	if err != nil {
+		return nil, err
+	}
+	// signing.SignedHeaders sets x-transaction-id, x-trace-transaction-id, x-timestamp,
+	// x-appuuid, x-signature, x-source-app, and x-mobile-app-version — all consistent
+	// with the signed string so the backend's recomputation matches.
+	hdrs, err := signing.SignedHeaders(key, method, appUUID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range hdrs {
+		req.Header.Set(k, v)
+	}
+	req.Header.Set("accept", "*/*")
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("user-agent", userAgent)
+
+	return c.send(req)
+}
+
+// send executes req and reads the full response body.
+func (c *Client) send(req *http.Request) (*Response, error) {
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, err
