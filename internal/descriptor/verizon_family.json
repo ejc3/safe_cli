@@ -3286,7 +3286,8 @@
           ],
           "placeholders": [
             "subscriber-id"
-          ]
+          ],
+          "destructive": true
         },
         "updateAddress": {
           "method": "PUT",

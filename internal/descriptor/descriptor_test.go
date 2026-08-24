@@ -117,3 +117,44 @@ func TestDestructiveOpsMarked(t *testing.T) {
 		}
 	}
 }
+
+// Every op sharing a wire route (method+path) with a destructive op must ALSO be
+// destructive — the backend sees only the route + body, so an unmarked alias would let a
+// caller reach the destructive route without --confirm (Codex: professional_monitoring
+// reactivateProfile shares deactivateProfile's PATCH route).
+func TestDestructiveRoutesFullyGated(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type route struct{ m, p string }
+	byRoute := map[route][]Operation{}
+	names := map[route][]string{}
+	for en, e := range d.Entities {
+		add := func(opn string, op Operation) {
+			r := route{op.Method, op.Path}
+			byRoute[r] = append(byRoute[r], op)
+			names[r] = append(names[r], en+"."+opn)
+		}
+		for opn, op := range e.Operations {
+			add(opn, op)
+		}
+		for opn, op := range e.Actions {
+			add(opn, op)
+		}
+	}
+	for r, ops := range byRoute {
+		anyDest := false
+		for _, op := range ops {
+			anyDest = anyDest || op.Destructive
+		}
+		if !anyDest {
+			continue
+		}
+		for i, op := range ops {
+			if !op.Destructive {
+				t.Errorf("%s shares destructive route %s %s but is not gated", names[r][i], r.m, r.p)
+			}
+		}
+	}
+}
