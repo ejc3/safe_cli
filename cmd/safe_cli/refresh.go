@@ -45,21 +45,29 @@ func (c *authRefreshCmd) Run(rc *runContext) error {
 }
 
 // refreshTokens performs the refresh against cl and returns the new set, carrying over
-// identity fields. It refreshes the ONLINE token (online refresh_token + friscoType
-// "online"), which returns a fresh online+offline pair; if the response somehow omits
-// the offline entry, the old one is carried forward so the durable credential survives.
+// identity fields. It PREFERS the online refresh_token (friscoType "online"), which
+// returns a fresh online+offline pair; if only the durable offline refresh_token is
+// present — e.g. an imported offline-only set — it falls back to that (friscoType
+// "offline", returning a new offline token) rather than forcing a full re-login. The
+// friscoType MUST match the token's own type (the backend 400s a mismatch). If an online
+// response omits the offline entry, the old one is carried forward so the durable
+// credential survives.
 func refreshTokens(ctx context.Context, cl *client.Client, tokenPath, clientID, redirectURI string, old *tokenstore.TokenSet, appUUID string) (*tokenstore.TokenSet, error) {
-	on, ok := old.Online()
-	if !ok || on.RefreshToken == "" {
-		return nil, fmt.Errorf("no online refresh_token in the stored tokens; run `safe_cli auth login`")
+	var refreshToken, friscoType string
+	if on, ok := old.Online(); ok && on.RefreshToken != "" {
+		refreshToken, friscoType = on.RefreshToken, "online"
+	} else if off, ok := old.Offline(); ok && off.RefreshToken != "" {
+		refreshToken, friscoType = off.RefreshToken, "offline"
+	} else {
+		return nil, fmt.Errorf("no online or offline refresh_token in the stored tokens; run `safe_cli auth login`")
 	}
 	ts, err := cl.Refresh(ctx, client.RefreshRequest{
 		Path:         tokenPath,
-		RefreshToken: on.RefreshToken,
+		RefreshToken: refreshToken,
 		ClientID:     clientID,
 		AppUUID:      appUUID,
 		RedirectURI:  redirectURI,
-		FriscoType:   "online",
+		FriscoType:   friscoType,
 	})
 	if err != nil {
 		return nil, err
