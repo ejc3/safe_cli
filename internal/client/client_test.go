@@ -235,3 +235,19 @@ func TestSetHeaderCanonicalizesRange(t *testing.T) {
 		t.Error("x-source-app casing not preserved")
 	}
 }
+
+// Custom descriptor-declared headers (app-name, addressType, gizmo-device-model, …) must
+// keep their exact wire casing — they are not standard headers, so Header.Set would rewrite
+// them (app-name -> App-Name) and diverge from the app (Codex #21 post-merge).
+func TestSetHeaderPreservesCustomHeaders(t *testing.T) {
+	for _, k := range []string{"app-name", "addressType", "gizmo-device-model", "user-profile-id", "crash-date-time"} {
+		h := http.Header{}
+		setHeader(h, k, "v")
+		if h[k] == nil { //nolint:staticcheck // SA1008: verifies the exact custom key is kept
+			t.Errorf("custom header %q was not preserved raw: %v", k, h)
+		}
+		if h[http.CanonicalHeaderKey(k)] != nil && http.CanonicalHeaderKey(k) != k {
+			t.Errorf("custom header %q was canonicalized to %q", k, http.CanonicalHeaderKey(k))
+		}
+	}
+}
