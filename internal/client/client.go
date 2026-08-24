@@ -8,6 +8,8 @@
 //     are unauthenticated but require the x-signature HMAC over request metadata
 //     (see docs/PROCESS.md §11). The caller supplies the app signing key
 //     (apkkey.ResolveKey) and this install's app UUID.
+//   - ExchangeCode: the OAuth code→token exchange, which is neither authenticated nor
+//     signed (docs/PROCESS.md §9 step 6, §10) — just the mundane app headers.
 //
 // NOTE: the parental-control operations use AWS SigV4 (Cognito temp creds), not the
 // id_token — see docs/PROCESS.md §10. Those are handled by a separate signer added
@@ -17,12 +19,14 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/ejc3/safe_cli/internal/signing"
+	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
 const (
@@ -58,11 +62,10 @@ type Response struct {
 	Body   []byte
 }
 
-// Do performs a request. path is joined onto BaseURL; body may be nil.
-func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Response, error) {
-	if c.IDToken == "" {
-		return nil, fmt.Errorf("not authenticated: no id_token (run `safe_cli auth import` or `auth login`)")
-	}
+// newAppRequest builds a request carrying the app's mundane headers (source-app,
+// version, a fresh x-transaction-id, user-agent, accept, content-type) — the common
+// base for Do and ExchangeCode.
+func (c *Client) newAppRequest(ctx context.Context, method, path string, body []byte) (*http.Request, error) {
 	var r io.Reader
 	if body != nil {
 		r = bytes.NewReader(body)
@@ -71,19 +74,31 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Res
 	if err != nil {
 		return nil, err
 	}
-	// The app sends the raw id_token as Authorization — no "Bearer " prefix.
-	req.Header.Set("Authorization", c.IDToken)
-	req.Header.Set("accept", "*/*")
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-source-app", sourceApp)
-	req.Header.Set("x-mobile-app-version", c.AppVersion)
 	txn, err := signing.TransactionID()
 	if err != nil {
 		return nil, fmt.Errorf("transaction id: %w", err)
 	}
+	req.Header.Set("accept", "*/*")
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("x-source-app", sourceApp)
+	req.Header.Set("x-mobile-app-version", c.AppVersion)
 	req.Header.Set("x-transaction-id", txn)
 	req.Header.Set("user-agent", userAgent)
+	return req, nil
+}
 
+// Do performs an id_token-authenticated request. path is joined onto BaseURL; body
+// may be nil.
+func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Response, error) {
+	if c.IDToken == "" {
+		return nil, fmt.Errorf("not authenticated: no id_token (run `safe_cli auth import` or `auth login`)")
+	}
+	req, err := c.newAppRequest(ctx, method, path, body)
+	if err != nil {
+		return nil, err
+	}
+	// The app sends the raw id_token as Authorization — no "Bearer " prefix.
+	req.Header.Set("Authorization", c.IDToken)
 	return c.send(req)
 }
 
@@ -120,6 +135,63 @@ func (c *Client) SignedDo(ctx context.Context, method, path string, body []byte,
 	req.Header.Set("user-agent", userAgent)
 
 	return c.send(req)
+}
+
+// CodeExchange carries the inputs for the OAuth authorization-code → token exchange.
+// Path is the descriptor's auth.endpoints.user_auth_token; ClientID/RedirectURI come
+// from the descriptor (oauth.Settings); Verifier is the PKCE code_verifier.
+type CodeExchange struct {
+	Path        string
+	Code        string
+	Verifier    string
+	ClientID    string
+	RedirectURI string
+	AppUUID     string
+}
+
+// ExchangeCode trades the captured authorization code (plus the PKCE verifier) for the
+// token set. This call is neither id_token-authenticated nor x-signed (§9 step 6, §10),
+// so it carries only the mundane app headers. It returns the parsed token set (an
+// online set and an offline set; the offline refresh_token is the durable one to keep).
+//
+// NOTE: the exact request body is confirmed only at the live run; the response shape is
+// the captured one and maps directly onto tokenstore.TokenSet.
+func (c *Client) ExchangeCode(ctx context.Context, ex CodeExchange) (*tokenstore.TokenSet, error) {
+	if ex.Code == "" || ex.Verifier == "" {
+		return nil, fmt.Errorf("code exchange needs both the authorization code and the PKCE verifier")
+	}
+	body, err := json.Marshal(map[string]string{
+		"grant_type":    "authorization_code",
+		"code":          ex.Code,
+		"code_verifier": ex.Verifier,
+		"client_id":     ex.ClientID,
+		"redirect_uri":  ex.RedirectURI,
+		"app_uuid":      ex.AppUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	req, err := c.newAppRequest(ctx, "POST", ex.Path, body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.send(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Status != http.StatusOK {
+		return nil, fmt.Errorf("token exchange: status %d: %s", resp.Status, resp.Body)
+	}
+	var ts tokenstore.TokenSet
+	if err := json.Unmarshal(resp.Body, &ts); err != nil {
+		return nil, fmt.Errorf("parse token response: %w", err)
+	}
+	// The durable login persists the OFFLINE (24h) refresh_token; an online-only set is
+	// not usable for it, so require the offline entry to carry a refresh_token.
+	if off, ok := ts.Offline(); !ok || off.RefreshToken == "" {
+		return nil, fmt.Errorf("token exchange returned no offline refresh_token (needed for durable login)")
+	}
+	return &ts, nil
 }
 
 // send executes req and reads the full response body.
