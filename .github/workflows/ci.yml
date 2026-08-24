@@ -25,8 +25,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          # Matches the toolchain the CLI is developed against on the dev box.
-          go-version: "1.22"
+          # Current Go series: backward-compatible with the go.mod minimum, and it carries the
+          # stdlib security fixes govulncheck requires (many reachable CVEs are fixed in 1.25.x).
+          go-version: "1.25"
           cache: true
 
       # gofmt is not part of `go vet`; a formatting drift should fail CI, not be
@@ -40,6 +41,22 @@ jobs:
 
       - name: go vet
         run: go vet ./...
+
+      # go.mod / go.sum must stay tidy — a drift (a stray or missing dep) fails CI
+      # rather than being silently committed.
+      - name: go mod tidy check
+        run: |
+          cp go.mod go.mod.tidybak && cp go.sum go.sum.tidybak
+          go mod tidy
+          rc=0
+          if ! cmp -s go.mod go.mod.tidybak || ! cmp -s go.sum go.sum.tidybak; then
+            echo "go.mod / go.sum are not tidy — run 'go mod tidy' and commit:"
+            diff go.mod.tidybak go.mod || true
+            diff go.sum.tidybak go.sum || true
+            rc=1
+          fi
+          mv go.mod.tidybak go.mod; mv go.sum.tidybak go.sum
+          exit $rc
 
       # -race catches the data races that a descriptor-driven dispatcher plus
       # concurrent HTTP is prone to; it is cheap for a suite this size.
@@ -58,9 +75,28 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           cache: true
       # v7+ of the action drives golangci-lint v2 (the schema .golangci.yml uses).
       - uses: golangci/golangci-lint-action@v7
         with:
           version: latest
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          # govulncheck fails only on vulnerabilities the code actually calls; run it on
+          # the same current Go the rest of CI builds with so the scan reflects reality.
+          go-version: "1.25"
+          check-latest: true
+          cache: true
+      - name: install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck
+        run: govulncheck ./...

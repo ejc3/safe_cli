@@ -22,7 +22,7 @@ func TestDoSendsRawIDTokenAndHeaders(t *testing.T) {
 		gotUA = r.Header.Get("user-agent")
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer srv.Close()
@@ -67,7 +67,7 @@ func TestSignedDoSetsSelfConsistentSignature(t *testing.T) {
 	var h http.Header
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h = r.Header.Clone()
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"state":"OTP_SENT"}`))
 	}))
 	defer srv.Close()

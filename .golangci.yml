@@ -2,13 +2,33 @@ version: "2"
 
 linters:
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - misspell
-    - revive
+    # correctness / type-aware analysis
+    - errcheck        # unchecked errors
+    - govet           # vet analyzers (type/printf/etc.)
+    - staticcheck     # deep static analysis
+    - ineffassign     # ineffectual assignments
+    - unused          # unused code
+    - nilerr          # returning nil after a non-nil error
+    - errorlint       # correct error wrapping (%w, errors.Is/As)
+    # HTTP / concurrency hygiene (this is an HTTP auth client)
+    - bodyclose       # HTTP response bodies must be closed
+    - noctx           # HTTP requests must carry a context
+    # security (auth/crypto CLI)
+    - gosec           # hardcoded creds, weak crypto, etc.
+    # cleanliness / style
+    - revive          # golint successor
+    - misspell        # typos in comments/strings
+    - unconvert       # unnecessary type conversions
+    - wastedassign    # assignments never used
+    - copyloopvar     # loop-variable copies (Go 1.22+)
+    - predeclared     # shadowing predeclared identifiers
+    - usestdlibvars   # use stdlib constants (http.StatusOK, …)
+  settings:
+    gosec:
+      excludes:
+        - G115 # int overflow conversions: the dex parser bounds-checks before every narrowing
+        - G304 # file inclusion via variable: the CLI intentionally reads operator-given APK/key paths
+        - G703 # path traversal (taint): same — operator-supplied APK/key paths are intended input
 
 issues:
   max-issues-per-linter: 0
