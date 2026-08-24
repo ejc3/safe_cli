@@ -70,10 +70,17 @@ func refreshTokens(ctx context.Context, cl *client.Client, refreshPath, clientID
 	if ts.AppUUID == "" {
 		ts.AppUUID = old.AppUUID
 	}
-	// If the refresh response carried no offline token, keep the old one so the next
-	// refresh still has a durable credential to present.
-	if _, ok := ts.Offline(); !ok {
+	// Keep a durable credential for the next refresh: if the response has no offline
+	// entry, carry the old one wholesale; if it has one but WITHOUT a refresh_token
+	// (e.g. the existing credential stays valid), copy the old refresh_token into it.
+	if newOff, ok := ts.Offline(); !ok {
 		ts.Tokens = append(ts.Tokens, off)
+	} else if newOff.RefreshToken == "" {
+		for i := range ts.Tokens {
+			if ts.Tokens[i].FriscoTokenType == "offline" {
+				ts.Tokens[i].RefreshToken = off.RefreshToken
+			}
+		}
 	}
 	return ts, nil
 }

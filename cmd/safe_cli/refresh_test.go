@@ -102,3 +102,23 @@ func TestWriteRefreshResult(t *testing.T) {
 		t.Errorf("non-json result should be a human line: %q", pb.String())
 	}
 }
+
+// If the refresh response returns an offline entry WITHOUT a refresh_token, the old
+// refresh_token must be carried into it — else the next refresh has no credential.
+func TestRefreshTokensPreservesWhenOfflineRefreshEmpty(t *testing.T) {
+	d, _ := descriptor.Default()
+	rp := d.Auth.Endpoints["refresh"]
+	srv := refreshServer(t, rp, `{"tokens":[{"frisco_token_type":"online","id_token":"NEWID","refresh_token":"RTon","expires_in":1800},{"frisco_token_type":"offline","id_token":"OFF2","expires_in":86400}]}`)
+	defer srv.Close()
+	cl := client.New("")
+	cl.BaseURL = srv.URL
+
+	ts, err := refreshTokens(context.Background(), cl, rp, "CID", oldTokens(), "K", "U")
+	if err != nil {
+		t.Fatalf("refreshTokens: %v", err)
+	}
+	off, ok := ts.Offline()
+	if !ok || off.RefreshToken != "OLD_RT" {
+		t.Errorf("offline refresh_token = %q ok=%v, want OLD_RT carried over", off.RefreshToken, ok)
+	}
+}
