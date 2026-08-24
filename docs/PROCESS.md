@@ -414,3 +414,69 @@ silently falls back to **radix 10** for any radix outside 2–36, so `toString(6
 renders a decimal string (~39–40 digits), *not* base-64. A re-implementation that
 takes `64` at face value produces the wrong id and every signature fails. `internal/
 signing.TransactionID` generates a 130-bit value rendered in decimal to match.
+
+## 12. The parental-control API is plain id_token auth — NOT SigV4/Cognito
+
+An early inference in §10 (and a `call` that got a `403 "Authorization header requires
+'Credential' parameter"`) suggested the parental-control endpoints needed AWS SigV4 with
+Cognito temp credentials. **That was wrong** — a red herring that cost real time. Three
+independent proofs settle it:
+
+1. **Memory forensics.** With the app logged in as the parent and running, a full scan of
+   its native + Java memory (`setenforce 0`; `/proc/<pid>/mem` across all `rw` regions;
+   `am dumpheap`) found **zero** `cognito-identity`, no `region:guid` identity-pool-id, and
+   no `ASIA…`/`AKIA…` credentials. The app never mints AWS creds for this API. The bundled
+   `com.amazonaws.services.cognitoidentity.*` SDK is dead code; the only real AWS use is
+   **Driving Insights** (cmtelematics S3, session creds handed in) and **video-calling**.
+2. **The decompiled interceptor.** `com/verizon/data/network/interceptor/TokenAwareInterceptor`
+   sets `Authorization: <token>` (raw JWT, no `Bearer`) via `getOnlineToken()`/`getOfflineToken()`,
+   and applies the `x-signature` HMAC **only** when the per-call `RetrofitTagParams` has
+   `hmacRequired=true` — which is confined to the device-auth OTP/token endpoints. Every
+   parental-control call is tagged `RetrofitTagParams(ONLINE, hmac=false)`: online id_token,
+   no HMAC, no SigV4.
+3. **The 403 explained.** `ApiConstants.PARENTAL_CONTROL_ICON_URL =
+   /vsf/parental-control/v5/icon` is an S3/IAM-fronted **icon asset** — hitting it (or hitting
+   a real control path while omitting the `x-fp-identifier-*` headers) draws the API-Gateway
+   "Credential parameter" 403 that started the whole chase.
+
+**The real contract.** Control calls are `Authorization: <online id_token>` plus
+`x-fp-identifier-*` request-identity headers. The near-universal one is
+`x-fp-identifier-target-serviceid` = the **target (child's) service id** — the parent acts on a
+child, not their own service (the parent's own serviceid returns `403 "no permissions on this
+serviceId"`). Child service ids are discoverable from the app's `access_config.db` group names
+(`service_<account>_<profile>_<serviceid>`) and `device_status.db`. The full surface (105
+Retrofit interfaces → 462 operations / 59 entities) is harvested in `docs/api-catalog.md` and
+`docs/vsf-endpoints.json`; the descriptor is generated from it and `call` fills the headers from
+`--service-id` / `--profile-id` + the id_token claims.
+
+## 13. Capturing traffic from a hardened app — use eBPF (eCapture), not frida/mitm
+
+This app defeats the usual capture rigs, and the environment adds one more twist:
+
+- **Anti-frida:** a native watchdog (in `libSummitSdk.so`) **self-terminates the app ~15 s
+  after any frida attach** — so frida hooks and frida-based TLS unpinning both die.
+- **Code-level pinning:** TLS pinning is an OkHttp `CertificatePinner` in code, **not** in
+  `network_security_config.xml` (which has no `<pin-set>`), so plain mitm can't decrypt the
+  frisco host even with a trusted CA.
+- **API-37 cert isolation:** the Cuttlefish image is bleeding-edge (API 37). A
+  `tmpfs` bind-mount of the mitm CA over `/apex/com.android.conscrypt/cacerts` **does not
+  propagate to app mount namespaces**, even after `setprop ctl.restart zygote` — without
+  Magisk or `nsenter` the app never trusts the CA.
+
+The clean answer is **eCapture (`gojue/ecapture`)** — eBPF uprobes on conscrypt's
+`libssl.so` `SSL_write`/`SSL_read`. It beats all three at once: no ptrace/no injected `.so`/no
+port 27042 (the anti-frida watchdog is structurally blind), it reads plaintext *after* TLS
+decrypt and *after* any signing (pinning + native crypto irrelevant), and it installs **no CA**
+(the APEX problem never arises). Cuttlefish is the ideal host because we build the kernel —
+verify `CONFIG_DEBUG_INFO_BTF` / `CONFIG_UPROBES` / `CONFIG_BPF_SYSCALL`:
+
+```bash
+adb shell 'zcat /proc/config.gz | grep -E "BTF|UPROBES|BPF_SYSCALL"'
+UID=$(adb shell dumpsys package com.verizon.familybase.parent | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1)
+adb shell su -c "/data/local/tmp/ecapture tls -m text --uid $UID \
+  --libssl=/apex/com.android.conscrypt/lib64/libssl.so"
+```
+
+Do **not** re-enter the frida / Magisk-Zygisk / conscrypt-CA-bind-mount / `nsenter` fight — for
+this class of app that is effort against a phantom. Static reading of the decompiled Retrofit
+interfaces answered the API question here without any capture at all.
