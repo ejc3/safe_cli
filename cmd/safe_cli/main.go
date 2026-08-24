@@ -103,7 +103,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 			name = "⚠ " + name // catastrophic: requires --confirm
 		}
 		body := "-"
-		if op.BodyExample != "" {
+		if op.TakesBody {
 			body = "yes"
 		}
 		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), body, confirmed(op.Confirmed)}

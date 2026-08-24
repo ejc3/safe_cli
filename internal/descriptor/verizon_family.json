@@ -66,7 +66,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"templateType\":\"PIN_SEND\",\"tokens\":{\"pinNo\":1234}}"
+          "body_example": "{\"templateType\":\"PIN_SEND\",\"tokens\":{\"pinNo\":1234}}",
+          "takes_body": true
         },
         "validatePin": {
           "method": "GET",
@@ -94,7 +95,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"ageCaptured\":true}"
+          "body_example": "{\"ageCaptured\":true}",
+          "takes_body": true
         },
         "putAgeCaptureNotification": {
           "method": "PUT",
@@ -130,7 +132,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}",
+          "takes_body": true
         },
         "addOnboardingDevice": {
           "method": "POST",
@@ -139,7 +142,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-pairing-required"
-          ]
+          ],
+          "takes_body": true
         },
         "attestDob": {
           "method": "PATCH",
@@ -148,7 +152,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         },
         "choosePlan": {
           "method": "POST",
@@ -217,7 +222,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"deviceNickName\":\"Kids iPad\",\"serialnumber\":\"F2LXXXXXXXXX\"}"
+          "body_example": "{\"deviceNickName\":\"Kids iPad\",\"serialnumber\":\"F2LXXXXXXXXX\"}",
+          "takes_body": true
         },
         "updateFamilyNameOrTimeZone": {
           "method": "PATCH",
@@ -227,7 +233,8 @@
             "x-fp-identifier-target-serviceid",
             "x-pending-activation"
           ],
-          "body_example": "{\"familyName\":\"The Smiths\",\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"familyName\":\"The Smiths\",\"timezone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "updatePlan": {
           "method": "PUT",
@@ -247,7 +254,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         },
         "updateProfileImage": {
           "method": "PUT",
@@ -256,7 +264,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         },
         "updateProfileName": {
           "method": "PATCH",
@@ -266,7 +275,8 @@
             "x-fp-identifier-target-serviceid",
             "x-pending-activation"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         }
       }
     },
@@ -335,7 +345,8 @@
           "query": [
             "user-profile-id"
           ],
-          "body_example": "{\"data\":\"eyJ2ZXJpZmljYXRpb24iOiJ0b2tlbiJ9\"}"
+          "body_example": "{\"data\":\"eyJ2ZXJpZmljYXRpb24iOiJ0b2tlbiJ9\"}",
+          "takes_body": true
         }
       }
     },
@@ -350,7 +361,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}"
+          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}",
+          "takes_body": true
         },
         "getBlockedApps": {
           "method": "GET",
@@ -371,7 +383,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"feature\":\"APP_BLOCKING\",\"status\":\"ENABLED\",\"appName\":\"Instagram\",\"appPackageName\":\"com.instagram.android\"}"
+          "body_example": "{\"feature\":\"APP_BLOCKING\",\"status\":\"ENABLED\",\"appName\":\"Instagram\",\"appPackageName\":\"com.instagram.android\"}",
+          "takes_body": true
         },
         "sendBlockStatus": {
           "method": "POST",
@@ -380,7 +393,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"apps\":[{\"name\":\"Instagram\",\"packageName\":\"com.instagram.android\",\"blockedOnDevice\":true}]}"
+          "body_example": "{\"apps\":[{\"name\":\"Instagram\",\"packageName\":\"com.instagram.android\",\"blockedOnDevice\":true}]}",
+          "takes_body": true
         }
       }
     },
@@ -420,7 +434,8 @@
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-profileid"
           ],
-          "body_example": "{\"name\":\"Instagram\",\"id\":\"98765\",\"consentGiven\":true,\"enabled\":false}"
+          "body_example": "{\"name\":\"Instagram\",\"id\":\"98765\",\"consentGiven\":true,\"enabled\":false}",
+          "takes_body": true
         },
         "getAppStatus": {
           "method": "GET",
@@ -454,7 +469,8 @@
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
-          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}"
+          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}",
+          "takes_body": true
         },
         "deleteCalendarSelection": {
           "method": "DELETE",
@@ -494,7 +510,8 @@
           "confirmed": false,
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "takes_body": true
         },
         "getSchoolSelection": {
           "method": "GET",
@@ -530,7 +547,8 @@
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
-          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}"
+          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}",
+          "takes_body": true
         },
         "updateCalendarSyncPreferences": {
           "method": "PATCH",
@@ -539,7 +557,8 @@
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
-          "body_example": "{\"schoolId\":4521,\"subscriptionType\":\"SCHOOL_HOLIDAYS\"}"
+          "body_example": "{\"schoolId\":4521,\"subscriptionType\":\"SCHOOL_HOLIDAYS\"}",
+          "takes_body": true
         }
       }
     },
@@ -554,7 +573,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}"
+          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
+          "takes_body": true
         },
         "addCustomNameToAddressBook": {
           "method": "PUT",
@@ -564,7 +584,8 @@
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-deviceid"
           ],
-          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}"
+          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}",
+          "takes_body": true
         },
         "addNamesToAddressBook": {
           "method": "POST",
@@ -574,7 +595,8 @@
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-deviceid"
           ],
-          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}"
+          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}",
+          "takes_body": true
         },
         "deleteContactFromTheList": {
           "method": "DELETE",
@@ -743,7 +765,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}",
+          "takes_body": true
         },
         "acceptDeclineFamilyInvite": {
           "method": "PATCH",
@@ -752,7 +775,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}"
+          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}",
+          "takes_body": true
         },
         "addCallingContact": {
           "method": "POST",
@@ -761,7 +785,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\"}}",
+          "takes_body": true
         },
         "bulkDeleteContacts": {
           "method": "DELETE",
@@ -771,7 +796,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "destructive": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contactInfoList\":[\"5551234567\",\"5559876543\"]}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contactInfoList\":[\"5551234567\",\"5559876543\"]}",
+          "takes_body": true
         },
         "bulkUpdateContacts": {
           "method": "PUT",
@@ -780,7 +806,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}",
+          "takes_body": true
         },
         "getFamilyMembersAndBuddies": {
           "method": "GET",
@@ -863,7 +890,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}",
+          "takes_body": true
         },
         "updateContact": {
           "method": "PUT",
@@ -872,7 +900,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}}",
+          "takes_body": true
         },
         "updatePermissions": {
           "method": "POST",
@@ -881,7 +910,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"userServices\":[{\"serviceId\":8000,\"featurePermissions\":{\"alert\":true,\"activities\":true,\"videoCalling\":false,\"emergencyAnswering\":false}}]}"
+          "body_example": "{\"userServices\":[{\"serviceId\":8000,\"featurePermissions\":{\"alert\":true,\"activities\":true,\"videoCalling\":false,\"emergencyAnswering\":false}}]}",
+          "takes_body": true
         },
         "updateTrustedContacts": {
           "method": "POST",
@@ -890,7 +920,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"settingId\":8000,\"settingValue\":1}"
+          "body_example": "{\"settingId\":8000,\"settingValue\":1}",
+          "takes_body": true
         },
         "validateGizmoMdn": {
           "method": "POST",
@@ -899,7 +930,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "takes_body": true
         },
         "addContactToTheList": {
           "method": "POST",
@@ -908,7 +940,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}"
+          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
+          "takes_body": true
         },
         "deleteContactFromTheList": {
           "method": "DELETE",
@@ -944,7 +977,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"PRIVATE\",\"deviceId\":\"device-123\",\"profileId\":\"profile-456\"}"
+          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"PRIVATE\",\"deviceId\":\"device-123\",\"profileId\":\"profile-456\"}",
+          "takes_body": true
         }
       }
     },
@@ -973,7 +1007,8 @@
           "query": [
             "categorySupported"
           ],
-          "body_example": "{\"groupId\":123}"
+          "body_example": "{\"groupId\":123}",
+          "takes_body": true
         },
         "getAgeGroupMetaData": {
           "method": "GET",
@@ -1007,7 +1042,8 @@
           "query": [
             "reportCategory"
           ],
-          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}"
+          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}",
+          "takes_body": true
         },
         "createAppLimit": {
           "method": "POST",
@@ -1016,7 +1052,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "takes_body": true
         },
         "deleteAppLimit": {
           "method": "DELETE",
@@ -1039,7 +1076,8 @@
           "query": [
             "appLimitsId"
           ],
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "takes_body": true
         },
         "getFilterContent": {
           "method": "GET",
@@ -1060,7 +1098,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}"
+          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}",
+          "takes_body": true
         },
         "getCategories": {
           "method": "GET",
@@ -1099,7 +1138,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"categories\":[{\"id\":\"1\",\"categoryId\":5,\"name\":\"Social\",\"blocked\":1}]}"
+          "body_example": "{\"categories\":[{\"id\":\"1\",\"categoryId\":5,\"name\":\"Social\",\"blocked\":1}]}",
+          "takes_body": true
         }
       }
     },
@@ -1185,13 +1225,15 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "createProfile": {
           "method": "POST",
           "path": "/vsf/account-management/v1/profiles",
           "confirmed": false,
-          "body_example": "{\"devices\":[],\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"timeZone\":\"America/New_York\",\"age\":\"12\",\"requestedProfile\":false,\"isSelected\":false}"
+          "body_example": "{\"devices\":[],\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"timeZone\":\"America/New_York\",\"age\":\"12\",\"requestedProfile\":false,\"isSelected\":false}",
+          "takes_body": true
         },
         "dashboardFlow": {
           "method": "GET",
@@ -1271,7 +1313,8 @@
           "query": [
             "reportCategory"
           ],
-          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}"
+          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}",
+          "takes_body": true
         },
         "postReportSettings": {
           "method": "POST",
@@ -1283,7 +1326,8 @@
           "query": [
             "reportCategory"
           ],
-          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}"
+          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}",
+          "takes_body": true
         },
         "putRestrictionsBackOn": {
           "method": "PUT",
@@ -1292,7 +1336,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"alertLimit\":true,\"deviceId\":\"9876543\",\"profileId\":\"1234567\"}"
+          "body_example": "{\"alertLimit\":true,\"deviceId\":\"9876543\",\"profileId\":\"1234567\"}",
+          "takes_body": true
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -1300,7 +1345,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "queryEligibleLines": {
           "method": "GET",
@@ -1311,7 +1357,8 @@
           "method": "PUT",
           "path": "/vsf/account-management/v1/profiles/invite",
           "confirmed": false,
-          "body_example": "{\"profileIds\":[111,222]}"
+          "body_example": "{\"profileIds\":[111,222]}",
+          "takes_body": true
         },
         "getParentingTips": {
           "method": "GET",
@@ -1369,7 +1416,8 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -1445,7 +1493,8 @@
           "query": [
             "driveId"
           ],
-          "body_example": "{\"transportation_mode\":\"DRIVING\"}"
+          "body_example": "{\"transportation_mode\":\"DRIVING\"}",
+          "takes_body": true
         },
         "postSettings": {
           "method": "POST",
@@ -1454,7 +1503,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"operation\":\"UPDATE\",\"role\":\"PARENT\",\"serviceId\":\"1234567\"}"
+          "body_example": "{\"operation\":\"UPDATE\",\"role\":\"PARENT\",\"serviceId\":\"1234567\"}",
+          "takes_body": true
         },
         "putSettings": {
           "method": "PUT",
@@ -1463,7 +1513,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}"
+          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}",
+          "takes_body": true
         },
         "putSpeedAlertLimit": {
           "method": "PUT",
@@ -1472,7 +1523,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}"
+          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}",
+          "takes_body": true
         },
         "getCrashDetail": {
           "method": "GET",
@@ -1500,7 +1552,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateCrashNotifications": {
           "method": "POST",
@@ -1509,7 +1562,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":123456,\"profileId\":789,\"deviceId\":42,\"eventDate\":1700000000000,\"dismissFlag\":true,\"falseCrash\":false}"
+          "body_example": "{\"accountId\":123456,\"profileId\":789,\"deviceId\":42,\"eventDate\":1700000000000,\"dismissFlag\":true,\"falseCrash\":false}",
+          "takes_body": true
         }
       },
       "tier": "p2"
@@ -1525,7 +1579,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Grandma\",\"userProfileId\":12345}]}"
+          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Grandma\",\"userProfileId\":12345}]}",
+          "takes_body": true
         },
         "deleteEmergencyContact": {
           "method": "DELETE",
@@ -1561,7 +1616,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Jane Doe\",\"userProfileId\":12345}]}"
+          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Jane Doe\",\"userProfileId\":12345}]}",
+          "takes_body": true
         }
       }
     },
@@ -1603,7 +1659,8 @@
         "getSpcToken": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/token",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "logoutFamilyLine": {
           "method": "GET",
@@ -1625,13 +1682,15 @@
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/address",
           "confirmed": false,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}"
+          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "takes_body": true
         },
         "sendCallLog": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/call/logs",
           "confirmed": false,
-          "body_example": "{\"callLog\":{\"callJoined\":true,\"otherPartyMdn\":\"5551234567\",\"direction\":\"INCOMING\",\"subDirection\":\"\",\"startTime\":1700000000000,\"sessionDuration\":120,\"callId\":\"abc123\",\"isEmergencyCall\":false,\"isRemote\":false,\"networkLineIndex\":0,\"activityType\":\"CALL\",\"subActivityType\":\"\"}}"
+          "body_example": "{\"callLog\":{\"callJoined\":true,\"otherPartyMdn\":\"5551234567\",\"direction\":\"INCOMING\",\"subDirection\":\"\",\"startTime\":1700000000000,\"sessionDuration\":120,\"callId\":\"abc123\",\"isEmergencyCall\":false,\"isRemote\":false,\"networkLineIndex\":0,\"activityType\":\"CALL\",\"subActivityType\":\"\"}}",
+          "takes_body": true
         },
         "sendFamilyLineInvite": {
           "method": "POST",
@@ -1652,23 +1711,27 @@
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/trace",
           "confirmed": false,
-          "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}"
+          "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}",
+          "takes_body": true
         },
         "updateAppUuid": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/line/updateAppUuid",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "updateFamilyLineSettings": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/settings",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "validateAddress": {
           "method": "POST",
           "path": "/account/fam/userprofile-management/v5/userprofiles/address/validate",
           "confirmed": false,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}"
+          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "takes_body": true
         }
       }
     },
@@ -1694,7 +1757,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"role\":\"parent\",\"relationship\":\"mother\"}"
+          "body_example": "{\"role\":\"parent\",\"relationship\":\"mother\"}",
+          "takes_body": true
         },
         "getManagedUserProfiles": {
           "method": "GET",
@@ -1711,7 +1775,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"userProfileId\":\"1234567\",\"permissionDetails\":{\"isElevatedAccess\":false,\"locationManagement\":true,\"parentalControls\":true}}"
+          "body_example": "{\"userProfileId\":\"1234567\",\"permissionDetails\":{\"isElevatedAccess\":false,\"locationManagement\":true,\"parentalControls\":true}}",
+          "takes_body": true
         },
         "updateUserProfileAccess": {
           "method": "PATCH",
@@ -1720,7 +1785,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"userProfileAccessList\":{\"add\":[123456],\"remove\":[789012]}}"
+          "body_example": "{\"userProfileAccessList\":{\"add\":[123456],\"remove\":[789012]}}",
+          "takes_body": true
         }
       }
     },
@@ -1743,7 +1809,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"settingsStatus\":true}"
+          "body_example": "{\"settingsStatus\":true}",
+          "takes_body": true
         },
         "updateFlightDetectionStatus": {
           "method": "POST",
@@ -1752,7 +1819,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"FLIGHT_DETECTED\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"TAKEOFF\",\"locationDetails\":{\"latitude\":40.7,\"longitude\":-74.0}}]}"
+          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"FLIGHT_DETECTED\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"TAKEOFF\",\"locationDetails\":{\"latitude\":40.7,\"longitude\":-74.0}}]}",
+          "takes_body": true
         }
       }
     },
@@ -1767,7 +1835,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}"
+          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}",
+          "takes_body": true
         },
         "getGeofenceSettings": {
           "method": "GET",
@@ -1805,7 +1874,8 @@
           "query": [
             "operation=configGeoDevice"
           ],
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}"
+          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "takes_body": true
         }
       }
     },
@@ -1820,7 +1890,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}"
+          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
+          "takes_body": true
         }
       }
     },
@@ -1831,7 +1902,8 @@
         "childRefreshToken": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "refreshToken": {
           "method": "POST",
@@ -1839,7 +1911,8 @@
           "confirmed": false,
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "takes_body": true
         },
         "getAppLoginTokens": {
           "method": "POST",
@@ -1847,66 +1920,77 @@
           "confirmed": false,
           "placeholders": [
             "authPath"
-          ]
+          ],
+          "takes_body": true
         },
         "getChildDeviceAccessToken": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/deviceauth/auth/token",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "logOut": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/logout",
           "confirmed": false,
-          "body_example": "{\"code\":\"AUTHCODE123\",\"grant_type\":\"refresh_token\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"frisco_token_type\":\"online\",\"triggeredBy\":\"user\"}"
+          "body_example": "{\"code\":\"AUTHCODE123\",\"grant_type\":\"refresh_token\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"frisco_token_type\":\"online\",\"triggeredBy\":\"user\"}",
+          "takes_body": true
         },
         "loginActivity": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/l1/login/activity",
           "confirmed": false,
-          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"identityProvider\":\"VZ\",\"code\":\"AUTHCODE123\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\"}"
+          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"identityProvider\":\"VZ\",\"code\":\"AUTHCODE123\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\"}",
+          "takes_body": true
         },
         "auditLogin": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v5/user/login/audit",
           "confirmed": false,
-          "body_example": "{\"eventType\":\"LOGIN\",\"subEventType\":\"PASSWORD\",\"eventTime\":1690000000000,\"code\":\"200\",\"appUuid\":\"abc-123-uuid\",\"grantType\":\"identifier_code\",\"clientId\":\"your_oauth_client_id\"}"
+          "body_example": "{\"eventType\":\"LOGIN\",\"subEventType\":\"PASSWORD\",\"eventTime\":1690000000000,\"code\":\"200\",\"appUuid\":\"abc-123-uuid\",\"grantType\":\"identifier_code\",\"clientId\":\"your_oauth_client_id\"}",
+          "takes_body": true
         },
         "postBiometricAudit": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/audit",
           "confirmed": false,
-          "body_example": "{\"events\":[{\"event_type\":\"BIOMETRIC_AUTH\",\"triggeredBy\":\"USER\",\"fidoGuid\":\"guid-123\",\"status_code\":200,\"status\":\"SUCCESS\",\"event_time\":1690000000000}]}"
+          "body_example": "{\"events\":[{\"event_type\":\"BIOMETRIC_AUTH\",\"triggeredBy\":\"USER\",\"fidoGuid\":\"guid-123\",\"status_code\":200,\"status\":\"SUCCESS\",\"event_time\":1690000000000}]}",
+          "takes_body": true
         },
         "sendAuthOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp",
           "confirmed": false,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "takes_body": true
         },
         "sendOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp",
           "confirmed": false,
-          "body_example": "{\"mdn\":\"5551234567\",\"triggerType\":\"LOGIN\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"triggerType\":\"LOGIN\"}",
+          "takes_body": true
         },
         "validateAuthOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
           "confirmed": false,
-          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}",
+          "takes_body": true
         },
         "validateOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp/validate",
           "confirmed": false,
-          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}",
+          "takes_body": true
         },
         "verifyMdn": {
           "method": "POST",
           "path": "/fam/userprofile-management/v5/phonenumber/validate",
           "confirmed": false,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "takes_body": true
         }
       }
     },
@@ -1921,7 +2005,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"events\":[{\"appName\":\"Chrome\",\"packageName\":\"com.android.chrome\",\"versionName\":\"120.0\",\"systemApp\":false}],\"timeZone\":\"America/New_York\",\"newAppInstall\":true,\"lastRefreshTime\":1710000000000}"
+          "body_example": "{\"events\":[{\"appName\":\"Chrome\",\"packageName\":\"com.android.chrome\",\"versionName\":\"120.0\",\"systemApp\":false}],\"timeZone\":\"America/New_York\",\"newAppInstall\":true,\"lastRefreshTime\":1710000000000}",
+          "takes_body": true
         }
       }
     },
@@ -1952,7 +2037,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceType\":\"smartphone\",\"deviceCarrier\":\"Verizon\",\"deviceOS\":\"iOS\",\"deviceNickName\":\"Kid's Phone\",\"mdn\":\"5551234567\",\"imei\":\"356789012345678\"}"
+          "body_example": "{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceType\":\"smartphone\",\"deviceCarrier\":\"Verizon\",\"deviceOS\":\"iOS\",\"deviceNickName\":\"Kid's Phone\",\"mdn\":\"5551234567\",\"imei\":\"356789012345678\"}",
+          "takes_body": true
         },
         "retryPairing": {
           "method": "PUT",
@@ -1960,7 +2046,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "sendInvite": {
           "method": "POST",
@@ -1969,7 +2056,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
-          ]
+          ],
+          "takes_body": true
         },
         "sendStandaloneInvite": {
           "method": "POST",
@@ -1978,7 +2066,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-pairing-required"
-          ]
+          ],
+          "takes_body": true
         },
         "updateFeaturePermissions": {
           "method": "POST",
@@ -1987,7 +2076,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"featurepermissions\":[{\"feature\":\"LOCATION\",\"enabled\":true}]}"
+          "body_example": "{\"featurepermissions\":[{\"feature\":\"LOCATION\",\"enabled\":true}]}",
+          "takes_body": true
         },
         "createWifiDevice": {
           "method": "POST",
@@ -1996,7 +2086,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
-          ]
+          ],
+          "takes_body": true
         },
         "getAccountLines2": {
           "method": "GET",
@@ -2013,7 +2104,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}",
+          "takes_body": true
         }
       }
     },
@@ -2035,7 +2127,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -2050,7 +2143,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "checkInSeen": {
           "method": "PUT",
@@ -2059,7 +2153,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "deleteGeofenceSettings": {
           "method": "DELETE",
@@ -2152,7 +2247,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "pickMeUp": {
           "method": "POST",
@@ -2161,7 +2257,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "postGeofenceViolationEvent": {
           "method": "POST",
@@ -2170,7 +2267,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}"
+          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "takes_body": true
         },
         "postLocationTamper": {
           "method": "POST",
@@ -2179,7 +2277,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "putPickMeUp": {
           "method": "PUT",
@@ -2188,7 +2287,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "takes_body": true
         },
         "sendGeoFenceConfirmation": {
           "method": "PUT",
@@ -2200,7 +2300,8 @@
           "query": [
             "operation=configGeoDevice"
           ],
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}"
+          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "takes_body": true
         },
         "getLocationSharingConfigEvent": {
           "method": "GET",
@@ -2244,7 +2345,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateLocationSharingSettingConfig": {
           "method": "PUT",
@@ -2257,7 +2359,8 @@
             "eventType",
             "profileId"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"LOCATION_SHARING\",\"events\":[]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"LOCATION_SHARING\",\"events\":[]}",
+          "takes_body": true
         }
       }
     },
@@ -2271,7 +2374,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "putMedicalId": {
           "method": "PUT",
@@ -2279,7 +2383,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -2297,7 +2402,8 @@
           "placeholders": [
             "group-id"
           ],
-          "body_example": "{\"groupMembers\":[{\"memberId\":\"1234567\"}]}"
+          "body_example": "{\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
+          "takes_body": true
         },
         "clearAllGroupChatMessages": {
           "method": "DELETE",
@@ -2318,7 +2424,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"name\":\"Family\",\"image\":\"https://cdn.example.com/g.png\",\"type\":\"GROUP\",\"groupMembers\":[{\"memberId\":\"1234567\"}]}"
+          "body_example": "{\"name\":\"Family\",\"image\":\"https://cdn.example.com/g.png\",\"type\":\"GROUP\",\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
+          "takes_body": true
         },
         "deleteGroupChat": {
           "method": "DELETE",
@@ -2371,7 +2478,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"requestedGroups\":[{\"chatGroupId\":101,\"currentMessageId\":5000,\"requestedList\":\"NEXT\"}],\"limit\":50,\"includePreview\":true}"
+          "body_example": "{\"requestedGroups\":[{\"chatGroupId\":101,\"currentMessageId\":5000,\"requestedList\":\"NEXT\"}],\"limit\":50,\"includePreview\":true}",
+          "takes_body": true
         },
         "getAllGroups": {
           "method": "GET",
@@ -2415,7 +2523,8 @@
           "query": [
             "chatGroupId"
           ],
-          "body_example": "{\"lastReadMessageUser\":\"1234567\"}"
+          "body_example": "{\"lastReadMessageUser\":\"1234567\"}",
+          "takes_body": true
         },
         "sendGroupMediaMessage": {
           "method": "POST",
@@ -2427,7 +2536,8 @@
           "query": [
             "chatGroupId"
           ],
-          "body_example": "{\"message\":\"Hello team\"}"
+          "body_example": "{\"message\":\"Hello team\"}",
+          "takes_body": true
         },
         "sendGroupTextMessage": {
           "method": "POST",
@@ -2439,7 +2549,8 @@
           "query": [
             "chatGroupId"
           ],
-          "body_example": "{\"message\":\"Hello team\"}"
+          "body_example": "{\"message\":\"Hello team\"}",
+          "takes_body": true
         },
         "updateGroupChat": {
           "method": "PATCH",
@@ -2451,7 +2562,8 @@
           "placeholders": [
             "group-id"
           ],
-          "body_example": "{\"name\":\"Family Chat\",\"image\":\"https://cdn.example.com/g.png\"}"
+          "body_example": "{\"name\":\"Family Chat\",\"image\":\"https://cdn.example.com/g.png\"}",
+          "takes_body": true
         },
         "deleteMessages": {
           "method": "DELETE",
@@ -2495,7 +2607,8 @@
             "x-transaction-id",
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -2630,7 +2743,8 @@
           "query": [
             "reportCategory"
           ],
-          "body_example": "{\"settings\":{\"lowBattery\":true,\"appInstalled\":false}}"
+          "body_example": "{\"settings\":{\"lowBattery\":true,\"appInstalled\":false}}",
+          "takes_body": true
         }
       }
     },
@@ -2677,7 +2791,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "addDeviceToProfile": {
           "method": "POST",
@@ -2686,7 +2801,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}",
+          "takes_body": true
         },
         "createProfile": {
           "method": "POST",
@@ -2695,12 +2811,14 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}",
+          "takes_body": true
         },
         "getIdTokenUsingOtp": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/wifi/token",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         },
         "getOtpStatus": {
           "method": "GET",
@@ -2736,7 +2854,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}"
+          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}",
+          "takes_body": true
         },
         "getNotificationFeed": {
           "method": "GET",
@@ -2783,7 +2902,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}"
+          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
+          "takes_body": true
         },
         "getDeviceShadowDetails": {
           "method": "GET",
@@ -2805,7 +2925,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"autoUpgrade\":true}"
+          "body_example": "{\"autoUpgrade\":true}",
+          "takes_body": true
         },
         "getDeviceStatus": {
           "method": "GET",
@@ -2872,7 +2993,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}",
+          "takes_body": true
         },
         "createDependentProfile": {
           "method": "POST",
@@ -2881,7 +3003,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}",
+          "takes_body": true
         },
         "deleteMediaBackupEntries": {
           "method": "DELETE",
@@ -2891,7 +3014,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "destructive": true,
-          "body_example": "{\"childId\":\"12345\",\"mediaIds\":[1001,1002]}"
+          "body_example": "{\"childId\":\"12345\",\"mediaIds\":[1001,1002]}",
+          "takes_body": true
         },
         "getGizmoDevices": {
           "method": "GET",
@@ -3026,7 +3150,8 @@
           "headers": [
             "x-trace-transaction-id"
           ],
-          "body_example": "{\"code\":\"123456\",\"grantType\":\"gizmo_otp\",\"gizmoUserId\":\"user-abc\",\"mdn\":\"5551234567\"}"
+          "body_example": "{\"code\":\"123456\",\"grantType\":\"gizmo_otp\",\"gizmoUserId\":\"user-abc\",\"mdn\":\"5551234567\"}",
+          "takes_body": true
         },
         "unlinkGizmoAccount": {
           "method": "DELETE",
@@ -3044,7 +3169,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         },
         "updatePairing": {
           "method": "PUT",
@@ -3052,7 +3178,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "validateGizmoMdn": {
           "method": "POST",
@@ -3061,7 +3188,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "takes_body": true
         },
         "getDeviceStatus2": {
           "method": "GET",
@@ -3115,7 +3243,8 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -3146,7 +3275,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "unPauseInternet": {
           "method": "DELETE",
@@ -3169,7 +3299,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}"
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}",
+          "takes_body": true
         },
         "escalateRttToLpm": {
           "method": "PATCH",
@@ -3178,7 +3309,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}"
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}",
+          "takes_body": true
         },
         "getAllAvailableEmergencyContacts": {
           "method": "GET",
@@ -3224,19 +3356,22 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "deleteWifiDetails": {
           "method": "DELETE",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "takes_body": true
         },
         "firmwareUpdateStatus": {
           "method": "POST",
           "path": "/comms/vsf/tamper/v5/fwUpdate",
           "confirmed": false,
-          "body_example": "{\"featureValue\":1}"
+          "body_example": "{\"featureValue\":1}",
+          "takes_body": true
         },
         "getActivity": {
           "method": "GET",
@@ -3322,19 +3457,22 @@
           "method": "POST",
           "path": "/tracker/fam/v1/trace/logs",
           "confirmed": false,
-          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}"
+          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}",
+          "takes_body": true
         },
         "saveWifiDetails": {
           "method": "POST",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "takes_body": true
         },
         "updateWifiDetails": {
           "method": "PUT",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "takes_body": true
         }
       }
     },
@@ -3348,7 +3486,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "createSubscribers": {
           "method": "POST",
@@ -3356,7 +3495,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "deactivateProfile": {
           "method": "PATCH",
@@ -3368,7 +3508,8 @@
           "placeholders": [
             "subscriber-id"
           ],
-          "destructive": true
+          "destructive": true,
+          "takes_body": true
         },
         "getRemoteProfessionalMonitoringAddress": {
           "method": "GET",
@@ -3396,7 +3537,8 @@
           ],
           "placeholders": [
             "subscriber-id"
-          ]
+          ],
+          "takes_body": true
         },
         "updateAddress": {
           "method": "PUT",
@@ -3408,7 +3550,8 @@
           "placeholders": [
             "address-id"
           ],
-          "body_example": "{\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zipcode\":\"02118\",\"country\":\"US\"}"
+          "body_example": "{\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zipcode\":\"02118\",\"country\":\"US\"}",
+          "takes_body": true
         },
         "updateFirstAndLastName": {
           "method": "PATCH",
@@ -3417,7 +3560,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "takes_body": true
         },
         "updateSubscribers": {
           "method": "PUT",
@@ -3425,7 +3569,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "validateAddress": {
           "method": "POST",
@@ -3433,7 +3578,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -3448,7 +3594,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}"
+          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}",
+          "takes_body": true
         },
         "getTopApps": {
           "method": "GET",
@@ -3503,7 +3650,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"feature\":\"location\",\"deviceId\":123456,\"pushToken\":\"fcm-token-abc123\",\"appName\":\"VZFamily\",\"osType\":\"android\",\"osVersion\":\"14\"}"
+          "body_example": "{\"feature\":\"location\",\"deviceId\":123456,\"pushToken\":\"fcm-token-abc123\",\"appName\":\"VZFamily\",\"osType\":\"android\",\"osVersion\":\"14\"}",
+          "takes_body": true
         }
       }
     },
@@ -3529,7 +3677,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"app\",\"eventType\":\"LOCATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"REQUEST\",\"extendSession\":false}]}"
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"app\",\"eventType\":\"LOCATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"REQUEST\",\"extendSession\":false}]}",
+          "takes_body": true
         }
       }
     },
@@ -3544,7 +3693,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"alertLimit\":true,\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"noLimitSet\":false,\"profileId\":\"1234567\",\"thresholdLimit\":120.0}"
+          "body_example": "{\"alertLimit\":true,\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"noLimitSet\":false,\"profileId\":\"1234567\",\"thresholdLimit\":120.0}",
+          "takes_body": true
         },
         "getAllTheLimits": {
           "method": "GET",
@@ -3566,7 +3716,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"profileId\":\"1234567\"}"
+          "body_example": "{\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"profileId\":\"1234567\"}",
+          "takes_body": true
         }
       }
     },
@@ -3590,7 +3741,8 @@
           "headers": [
             "x-fp-identifier-profileid",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateReviewAction": {
           "method": "PATCH",
@@ -3600,7 +3752,8 @@
             "x-fp-identifier-profileid",
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"action\":\"approve\"}"
+          "body_example": "{\"action\":\"approve\"}",
+          "takes_body": true
         }
       },
       "tier": "p2"
@@ -3616,7 +3769,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"nickname\":\"My Car\",\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"fuelType\":\"GAS\"}"
+          "body_example": "{\"nickname\":\"My Car\",\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"fuelType\":\"GAS\"}",
+          "takes_body": true
         },
         "cancelRequest": {
           "method": "PUT",
@@ -3625,7 +3779,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"rescueId\":\"rescue-123\"}"
+          "body_example": "{\"rescueId\":\"rescue-123\"}",
+          "takes_body": true
         },
         "deleteExistVehicle": {
           "method": "DELETE",
@@ -3645,7 +3800,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"operation\":\"DISMISS\"}"
+          "body_example": "{\"operation\":\"DISMISS\"}",
+          "takes_body": true
         },
         "dismissWhatsNew": {
           "method": "PATCH",
@@ -3654,7 +3810,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"operation\":\"DISMISS\"}"
+          "body_example": "{\"operation\":\"DISMISS\"}",
+          "takes_body": true
         },
         "getCarMakes": {
           "method": "GET",
@@ -3674,7 +3831,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"year\":2020,\"makes\":\"Toyota\"}"
+          "body_example": "{\"year\":2020,\"makes\":\"Toyota\"}",
+          "takes_body": true
         },
         "getRescueHistory": {
           "method": "GET",
@@ -3706,7 +3864,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "setUpRsaIntroBottomSheet": {
           "method": "POST",
@@ -3714,7 +3873,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "submitRescue": {
           "method": "POST",
@@ -3722,7 +3882,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateExistingUserVehicleDetails": {
           "method": "PUT",
@@ -3734,7 +3895,8 @@
           "placeholders": [
             "vehicle-id"
           ],
-          "body_example": "{\"make\":\"Toyota\",\"model\":\"Camry\",\"year\":2020,\"color\":\"Blue\",\"fuelType\":\"GAS\",\"nickname\":\"My Car\"}"
+          "body_example": "{\"make\":\"Toyota\",\"model\":\"Camry\",\"year\":2020,\"color\":\"Blue\",\"fuelType\":\"GAS\",\"nickname\":\"My Car\"}",
+          "takes_body": true
         },
         "updateRsaMemberAccess": {
           "method": "PATCH",
@@ -3743,7 +3905,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"consentFlag\":true,\"enableRSAFlag\":true}"
+          "body_example": "{\"consentFlag\":true,\"enableRSAFlag\":true}",
+          "takes_body": true
         },
         "validateTowLocation": {
           "method": "POST",
@@ -3752,7 +3915,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"model\":\"Camry\",\"make\":\"Toyota\",\"zipcode\":\"07001\",\"longitude\":-74.006,\"latitude\":40.7128}"
+          "body_example": "{\"model\":\"Camry\",\"make\":\"Toyota\",\"zipcode\":\"07001\",\"longitude\":-74.006,\"latitude\":40.7128}",
+          "takes_body": true
         }
       },
       "tier": "p2"
@@ -3782,7 +3946,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         },
         "getScheduledAlerts": {
           "method": "GET",
@@ -3804,7 +3969,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         },
         "updateScheduledAlert": {
           "method": "PUT",
@@ -3813,7 +3979,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         }
       }
     },
@@ -3828,7 +3995,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"events\":[{\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"events\":[{\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "updateSchedulerRunStatus": {
           "method": "POST",
@@ -3837,7 +4005,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"profileName\":\"Johnny\",\"featureId\":12}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"profileName\":\"Johnny\",\"featureId\":12}",
+          "takes_body": true
         },
         "getScreenTime": {
           "method": "GET",
@@ -3857,7 +4026,8 @@
           "query": [
             "appLimitsId"
           ],
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "takes_body": true
         },
         "getAppTimeLimits": {
           "method": "GET",
@@ -3894,7 +4064,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"appLimitsId\":\"1234567\",\"id\":42,\"name\":\"Games\",\"timeRequested\":30,\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"appLimitsId\":\"1234567\",\"id\":42,\"name\":\"Games\",\"timeRequested\":30,\"timeZone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "getSchedules": {
           "method": "GET",
@@ -3911,7 +4082,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}"
+          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
+          "takes_body": true
         },
         "putSchedule": {
           "method": "PUT",
@@ -3920,7 +4092,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}"
+          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
+          "takes_body": true
         },
         "deleteSchedule": {
           "method": "DELETE",
@@ -3951,7 +4124,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "putScreenTimeData": {
           "method": "PUT",
@@ -3963,7 +4137,8 @@
           "query": [
             "requestType"
           ],
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "actionOnScreenTimeData": {
           "method": "PUT",
@@ -3975,7 +4150,8 @@
           "query": [
             "requestType"
           ],
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "deleteScreenTimeData": {
           "method": "DELETE",
@@ -3995,7 +4171,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"reason\":\"More homework time\",\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"reason\":\"More homework time\",\"timeZone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "getCategories": {
           "method": "GET",
@@ -4029,7 +4206,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "takes_body": true
         },
         "updateAppLimit": {
           "method": "PUT",
@@ -4041,7 +4219,8 @@
           "query": [
             "appLimitsId"
           ],
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "takes_body": true
         },
         "deleteAppLimit": {
           "method": "DELETE",
@@ -4074,7 +4253,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         },
         "updateScheduledAlert": {
           "method": "PUT",
@@ -4083,7 +4263,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         },
         "deleteScheduledAlert": {
           "method": "DELETE",
@@ -4092,7 +4273,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "takes_body": true
         }
       }
     },
@@ -4170,7 +4352,8 @@
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-profileid"
           ],
-          "body_example": "{\"taskId\":\"task-123\",\"state\":\"COMPLETED\"}"
+          "body_example": "{\"taskId\":\"task-123\",\"state\":\"COMPLETED\"}",
+          "takes_body": true
         }
       }
     },
@@ -4185,7 +4368,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"onboardedFlag\":true}"
+          "body_example": "{\"onboardedFlag\":true}",
+          "takes_body": true
         },
         "postWmsOnboardProfile": {
           "method": "POST",
@@ -4194,7 +4378,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"enable\":true,\"pin\":\"1234\"}"
+          "body_example": "{\"enable\":true,\"pin\":\"1234\"}",
+          "takes_body": true
         },
         "updateSafeWalkProfile": {
           "method": "PATCH",
@@ -4203,7 +4388,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"onboardedFlag\":true}"
+          "body_example": "{\"onboardedFlag\":true}",
+          "takes_body": true
         },
         "escalateToSoSRequest": {
           "method": "PATCH",
@@ -4212,7 +4398,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "extendSoSSession": {
           "method": "PATCH",
@@ -4221,7 +4408,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"sessionId\":\"sess-abc123\"}"
+          "body_example": "{\"sessionId\":\"sess-abc123\"}",
+          "takes_body": true
         },
         "getWatchMeSoSSessionInfo": {
           "method": "GET",
@@ -4238,7 +4426,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "submitWatchMeRequest": {
           "method": "POST",
@@ -4247,7 +4436,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"requestType\":\"SOS\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"mdn\":\"5551234567\",\"profileName\":\"Mom\"}],\"senderProfileName\":\"Alex\",\"lat\":40.7128,\"lon\":-74.006,\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"requestType\":\"SOS\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"mdn\":\"5551234567\",\"profileName\":\"Mom\"}],\"senderProfileName\":\"Alex\",\"lat\":40.7128,\"lon\":-74.006,\"timezone\":\"America/New_York\"}",
+          "takes_body": true
         },
         "watchMeSosAlerts": {
           "method": "GET",
@@ -4300,7 +4490,8 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -4330,7 +4521,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"accessibilityRemoved\":true,\"stopCode\":0}}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"accessibilityRemoved\":true,\"stopCode\":0}}",
+          "takes_body": true
         },
         "postAdminStatus": {
           "method": "POST",
@@ -4338,7 +4530,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postBannerStatus": {
           "method": "POST",
@@ -4346,7 +4539,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postCallOnlyModeStatus": {
           "method": "POST",
@@ -4354,7 +4548,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postHibernationStatus": {
           "method": "POST",
@@ -4362,7 +4557,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postParentalControlsRemoved": {
           "method": "POST",
@@ -4378,7 +4574,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -4386,7 +4583,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postBatteryUsage": {
           "method": "POST",
@@ -4394,7 +4592,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postBluetoothScan": {
           "method": "POST",
@@ -4402,7 +4601,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postNotificationStatus": {
           "method": "POST",
@@ -4410,7 +4610,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postPhysicalActivityStatus": {
           "method": "POST",
@@ -4418,7 +4619,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "postPowerSaving": {
           "method": "POST",
@@ -4426,7 +4628,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateScreenTimeTamperStatus": {
           "method": "POST",
@@ -4434,7 +4637,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         },
         "updateVpnTamperStatus": {
           "method": "POST",
@@ -4442,7 +4646,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "takes_body": true
         }
       }
     },
@@ -4458,7 +4663,8 @@
             "x-fp-identifier-target-serviceid",
             "x-transaction-id"
           ],
-          "body_example": "{\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}"
+          "body_example": "{\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}",
+          "takes_body": true
         },
         "deleteTodo": {
           "method": "DELETE",
@@ -4488,7 +4694,8 @@
             "x-fp-identifier-target-serviceid",
             "x-transaction-id"
           ],
-          "body_example": "{\"todoId\":123456,\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}"
+          "body_example": "{\"todoId\":123456,\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}",
+          "takes_body": true
         }
       }
     },
@@ -4499,7 +4706,8 @@
         "updateUserSettings": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/setting",
-          "confirmed": false
+          "confirmed": false,
+          "takes_body": true
         }
       }
     },
@@ -4514,7 +4722,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}"
+          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
+          "takes_body": true
         },
         "initCall": {
           "method": "POST",
@@ -4531,7 +4740,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}"
+          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
+          "takes_body": true
         }
       }
     },
@@ -4564,7 +4774,8 @@
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
           ],
-          "body_example": "{\"grantType\":\"authorization_code\",\"code\":\"123456\",\"clientId\":\"abc123\",\"pairingDeviceType\":\"watch\"}"
+          "body_example": "{\"grantType\":\"authorization_code\",\"code\":\"123456\",\"clientId\":\"abc123\",\"pairingDeviceType\":\"watch\"}",
+          "takes_body": true
         },
         "notifyGuardianFromDependantWatch": {
           "method": "POST",
@@ -4574,7 +4785,8 @@
             "x-fp-identifier-target-serviceid",
             "x-transaction-id"
           ],
-          "body_example": "{\"notificationType\":\"LOW_BATTERY\",\"profileName\":\"Alex\"}"
+          "body_example": "{\"notificationType\":\"LOW_BATTERY\",\"profileName\":\"Alex\"}",
+          "takes_body": true
         },
         "onboardWearableWatch": {
           "method": "POST",
@@ -4583,7 +4795,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
-          ]
+          ],
+          "takes_body": true
         },
         "resendInvite": {
           "method": "PATCH",
@@ -4592,7 +4805,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}"
+          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}",
+          "takes_body": true
         },
         "watchAuth": {
           "method": "POST",
@@ -4601,7 +4815,8 @@
           "headers": [
             "x-trace-transaction-id"
           ],
-          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"pairingDeviceAppUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}"
+          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"pairingDeviceAppUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}",
+          "takes_body": true
         }
       }
     },
@@ -4726,7 +4941,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}"
+          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}",
+          "takes_body": true
         },
         "postWebsites": {
           "method": "POST",
@@ -4735,7 +4951,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}"
+          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}",
+          "takes_body": true
         }
       }
     },

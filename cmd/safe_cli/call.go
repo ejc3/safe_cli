@@ -147,10 +147,14 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	if err != nil {
 		return err
 	}
-	// Guide the caller when an op is known (from the decompiled model) to require a body
-	// but none was supplied — show the example payload rather than sending an empty request.
-	if o.BodyExample != "" && len(body) == 0 {
-		return fmt.Errorf("%s %s needs a JSON body — pass --data. Example: %s", a.entity, a.op, o.BodyExample)
+	// Guide the caller when an op is known (from the decompiled interface) to require a body
+	// but none was supplied — show the example payload when we have one, rather than sending
+	// an empty request.
+	if o.TakesBody && len(body) == 0 {
+		if o.BodyExample != "" {
+			return fmt.Errorf("%s %s needs a JSON body — pass --data. Example: %s", a.entity, a.op, o.BodyExample)
+		}
+		return fmt.Errorf("%s %s needs a JSON body — pass --data (payload shape not yet extracted for this op)", a.entity, a.op)
 	}
 	headers := make(map[string]string)
 	var missingSvc []string

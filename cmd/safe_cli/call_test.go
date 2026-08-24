@@ -399,3 +399,27 @@ func TestRunCallRequiresBodyWithExample(t *testing.T) {
 		t.Error("with --data the request should have been sent")
 	}
 }
+
+// A body-op the decompiled interface declares but for which no example was extracted is
+// STILL guarded (TakesBody), rather than silently sending an empty request.
+func TestRunCallGuardsExamplelessBodyOp(t *testing.T) {
+	d, _ := descriptor.Default()
+	// find any op with TakesBody && no BodyExample
+	var en, opn string
+	for name, e := range d.Entities {
+		for k, op := range e.Operations {
+			if op.TakesBody && op.BodyExample == "" {
+				en, opn = name, k
+			}
+		}
+	}
+	if en == "" {
+		t.Skip("no example-less body op in the descriptor")
+	}
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	err := runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: en, op: opn, idHeaders: idh, confirm: true}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "needs a JSON body") {
+		t.Errorf("%s.%s: want a body-required guard, got %v", en, opn, err)
+	}
+}
