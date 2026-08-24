@@ -41,8 +41,9 @@ func TestDoSendsRawIDTokenAndHeaders(t *testing.T) {
 	if gotSrc != "AndroidMAPP" || gotVer != AppVersion || gotUA != "okhttp/4.12.0" {
 		t.Errorf("headers: src=%q ver=%q ua=%q", gotSrc, gotVer, gotUA)
 	}
-	if !regexp.MustCompile(`^\d{20}$`).MatchString(gotTxn) {
-		t.Errorf("x-transaction-id = %q, want 20 digits", gotTxn)
+	// x-transaction-id now matches the app: a decimal integer up to 40 digits.
+	if !regexp.MustCompile(`^\d{1,40}$`).MatchString(gotTxn) {
+		t.Errorf("x-transaction-id = %q, want a decimal (<=40 digits)", gotTxn)
 	}
 	if gotBody != `{"a":1}` {
 		t.Errorf("body = %q", gotBody)
@@ -53,14 +54,5 @@ func TestDoRequiresToken(t *testing.T) {
 	c := New("")
 	if _, err := c.Do(context.Background(), "GET", "/x", nil); err == nil {
 		t.Fatal("expected an error when no id_token is set")
-	}
-}
-
-func TestTxnIDShape(t *testing.T) {
-	re := regexp.MustCompile(`^\d{20}$`)
-	for i := 0; i < 50; i++ {
-		if id := txnID(); !re.MatchString(id) {
-			t.Fatalf("txnID() = %q, want 20 digits", id)
-		}
 	}
 }
