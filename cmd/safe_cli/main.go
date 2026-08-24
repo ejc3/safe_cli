@@ -39,6 +39,7 @@ type CLI struct {
 	Describe describeCmd `cmd:"" help:"Show the operations and actions for one entity."`
 	Auth     authCmd     `cmd:"" help:"Manage authentication (import/status/logout)."`
 	Raw      rawCmd      `cmd:"" help:"Call any backend path with the stored id_token."`
+	Call     callCmd     `cmd:"" help:"Invoke a descriptor operation/action on an entity (verb entity id)."`
 }
 
 type versionCmd struct{}
