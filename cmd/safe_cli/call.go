@@ -168,6 +168,9 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	if strings.Contains(o.Path, "@") {
 		return fmt.Errorf("%s %s has a runtime-resolved (@Url) path the CLI cannot construct: %q", a.entity, a.op, o.Path)
 	}
+	if o.Multipart {
+		return fmt.Errorf("%s %s is a multipart/form-data upload the CLI cannot construct (it sends application/json)", a.entity, a.op)
+	}
 	ent, _ := d.Entity(a.entity)
 	path, err := fillPath(o.Path, ent.IDField, a.id, a.pathParams)
 	if err != nil {
@@ -177,6 +180,12 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	body, err := buildBody(o.Body, a.data)
 	if err != nil {
 		return err
+	}
+	if o.TakesBody && len(body) == 0 && !a.dryRun {
+		if o.BodyExample != "" {
+			return fmt.Errorf("%s %s needs a JSON body — pass --data. Example: %s", a.entity, a.op, o.BodyExample)
+		}
+		return fmt.Errorf("%s %s needs a JSON body — pass --data (payload shape not yet extracted for this op)", a.entity, a.op)
 	}
 	headers := make(map[string]string)
 	var missingSvc []string

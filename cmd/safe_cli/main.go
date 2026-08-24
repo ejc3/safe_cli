@@ -102,7 +102,14 @@ func (c *describeCmd) Run(rc *runContext) error {
 		if op.Destructive {
 			name = "⚠ " + name // catastrophic: requires --confirm
 		}
-		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), confirmed(op.Confirmed)}
+		body := "-"
+		if op.TakesBody {
+			body = "yes"
+		}
+		if op.Multipart {
+			body = "multipart"
+		}
+		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), body, confirmed(op.Confirmed)}
 	}
 	for _, k := range e.OperationNames() {
 		rows = append(rows, row(k, e.Operations[k]))
@@ -110,7 +117,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 	for _, k := range e.ActionNames() {
 		rows = append(rows, row(k+" (action)", e.Actions[k]))
 	}
-	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "QUERY", "HEADERS", "CONFIRMED"}, rows)
+	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "QUERY", "HEADERS", "BODY", "CONFIRMED"}, rows)
 }
 
 // joinOr renders a descriptor string list for the table, or "-" when empty.
