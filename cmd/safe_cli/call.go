@@ -30,6 +30,7 @@ type callCmd struct {
 	Path      []string `name:"path" short:"p" help:"Path placeholder as name=value (repeatable), for paths with more than one {name} segment."`
 	Header    []string `name:"header" short:"H" help:"Extra request header as name=value (repeatable), for headers a op declares that no flag covers (e.g. timezone, schedule-type, If-None-Match)."`
 	Confirm   bool     `name:"confirm" help:"Required to run a catastrophic, effectively irreversible operation (deleting a user/device/subscription, wiping messages)."`
+	DryRun    bool     `name:"dry-run" help:"Print the exact HTTP request (method, URL, headers, body) that would be sent, without sending it — for diffing against the app's traffic."`
 }
 
 func (c *callCmd) Run(rc *runContext) error {
@@ -66,8 +67,37 @@ func (c *callCmd) Run(rc *runContext) error {
 		pathParams:  pathParams,
 		userHeaders: userHeaders,
 		confirm:     c.Confirm,
+		dryRun:      c.DryRun,
 	}
-	return runCall(context.Background(), authedRequest(rc, st, ts), rc.D, args, rc.Out, rc.G.JSON)
+	do := authedRequest(rc, st, ts)
+	if c.DryRun {
+		do = dumpRequest(rc, idt)
+	}
+	return runCall(context.Background(), do, rc.D, args, rc.Out, rc.G.JSON)
+}
+
+// dumpRequest is a doFunc that builds the exact request (via client.DumpDoH) and returns
+// its wire form as the response body instead of sending it — the engine behind --dry-run.
+// Under --json the dump is wrapped as {"request": "..."} to keep stdout valid JSON.
+func dumpRequest(rc *runContext, idToken string) doFunc {
+	return func(ctx context.Context, method, path string, body []byte, headers map[string]string) (*client.Response, error) {
+		cl := client.New(idToken)
+		if rc.D.BaseURL != "" {
+			cl.BaseURL = rc.D.BaseURL
+		}
+		dump, err := cl.DumpDoH(ctx, method, path, body, headers)
+		if err != nil {
+			return nil, err
+		}
+		if rc.G.JSON {
+			b, jerr := json.Marshal(map[string]string{"request": string(dump)})
+			if jerr != nil {
+				return nil, jerr
+			}
+			return &client.Response{Status: 200, Body: b}, nil
+		}
+		return &client.Response{Status: 200, Body: dump}, nil
+	}
 }
 
 // callArgs bundles everything a single call needs beyond the descriptor: which op, the
@@ -79,6 +109,7 @@ type callArgs struct {
 	pathParams           map[string]string // {name} path placeholder values
 	userHeaders          map[string]string // arbitrary extra request headers
 	confirm              bool              // set by --confirm; required for destructive ops
+	dryRun               bool              // set by --dry-run; print the request, don't send
 }
 
 // parseQuery turns repeated name=value flags into url.Values, preserving duplicate keys
@@ -131,7 +162,7 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	if err != nil {
 		return err
 	}
-	if o.Destructive && !a.confirm {
+	if o.Destructive && !a.confirm && !a.dryRun {
 		return fmt.Errorf("%s %s is catastrophic and effectively irreversible (%s) — re-run with --confirm to proceed", a.entity, a.op, o.Method)
 	}
 	if strings.Contains(o.Path, "@") {
@@ -166,7 +197,7 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			missingSvc = append(missingSvc, h)
 		}
 	}
-	if len(missingSvc) > 0 {
+	if len(missingSvc) > 0 && !a.dryRun {
 		return fmt.Errorf("%s %s needs %s — pass --service-id with the TARGET (child's) service id (parental-control acts on a child, not the parent's own service)", a.entity, a.op, strings.Join(missingSvc, ", "))
 	}
 	// Any extra --header values not already placed (e.g. a header the op doesn't declare)

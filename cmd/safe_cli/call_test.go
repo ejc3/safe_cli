@@ -371,3 +371,36 @@ func TestRunCallGuardsDestructive(t *testing.T) {
 		t.Error("with --confirm the request should have been sent")
 	}
 }
+
+// --dry-run prints the exact request without sending it, bypassing the guards.
+func TestRunCallDryRun(t *testing.T) {
+	d, _ := descriptor.Default()
+	var out strings.Builder
+	do := dumpRequest(&runContext{D: d, G: &Globals{}}, "THE.ID.TOKEN")
+	if err := runCall(context.Background(), do, d,
+		callArgs{entity: "account", op: "deleteProfile", dryRun: true}, &out, false); err != nil {
+		t.Fatalf("dry-run: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "DELETE ") || !strings.Contains(s, "x-source-app: AndroidMAPP") || !strings.Contains(s, "Authorization: <id_token redacted>") || strings.Contains(s, "THE.ID.TOKEN") {
+		t.Errorf("dry-run dump wrong:\n%s", s)
+	}
+}
+
+// --dry-run under --json emits valid JSON (the dump wrapped in a field).
+func TestRunCallDryRunJSON(t *testing.T) {
+	d, _ := descriptor.Default()
+	var out strings.Builder
+	do := dumpRequest(&runContext{D: d, G: &Globals{JSON: true}}, "TOK")
+	if err := runCall(context.Background(), do, d,
+		callArgs{entity: "account", op: "getAccountDetails", dryRun: true}, &out, true); err != nil {
+		t.Fatalf("dry-run --json: %v", err)
+	}
+	var m map[string]string
+	if err := json.Unmarshal([]byte(out.String()), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(m["request"], "GET ") {
+		t.Errorf("request field missing dump: %q", m["request"])
+	}
+}

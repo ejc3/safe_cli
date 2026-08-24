@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"time"
 
 	"github.com/ejc3/safe_cli/internal/signing"
@@ -137,6 +138,33 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 		setHeader(req.Header, k, v)
 	}
 	return c.send(req)
+}
+
+// DumpDoH builds the request DoH would send — same app headers, Authorization, per-op
+// headers, and exact wire casing — and returns its HTTP/1.1 wire form via
+// httputil.DumpRequestOut WITHOUT sending it. `call --dry-run` uses this so the exact
+// request can be diffed byte-for-byte against the app's captured traffic.
+func (c *Client) DumpDoH(ctx context.Context, method, path string, body []byte, headers map[string]string) ([]byte, error) {
+	req, err := c.newAppRequest(ctx, method, path, body)
+	if err != nil {
+		return nil, err
+	}
+	if c.IDToken != "" {
+		setRaw(req.Header, "Authorization", c.IDToken)
+	}
+	for k, v := range headers {
+		setHeader(req.Header, k, v)
+	}
+	dump, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		return nil, err
+	}
+	// Redact the bearer id_token from the printed dump — the diff cares about the header's
+	// presence and casing, not the secret value (which differs per session anyway).
+	if c.IDToken != "" {
+		dump = bytes.Replace(dump, []byte(c.IDToken), []byte("<id_token redacted>"), 1)
+	}
+	return dump, nil
 }
 
 // stdHeaders are canonicalized rather than sent with raw casing: the standard headers
