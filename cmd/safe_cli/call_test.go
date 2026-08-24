@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -120,7 +122,61 @@ func TestRunCallErrorStatus(t *testing.T) {
 func TestRunCallRejectsBadData(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T")
-	if err := runCall(context.Background(), cl, d, "web_filter", "block_site", "P1", "{not json", &strings.Builder{}, true); err == nil {
+	// device pause is a non-parental-control action; bad --data must still be rejected.
+	if err := runCall(context.Background(), cl, d, "device", "pause", "D1", "{not json", &strings.Builder{}, true); err == nil {
 		t.Error("want error for invalid --data JSON")
+	}
+}
+
+// Parental-control operations must be rejected up front (they need SigV4), not sent
+// with the id_token to fail as a 403.
+func TestRunCallRejectsParentalControl(t *testing.T) {
+	d, _ := descriptor.Default()
+	cl := client.New("T") // no server: must fail before any request
+	err := runCall(context.Background(), cl, d, "web_filter", "block_site", "P1", `{}`, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "SigV4") {
+		t.Errorf("want a SigV4 rejection for a parental-control op, got %v", err)
+	}
+}
+
+// A named action must send its descriptor default body; pause and resume must differ.
+func TestRunCallAppliesDefaultBody(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+
+	if err := runCall(context.Background(), cl, d, "device", "pause", "D1", "", &strings.Builder{}, true); err != nil {
+		t.Fatalf("pause: %v", err)
+	}
+	if gotBody != `{"paused":true}` {
+		t.Errorf("pause body = %q, want {\"paused\":true}", gotBody)
+	}
+	if err := runCall(context.Background(), cl, d, "device", "resume", "D1", "", &strings.Builder{}, true); err != nil {
+		t.Fatalf("resume: %v", err)
+	}
+	if gotBody != `{"paused":false}` {
+		t.Errorf("resume body = %q, want {\"paused\":false}", gotBody)
+	}
+}
+
+func TestBuildBodyMergesUserOverDefault(t *testing.T) {
+	b, err := buildBody(map[string]any{"paused": true}, `{"foo":"bar","paused":false}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["foo"] != "bar" || m["paused"] != false { // user overrides the default
+		t.Errorf("merged = %v, want foo=bar paused=false", m)
 	}
 }

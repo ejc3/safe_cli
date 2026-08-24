@@ -47,23 +47,55 @@ func runCall(ctx context.Context, cl *client.Client, d *descriptor.Descriptor, e
 	if err != nil {
 		return err
 	}
+	// Parental-control operations require AWS SigV4 (Cognito temp creds), not the
+	// id_token (docs/PROCESS.md §10). Reject them explicitly until that client exists,
+	// rather than sending an id_token that the backend answers with 403.
+	if strings.Contains(o.Path, "/parental-control/") {
+		return fmt.Errorf("%s %s targets a parental-control endpoint, which needs AWS SigV4 (Cognito) — not yet implemented; see docs/PROCESS.md §10", entity, op)
+	}
 	ent, _ := d.Entity(entity)
 	path, err := fillPath(o.Path, ent.IDField, id)
 	if err != nil {
 		return err
 	}
-	var body []byte
-	if data != "" {
-		if !json.Valid([]byte(data)) {
-			return fmt.Errorf("--data is not valid JSON")
-		}
-		body = []byte(data)
+	body, err := buildBody(o.Body, data)
+	if err != nil {
+		return err
 	}
 	resp, err := cl.Do(ctx, o.Method, path, body)
 	if err != nil {
 		return err
 	}
 	return writeAPIResponse(out, asJSON, resp)
+}
+
+// buildBody starts from the operation's descriptor default body (e.g. {"paused":true}
+// for `device pause`) and merges any user --data over it (user keys win). With no
+// defaults, --data is used raw; with neither, the body is nil.
+func buildBody(defaults map[string]any, data string) ([]byte, error) {
+	if len(defaults) == 0 {
+		if data == "" {
+			return nil, nil
+		}
+		if !json.Valid([]byte(data)) {
+			return nil, fmt.Errorf("--data is not valid JSON")
+		}
+		return []byte(data), nil
+	}
+	merged := make(map[string]any, len(defaults))
+	for k, v := range defaults {
+		merged[k] = v
+	}
+	if data != "" {
+		var user map[string]any
+		if err := json.Unmarshal([]byte(data), &user); err != nil {
+			return nil, fmt.Errorf("--data must be a JSON object to merge with the operation's default body: %w", err)
+		}
+		for k, v := range user {
+			merged[k] = v
+		}
+	}
+	return json.Marshal(merged)
 }
 
 // resolveOp finds an operation or action named op on entity.
