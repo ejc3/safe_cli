@@ -10,13 +10,12 @@ package client
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
-	"strings"
 	"time"
+
+	"github.com/ejc3/safe_cli/internal/signing"
 )
 
 const (
@@ -52,21 +51,6 @@ type Response struct {
 	Body   []byte
 }
 
-// txnID returns a 20-digit numeric transaction id like the app sends.
-func txnID() string {
-	var sb strings.Builder
-	for i := 0; i < 20; i++ {
-		n, err := rand.Int(rand.Reader, big.NewInt(10))
-		if err != nil {
-			// crypto/rand should not fail; degrade to a fixed digit rather than panic.
-			sb.WriteByte('0')
-			continue
-		}
-		sb.WriteByte(byte('0' + n.Int64()))
-	}
-	return sb.String()
-}
-
 // Do performs a request. path is joined onto BaseURL; body may be nil.
 func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Response, error) {
 	if c.IDToken == "" {
@@ -86,7 +70,11 @@ func (c *Client) Do(ctx context.Context, method, path string, body []byte) (*Res
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("x-source-app", sourceApp)
 	req.Header.Set("x-mobile-app-version", c.AppVersion)
-	req.Header.Set("x-transaction-id", txnID())
+	txn, err := signing.TransactionID()
+	if err != nil {
+		return nil, fmt.Errorf("transaction id: %w", err)
+	}
+	req.Header.Set("x-transaction-id", txn)
 	req.Header.Set("user-agent", userAgent)
 
 	resp, err := c.HTTP.Do(req)
