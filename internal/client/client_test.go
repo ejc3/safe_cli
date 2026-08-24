@@ -113,3 +113,58 @@ func TestSignedDoRequiresKeyAndUUID(t *testing.T) {
 		t.Error("want error when app uuid is empty")
 	}
 }
+
+// newAppRequest must set the app's exact wire headers: lowercase x-* names (NOT Go's
+// canonicalized X-Source-App), and the app's values and User-Agent. This is what lets
+// the server see no delta between us and the real app.
+func TestNewAppRequestMatchesAppHeaders(t *testing.T) {
+	c := New("tok")
+	req, err := c.newAppRequest(context.Background(), "GET", "/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Exact lowercase names present (direct map access does not canonicalize).
+	want := map[string]string{
+		"x-source-app":         "AndroidMAPP",
+		"x-mobile-app-version": "8.101.30",
+		"User-Agent":           "okhttp/4.12.0",
+		"Accept":               "*/*",
+		"Content-Type":         "application/json",
+	}
+	for k, v := range want {
+		got := req.Header[k]
+		if len(got) != 1 || got[0] != v {
+			t.Errorf("header %q = %v, want [%q]", k, got, v)
+		}
+	}
+	if req.Header["x-transaction-id"] == nil { //nolint:staticcheck // SA1008: intentional non-canonical key — verifies the app's lowercase wire header
+		t.Error("missing x-transaction-id")
+	}
+	// The canonicalized spellings must NOT also be present (that would double the header
+	// and reveal us as a non-app client).
+	for _, canon := range []string{"X-Source-App", "X-Mobile-App-Version", "X-Transaction-Id"} {
+		if req.Header[canon] != nil {
+			t.Errorf("header was canonicalized to %q — differs from the app's lowercase wire name", canon)
+		}
+	}
+}
+
+// DoH keeps the caller's exact lowercase per-op header names (x-fp-identifier-*) rather
+// than canonicalizing them.
+func TestDoHKeepsLowercasePerOpHeaders(t *testing.T) {
+	c := New("tok")
+	req, err := c.newAppRequest(context.Background(), "GET", "/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	setRaw(req.Header, "Authorization", c.IDToken)
+	for k, v := range map[string]string{"x-fp-identifier-target-serviceid": "svc"} {
+		setRaw(req.Header, k, v)
+	}
+	if req.Header["x-fp-identifier-target-serviceid"] == nil || req.Header["X-Fp-Identifier-Target-Serviceid"] != nil { //nolint:staticcheck // SA1008: intentional — asserts lowercase kept, canonical form absent
+		t.Errorf("per-op header casing not preserved: %v", req.Header)
+	}
+	if got := req.Header["Authorization"]; len(got) != 1 || got[0] != "tok" {
+		t.Errorf("Authorization = %v", got)
+	}
+}

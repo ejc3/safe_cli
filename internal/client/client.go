@@ -92,13 +92,25 @@ func (c *Client) newAppRequest(ctx context.Context, method, path string, body []
 	if err != nil {
 		return nil, fmt.Errorf("transaction id: %w", err)
 	}
-	req.Header.Set("accept", "*/*")
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-source-app", sourceApp)
-	req.Header.Set("x-mobile-app-version", c.AppVersion)
-	req.Header.Set("x-transaction-id", txn)
-	req.Header.Set("user-agent", userAgent)
+	// Match the app's exact wire headers (BaseInterceptor + okhttp). Names are set with
+	// their exact spelling — the x-* headers are lowercase, which Go's Header.Set would
+	// canonicalize to X-Source-App etc. (a delta from the app on HTTP/1.1), so they go in
+	// via setRaw.
+	setRaw(req.Header, "Accept", "*/*")
+	setRaw(req.Header, "Content-Type", "application/json")
+	setRaw(req.Header, "User-Agent", userAgent)
+	setRaw(req.Header, "x-source-app", sourceApp)
+	setRaw(req.Header, "x-mobile-app-version", c.AppVersion)
+	setRaw(req.Header, "x-transaction-id", txn)
 	return req, nil
+}
+
+// setRaw sets a header under its exact (possibly non-canonical) key, matching the app's
+// wire casing. net/http's Header.Set canonicalizes ("x-source-app" -> "X-Source-App"),
+// which differs from the app on HTTP/1.1; a direct map write preserves the spelling (and
+// HTTP/2 lowercases every name anyway, exactly as the app does over h2).
+func setRaw(h http.Header, key, value string) {
+	h[key] = []string{value}
 }
 
 // Do performs an id_token-authenticated request. path is joined onto BaseURL; body
@@ -118,9 +130,11 @@ func (c *Client) DoH(ctx context.Context, method, path string, body []byte, head
 		return nil, err
 	}
 	// The app sends the raw id_token as Authorization — no "Bearer " prefix.
-	req.Header.Set("Authorization", c.IDToken)
+	setRaw(req.Header, "Authorization", c.IDToken)
+	// Per-op headers (x-fp-identifier-*, x-trace-transaction-id, …) keep their exact
+	// lowercase spelling from the caller.
 	for k, v := range headers {
-		req.Header.Set(k, v)
+		setRaw(req.Header, k, v)
 	}
 	return c.send(req)
 }
@@ -151,11 +165,11 @@ func (c *Client) SignedDo(ctx context.Context, method, path string, body []byte,
 		return nil, err
 	}
 	for k, v := range hdrs {
-		req.Header.Set(k, v)
+		setRaw(req.Header, k, v)
 	}
-	req.Header.Set("accept", "*/*")
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("user-agent", userAgent)
+	setRaw(req.Header, "Accept", "*/*")
+	setRaw(req.Header, "Content-Type", "application/json")
+	setRaw(req.Header, "User-Agent", userAgent)
 
 	return c.send(req)
 }
@@ -206,7 +220,7 @@ func (c *Client) postTokenRequest(ctx context.Context, path string, pr parentTok
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("x-trace-transaction-id", trace)
+	setRaw(req.Header, "x-trace-transaction-id", trace)
 	resp, err := c.send(req)
 	if err != nil {
 		return nil, err
