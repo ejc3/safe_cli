@@ -86,7 +86,7 @@ func registerScheme(w io.Writer) (appPath, redirectFile string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	if err := os.MkdirAll(filepath.Dir(redirectFile), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(redirectFile), 0o750); err != nil {
 		return "", "", err
 	}
 	home, err := os.UserHomeDir()
@@ -94,7 +94,7 @@ func registerScheme(w io.Writer) (appPath, redirectFile string, err error) {
 		return "", "", err
 	}
 	appsDir := filepath.Join(home, "Applications")
-	if err := os.MkdirAll(appsDir, 0o755); err != nil {
+	if err := os.MkdirAll(appsDir, 0o750); err != nil {
 		return "", "", err
 	}
 	appPath = filepath.Join(appsDir, handlerAppName)
@@ -134,9 +134,9 @@ func registerScheme(w io.Writer) (appPath, redirectFile string, err error) {
 // runTool runs a fixed system tool and folds its output into any error.
 func runTool(name string, args ...string) error {
 	// #nosec G204 -- name is a fixed constant path; args are literal tool flags.
-	out, err := exec.Command(name, args...).CombinedOutput()
+	out, err := exec.CommandContext(context.Background(), name, args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s: %v: %s", filepath.Base(name), err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("%s: %w: %s", filepath.Base(name), err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

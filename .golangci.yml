@@ -29,6 +29,8 @@ linters:
         - G115 # int overflow conversions: the dex parser bounds-checks before every narrowing
         - G304 # file inclusion via variable: the CLI intentionally reads operator-given APK/key paths
         - G703 # path traversal (taint): same — operator-supplied APK/key paths are intended input
+        - G117 # marshaled "token"/"refreshToken" fields: this is an auth client — sending the
+               # OAuth tokens in the request body IS the intended behavior, not a leak
 
 issues:
   max-issues-per-linter: 0

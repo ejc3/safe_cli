@@ -11,7 +11,7 @@ import (
 
 // The refresh hits the same token endpoint as the exchange (confirmed live), not the
 // old /v6/deviceauth/refreshtoken.
-const userAuthTokenPath = "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token"
+const userAuthPath = "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token"
 
 func TestRefresh(t *testing.T) {
 	var gotBody map[string]string
@@ -33,14 +33,14 @@ func TestRefresh(t *testing.T) {
 	c := New("")
 	c.BaseURL = srv.URL
 	ts, err := c.Refresh(context.Background(), RefreshRequest{
-		Path: userAuthTokenPath, RefreshToken: "RTon", ClientID: "CID", AppUUID: daAppUUID,
+		Path: userAuthPath, RefreshToken: "RTon", ClientID: "CID", AppUUID: daAppUUID,
 		RedirectURI: "vsfapp://x/signin", FriscoType: "online",
 	})
 	if err != nil {
 		t.Fatalf("Refresh: %v", err)
 	}
-	if gotPath != userAuthTokenPath {
-		t.Errorf("path = %q, want %q", gotPath, userAuthTokenPath)
+	if gotPath != userAuthPath {
+		t.Errorf("path = %q, want %q", gotPath, userAuthPath)
 	}
 	// The refresh is UNSIGNED (it uses the token endpoint, not the signed device-auth
 	// route) — the old signed contract must not come back.
@@ -72,7 +72,7 @@ func TestRefresh(t *testing.T) {
 
 func TestRefreshRequiresRefreshToken(t *testing.T) {
 	c := New("")
-	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthTokenPath, ClientID: "C", AppUUID: "U"}); err == nil {
+	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthPath, ClientID: "C", AppUUID: "U"}); err == nil {
 		t.Error("want error without a refresh_token")
 	}
 }
@@ -85,7 +85,7 @@ func TestRefreshNoIDToken(t *testing.T) {
 	defer srv.Close()
 	c := New("")
 	c.BaseURL = srv.URL
-	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthTokenPath, RefreshToken: "RT", ClientID: "C", AppUUID: "U"}); err == nil {
+	if _, err := c.Refresh(context.Background(), RefreshRequest{Path: userAuthPath, RefreshToken: "RT", ClientID: "C", AppUUID: "U"}); err == nil {
 		t.Error("want error when the refresh response carries no id_token")
 	}
 }
