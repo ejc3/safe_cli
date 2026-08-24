@@ -33,7 +33,11 @@ func TestAuthEndpointsAreDiscovered(t *testing.T) {
 		t.Fatalf("catalog looks truncated: only %d entries", len(discovered))
 	}
 	for name, p := range d.Auth.Endpoints {
-		key := strings.TrimPrefix(p, "/")
+		// The device-auth service is reached at a runtime "/auth" prefix that the static
+		// string-scan did not capture (docs/PROCESS.md §9: "/auth/frisco/… for the OTP
+		// steps, /frisco/… for the OAuth authorize"). Strip it before matching the
+		// catalog's bare route, so the descriptor can carry the runtime-correct path.
+		key := strings.TrimPrefix(strings.TrimPrefix(p, "/"), "auth/")
 		if !discovered[key] {
 			t.Errorf("auth endpoint %q = %q is not a route in the discovered catalog", name, p)
 		}
