@@ -18,8 +18,12 @@ func TestDefaultLoads(t *testing.T) {
 	if got := len(d.Entities); got < 8 {
 		t.Errorf("expected the data model to cover >=8 entities, got %d", got)
 	}
-	if _, ok := d.Entity("web_filter"); !ok {
-		t.Error("expected a web_filter entity")
+	if _, ok := d.Entity("content_filter"); !ok {
+		t.Error("expected a content_filter entity")
+	}
+	// The harvested surface is large; make sure it stayed comprehensive.
+	if got := len(d.Entities); got < 40 {
+		t.Errorf("expected the harvested data model to cover >=40 entities, got %d", got)
 	}
 }
 

@@ -35,113 +35,4437 @@
     "x-source-app": "AndroidMAPP",
     "x-mobile-app-version": "8.101.30"
   },
+  "identity_headers": {
+    "service_id": "x-fp-identifier-target-serviceid",
+    "profile_id": "x-fp-identifier-profileid",
+    "app_uuid": "x-fp-identifier-app-uuid",
+    "mdn": "x-fp-identifier-mdn",
+    "device_id": "x-fp-identifier-deviceid",
+    "_note": "parental-control ops are id_token-authed (Authorization: <id_token>) plus these headers; NOT SigV4."
+  },
   "entities": {
+    "accessibility_pin": {
+      "summary": "Accessibility pin operations.",
+      "id_field": "",
+      "operations": {
+        "retrievePin": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/accessibility/pin/retrieve",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "newPin"
+          ]
+        },
+        "sendPin": {
+          "method": "POST",
+          "path": "/frisco/commsplatform/v5/sms-push/notification",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "validatePin": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/accessibility/pin/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "pin"
+          ]
+        },
+        "getAgeCaptureNotification": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/ageCaptureNotif",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postAgeCaptureNotification": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/ageCaptureNotif",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putAgeCaptureNotification": {
+          "method": "PUT",
+          "path": "/frisco/parental-control/v5/ageCaptureNotif",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDeviceShadowDetails": {
+          "method": "GET",
+          "path": "/vsf/tamper/v6/view/getDeviceShadowDetails",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "deviceID",
+            "featureIds",
+            "retrieveLevel"
+          ]
+        }
+      }
+    },
     "account": {
-      "summary": "The Verizon Family account (subscriber) and its lines.",
-      "id_field": "accountId",
+      "summary": "The Verizon Family account, lines and members.",
+      "id_field": "planType",
       "operations": {
-        "info":  { "method": "GET", "path": "/vsf/account-management/v1/accounts", "confirmed": false },
-        "lines": { "method": "GET", "path": "/vsf/account-management/v1/accounts/lines", "confirmed": false }
+        "addDevice": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addOnboardingDevice": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/onboarding/device",
+          "confirmed": true
+        },
+        "attestDob": {
+          "method": "PATCH",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/age/attestation",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "choosePlan": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/subscriptions/{planType}",
+          "confirmed": true,
+          "placeholders": [
+            "planType"
+          ]
+        },
+        "deleteDevice": {
+          "method": "DELETE",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteMyself": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/accounts/userprofiles/services",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteProfile": {
+          "method": "DELETE",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAccountDetails": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v8/accounts/userprofiles",
+          "confirmed": true
+        },
+        "getProfileImage": {
+          "method": "GET",
+          "path": "/account/frisco/userprofile-management/v6/accounts/userprofiles/images",
+          "confirmed": true
+        },
+        "selfRemoveProfile": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/accounts/userprofiles/self",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateDeviceName": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateFamilyNameOrTimeZone": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/accounts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updatePlan": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/accounts/subscriptions/{planType}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "planType"
+          ]
+        },
+        "updateProfile": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateProfileImage": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/images",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateProfileName": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
-    "profile": {
-      "summary": "A family member profile (a child or the parent).",
-      "id_field": "profileId",
+    "activity_tracking": {
+      "summary": "Activity tracking operations.",
+      "id_field": "",
       "operations": {
-        "print":  { "method": "GET",    "path": "/vsf/account-management/v1/profiles", "confirmed": false },
-        "create": { "method": "POST",   "path": "/vsf/account-management/v1/profiles", "confirmed": false },
-        "invite": { "method": "POST",   "path": "/vsf/account-management/v1/profiles/invite", "confirmed": false }
+        "getActivity": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/activities",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDailyActivities": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/activities",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
-    "device": {
-      "summary": "A device belonging to a profile.",
+    "age_verification": {
+      "summary": "Age verification operations.",
+      "id_field": "",
+      "operations": {
+        "getPublicKey": {
+          "method": "GET",
+          "path": "/frisco/key-mgmt/v5/mitek/keys",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "user-profile-id"
+          ]
+        },
+        "getSdkLicenseKey": {
+          "method": "GET",
+          "path": "/frisco/key-mgmt/v5/keys",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "keys"
+          ]
+        },
+        "submitVerification": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/age/verify",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "user-profile-id"
+          ]
+        }
+      }
+    },
+    "app_block": {
+      "summary": "App block operations.",
       "id_field": "deviceId",
       "operations": {
-        "print":     { "method": "GET",  "path": "/frisco/v5/installed-apps", "confirmed": false },
-        "apps_sync": { "method": "POST", "path": "/frisco/v8/devices/{deviceId}/appsSync", "confirmed": false }
+        "blockApp": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/subcategory",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getBlockedApps": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v8/devices/{deviceId}/appsSync",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "deviceId"
+          ]
+        },
+        "sendAccessibilityStatus": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/accessibility/status",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "sendBlockStatus": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/androidApps/blockStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "app_management": {
+      "summary": "App management operations.",
+      "id_field": "",
+      "operations": {
+        "getInteractionData": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/ai/logs",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "logId",
+            "limit",
+            "direction"
+          ]
+        },
+        "getAppUsages": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/app/management/usage",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateAppStatus": {
+          "method": "POST",
+          "path": "/account/fam/device-management/v5/device/app/management",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAppStatus": {
+          "method": "GET",
+          "path": "/account/fam/device-management/v5/device/app/management",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "calendar_sync": {
+      "summary": "Calendar sync operations.",
+      "id_field": "",
+      "operations": {
+        "completeResyncOperation": {
+          "method": "POST",
+          "path": "/geocal/frisco/v1/schools/selection/calendarsynced",
+          "confirmed": true,
+          "query": [
+            "schoolId"
+          ]
+        },
+        "createCalendarSelection": {
+          "method": "POST",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true
+        },
+        "deleteCalendarSelection": {
+          "method": "DELETE",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true,
+          "query": [
+            "schoolId",
+            "subscriptionType"
+          ]
+        },
+        "getCalendarEvents": {
+          "method": "GET",
+          "path": "/geocal/frisco/v1/school/calendar/events",
+          "confirmed": true,
+          "query": [
+            "filter",
+            "timezone"
+          ]
+        },
+        "getCalendarSelection": {
+          "method": "GET",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true
+        },
+        "getGoogleCalendarTokens": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
+          "confirmed": true
+        },
+        "getSchoolSelection": {
+          "method": "GET",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true
+        },
+        "getSchoolSuggestion": {
+          "method": "GET",
+          "path": "/geocal/frisco/v1/school/calendar/suggestions",
+          "confirmed": true
+        },
+        "getSchoolsForZipCode": {
+          "method": "GET",
+          "path": "/geocal/frisco/v1/schools",
+          "confirmed": true,
+          "query": [
+            "zipcode"
+          ]
+        },
+        "updateCalendarSelection": {
+          "method": "PUT",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true
+        },
+        "updateCalendarSyncPreferences": {
+          "method": "PATCH",
+          "path": "/geocal/frisco/v1/schools/selection",
+          "confirmed": true
+        }
+      }
+    },
+    "calls_and_texts": {
+      "summary": "Calls and texts operations.",
+      "id_field": "",
+      "operations": {
+        "addContactToTheList": {
+          "method": "POST",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addCustomNameToAddressBook": {
+          "method": "PUT",
+          "path": "/frisco/callandtext/v5/addressbook",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-deviceid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addNamesToAddressBook": {
+          "method": "POST",
+          "path": "/frisco/callandtext/v5/addressbook",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-deviceid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteContactFromTheList": {
+          "method": "DELETE",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "contactType",
+            "contactInfo",
+            "deviceId"
+          ]
+        },
+        "getAllTrustBlockWatchContactList": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "deviceId",
+            "contactType"
+          ]
+        },
+        "getCallAndTextActivityListV7": {
+          "method": "GET",
+          "path": "/callandtext/frisco/callandtext/v7/activity",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "summaryOnly",
+            "startDate",
+            "endDate",
+            "activityType",
+            "timezone",
+            "betaProviders"
+          ]
+        },
+        "getCallAndTextProfileSummaryListV7": {
+          "method": "GET",
+          "path": "/callandtext/frisco/callandtext/v7/activity/summary",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "startDate",
+            "endDate",
+            "summaryOnly",
+            "activityType",
+            "timezone",
+            "betaProviders"
+          ]
+        },
+        "getCallAndTextSpecificContactActivityListV7": {
+          "method": "GET",
+          "path": "/callandtext/frisco/callandtext/v7/activity/contact",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "otherPartyMdn",
+            "startDate",
+            "endDate",
+            "activityType",
+            "timezone",
+            "betaProviders"
+          ]
+        },
+        "getSchedulesRequest": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v6/schedules",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getTopContactListByActivityV7": {
+          "method": "GET",
+          "path": "/callandtext/frisco/callandtext/v7/activity/top",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "deviceId",
+            "startDate",
+            "endDate",
+            "activityType",
+            "timezone",
+            "betaProviders"
+          ]
+        }
+      }
+    },
+    "config": {
+      "summary": "Config operations.",
+      "id_field": "",
+      "operations": {
+        "getAccessConfig": {
+          "method": "GET",
+          "path": "/(dynamic @Url)",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match"
+          ]
+        },
+        "getConfigData": {
+          "method": "GET",
+          "path": "/auth/frisco/mappcontent/v6/configs",
+          "confirmed": true,
+          "query": [
+            "(@QueryMap dynamic)"
+          ]
+        },
+        "getConfigData (Call variant)": {
+          "method": "GET",
+          "path": "/sf/v1/prd/mcfg.json",
+          "confirmed": true
+        },
+        "getCustomMapSatelliteStyle": {
+          "method": "GET",
+          "path": "/sf/v1/prd/satelliteStyle.json",
+          "confirmed": true
+        },
+        "getCustomMapStreetStyle": {
+          "method": "GET",
+          "path": "/sf/v1/prd/style.json",
+          "confirmed": true
+        },
+        "getDeviceTypeConfig": {
+          "method": "GET",
+          "path": "/(dynamic @Url)",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match"
+          ]
+        },
+        "getNonSecureConfigData": {
+          "method": "GET",
+          "path": "/nsauth/frisco/mappcontent/v6/configs/nonSecure",
+          "confirmed": true,
+          "query": [
+            "(@QueryMap dynamic)"
+          ]
+        },
+        "getPermissionConfig": {
+          "method": "GET",
+          "path": "/(dynamic @Url)",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match"
+          ]
+        },
+        "getServiceKeys": {
+          "method": "GET",
+          "path": "/frisco/key-mgmt/v5/keys",
+          "confirmed": true,
+          "query": [
+            "keys"
+          ]
+        }
+      }
+    },
+    "contacts": {
+      "summary": "Contacts operations.",
+      "id_field": "",
+      "operations": {
+        "acceptDeclineBuddyRequest": {
+          "method": "PUT",
+          "path": "/callandtext/vsf/callandtext/v5/gizmo/managecontacts/acceptinvite",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "acceptDeclineFamilyInvite": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles/services/invites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addCallingContact": {
+          "method": "POST",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "bulkDeleteContacts": {
+          "method": "DELETE",
+          "path": "/callandtext/vsf/callandtext/v5/gizmo/managecontacts/bulkdelete",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "bulkUpdateContacts": {
+          "method": "PUT",
+          "path": "/callandtext/vsf/callandtext/v5/gizmo/managecontacts/bulkupdate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getFamilyMembersAndBuddies": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contactType",
+            "filterAvailableMdns"
+          ]
+        },
+        "getGizmoContactImage": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts/image",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contactType",
+            "contactInfo",
+            "contactId"
+          ]
+        },
+        "getGizmoContacts": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contactType",
+            "filterPermissions"
+          ]
+        },
+        "getInAppBanner": {
+          "method": "GET",
+          "path": "/callandtext/frisco/mappcontent/v5/inappbanner",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "pageId"
+          ]
+        },
+        "getTrustedContacts": {
+          "method": "GET",
+          "path": "/callandtext/vsf/callandtext/v1/feature/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "settingId"
+          ]
+        },
+        "removeContact": {
+          "method": "DELETE",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contactType",
+            "contactInfo"
+          ]
+        },
+        "sendInvite": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateContact": {
+          "method": "PUT",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updatePermissions": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v6/accounts/userprofiles/gizmo/featurepermission",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateTrustedContacts": {
+          "method": "POST",
+          "path": "/callandtext/vsf/callandtext/v1/feature/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "validateGizmoMdn": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/contact/phonenumber/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addContactToTheList": {
+          "method": "POST",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteContactFromTheList": {
+          "method": "DELETE",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "contactType",
+            "contactInfo",
+            "deviceId"
+          ]
+        },
+        "getAllContactsRequest": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "deviceId",
+            "contactType"
+          ]
+        },
+        "putPrivateRestrictedCall": {
+          "method": "PUT",
+          "path": "/vsf/callandtext/v5/managecontacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "content_filter": {
+      "summary": "Website/app content filtering: categories, age groups, safe search, objectionable content.",
+      "id_field": "",
+      "operations": {
+        "getParentalControls": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/parentalControls",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId"
+          ]
+        },
+        "createGroupPolicy": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/create-group-policies",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "categorySupported"
+          ]
+        },
+        "getAgeGroupMetaData": {
+          "method": "GET",
+          "path": "/vsf/parental-control/v5/age-groups",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId"
+          ]
+        },
+        "getObjectionableSettings": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
+          ]
+        },
+        "postObjectionableSettings": {
+          "method": "POST",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
+          ]
+        },
+        "createAppLimit": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteAppLimit": {
+          "method": "DELETE",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId"
+          ]
+        },
+        "updateAppLimit": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId"
+          ]
+        },
+        "getFilterContent": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/filterContent",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "include-description"
+          ]
+        },
+        "updateSubcategory": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/subcategory",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getCategories": {
+          "method": "GET",
+          "path": "/parental-control/vsf/v7/categories",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "group-name",
+            "include-description",
+            "include-safesearch",
+            "categorySupported",
+            "resolution",
+            "sz",
+            "r"
+          ]
+        },
+        "getSubCategoriesDetail": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/subcategory",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "subcategory-id"
+          ]
+        },
+        "setCFCategories": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v8/categories",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "cross_sell": {
+      "summary": "Cross sell operations.",
+      "id_field": "",
+      "operations": {
+        "getEnrollFreeTrialData": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/accounts/trials/subscriptions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteCrossSellRecommendation": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/recommendations",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contentId",
+            "id"
+          ]
+        },
+        "deleteUpSellRecommendation": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/recommendations/promotions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "contentId",
+            "id",
+            "screenTag"
+          ]
+        },
+        "getCrossSellRecommendations": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/recommendations",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getPetTrackerPurchaseLink": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/purchaseLink",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getTrialEligibility": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/accounts/trials/eligibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getUpSellRecommendations": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/recommendations/promotions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       },
-      "actions": {
-        "pause":  { "method": "POST", "path": "/frisco/v6/device/pause", "body": { "paused": true }, "confirmed": false },
-        "resume": { "method": "POST", "path": "/frisco/v6/device/pause", "body": { "paused": false }, "confirmed": false }
+      "tier": "p2"
+    },
+    "dashboard": {
+      "summary": "Dashboard operations.",
+      "id_field": "",
+      "operations": {
+        "acknowledgeLuciqPush": {
+          "method": "POST",
+          "path": "/frisco/commsplatform/v5/pushStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "createProfile": {
+          "method": "POST",
+          "path": "/vsf/account-management/v1/profiles",
+          "confirmed": true
+        },
+        "dashboardFlow": {
+          "method": "GET",
+          "path": "/vsf/account-management/v1/accounts",
+          "confirmed": true
+        },
+        "getEligibility": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/accounts/features/eligibility",
+          "confirmed": true
+        },
+        "getReportSetting": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=all",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getReportSettings": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getSubscriptions": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/accounts/userprofiles/subscriptions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getViewBanner": {
+          "method": "GET",
+          "path": "/vsf/tamper/v5/view/getBanner",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profiles",
+            "hasParentalCtrlPermissions"
+          ]
+        },
+        "getViewBannerDetails": {
+          "method": "GET",
+          "path": "/vsf/tamper/v5/view/getBannerDetails",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "feature",
+            "profiles",
+            "hasParentalCtrlPermissions"
+          ]
+        },
+        "postReportSetting": {
+          "method": "POST",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=all",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postReportSettings": {
+          "method": "POST",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putRestrictionsBackOn": {
+          "method": "PUT",
+          "path": "/frisco/callandtext/v5/911/restrictions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putTamperInstructions": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/tamper/instructions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "queryEligibleLines": {
+          "method": "GET",
+          "path": "/vsf/account-management/v1/accounts/lines",
+          "confirmed": true
+        },
+        "sendInvitation": {
+          "method": "PUT",
+          "path": "/vsf/account-management/v1/profiles/invite",
+          "confirmed": true
+        },
+        "getParentingTips": {
+          "method": "GET",
+          "path": "/about/api/smart-family/parenting-digital-world",
+          "confirmed": true,
+          "query": [
+            "offset",
+            "limit"
+          ]
+        }
       }
     },
-    "web_filter": {
-      "summary": "Website content filtering: category filters, allow/block lists, safe search.",
-      "id_field": "profileId",
+    "device_settings": {
+      "summary": "Device settings operations.",
+      "id_field": "",
       "operations": {
-        "get":         { "method": "GET", "path": "/frisco/v7/filterContent", "confirmed": false },
-        "categories":  { "method": "GET", "path": "/frisco/v8/categories", "confirmed": false },
-        "subcategory": { "method": "GET", "path": "/frisco/v8/subcategory", "confirmed": false }
+        "getDeviceLogDownloadUrl": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/logs/download",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ],
+          "query": [
+            "id"
+          ]
+        },
+        "getDeviceLogs": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/logs/list",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "getDeviceSettings": {
+          "method": "GET",
+          "path": "/fam/comms/v1/device/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ],
+          "query": [
+            "settingsType",
+            "timezone"
+          ]
+        },
+        "postDeviceSettings": {
+          "method": "POST",
+          "path": "/fam/comms/v1/device/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "triggerLogUpload": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/logs/retrieve",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        }
+      }
+    },
+    "driving_insights": {
+      "summary": "Driving Insights telematics (P2 \u2014 separate AWS/S3-backed credential path).",
+      "id_field": "crashId",
+      "operations": {
+        "getAuthCode": {
+          "method": "GET",
+          "path": "/vsf/driving-insights/v5/auth-code/",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getSettings": {
+          "method": "GET",
+          "path": "/frisco/driving-insights/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getTripDetail": {
+          "method": "GET",
+          "path": "/vsf/driving-insights/v5/trip-details/",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "driveId"
+          ]
+        },
+        "getTripSummary": {
+          "method": "GET",
+          "path": "/vsf/driving-insights/v5/trip-summary/",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "timezone"
+          ]
+        },
+        "getTrips": {
+          "method": "GET",
+          "path": "/vsf/driving-insights/v5/trips/",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "timeZone"
+          ]
+        },
+        "patchTransportationMode": {
+          "method": "PATCH",
+          "path": "/vsf/driving-insights/v5/transportationMode/",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "driveId"
+          ]
+        },
+        "postSettings": {
+          "method": "POST",
+          "path": "/frisco/driving-insights/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putSettings": {
+          "method": "PUT",
+          "path": "/frisco/driving-insights/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putSpeedAlertLimit": {
+          "method": "PUT",
+          "path": "/frisco/driving-insights/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getCrashDetail": {
+          "method": "GET",
+          "path": "/safety/vsf/driving-insights/v5/crashes/{crashId}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "crashId"
+          ]
+        },
+        "getCrashNotifications": {
+          "method": "GET",
+          "path": "/frisco/driving-insights/v5/crash-notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "patchCrashNotification": {
+          "method": "PATCH",
+          "path": "/safety/vsf/driving-insights/v6/crash-notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateCrashNotifications": {
+          "method": "POST",
+          "path": "/frisco/driving-insights/v5/crash-notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       },
-      "actions": {
-        "block_site":  { "method": "POST", "path": "/frisco/parental-control/v5/website", "body": { "url": "{url}", "action": "block" }, "confirmed": false },
-        "allow_site":  { "method": "POST", "path": "/frisco/parental-control/v5/website", "body": { "url": "{url}", "action": "allow" }, "confirmed": false },
-        "safe_search": { "method": "POST", "path": "/frisco/parental-control/v5/website/safesearch", "body": { "enabled": "{enabled}" }, "confirmed": false }
+      "tier": "p2"
+    },
+    "emergency_contacts": {
+      "summary": "Emergency contacts operations.",
+      "id_field": "contact-id",
+      "operations": {
+        "addEmergencyContactsToProfile": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/userprofiles/contacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteEmergencyContact": {
+          "method": "DELETE",
+          "path": "/frisco/userprofile-management/v5/contacts/{contact-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "contact-id"
+          ]
+        },
+        "getAllAvailableEmergencyContacts": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/userprofiles/contacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAllAvailableEmergencyContactsBasedOnAccountId": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/accounts/contacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateEmergencyContacts": {
+          "method": "PUT",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/contacts/replace",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
-    "app_limit": {
-      "summary": "Per-app time limits and block status.",
-      "id_field": "profileId",
+    "family_line": {
+      "summary": "Family line operations.",
+      "id_field": "",
       "operations": {
-        "print":  { "method": "GET",  "path": "/frisco/v8/app-limits", "confirmed": false },
-        "set":    { "method": "POST", "path": "/frisco/v8/app-limits", "confirmed": false },
-        "ask_time": { "method": "POST", "path": "/frisco/v8/app-limits/askTime", "confirmed": false },
-        "block_status": { "method": "GET", "path": "/frisco/v8/androidApps/blockStatus", "confirmed": false }
+        "acceptFamilyLineInvite": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/line",
+          "confirmed": true
+        },
+        "deProvisionFamilyLine": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/accounts/subscriptions/feature/FAMILYLINE",
+          "confirmed": true
+        },
+        "getAddress": {
+          "method": "GET",
+          "path": "/callandtext/frisco/familyline/v1/fl/address",
+          "confirmed": true
+        },
+        "getEligibleLines": {
+          "method": "GET",
+          "path": "/callandtext/frisco/familyline/v1/fl/line/eligible",
+          "confirmed": true
+        },
+        "getFamilyLines": {
+          "method": "GET",
+          "path": "/callandtext/frisco/familyline/v1/fl/line",
+          "confirmed": true
+        },
+        "getProvisioningStatus": {
+          "method": "GET",
+          "path": "/callandtext/frisco/familyline/v1/fl/status",
+          "confirmed": true
+        },
+        "getSpcToken": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/token",
+          "confirmed": true
+        },
+        "logoutFamilyLine": {
+          "method": "GET",
+          "path": "/callandtext/frisco/familyline/v1/fl/line/logout",
+          "confirmed": true
+        },
+        "provisionUser": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/accounts/subscriptions/feature/FAMILYLINE",
+          "confirmed": true
+        },
+        "removeUserFromFamilyLine": {
+          "method": "DELETE",
+          "path": "/callandtext/frisco/familyline/v1/fl/line",
+          "confirmed": true
+        },
+        "saveAddress": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/address",
+          "confirmed": true
+        },
+        "sendCallLog": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/call/logs",
+          "confirmed": true
+        },
+        "sendFamilyLineInvite": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/line/invite",
+          "confirmed": true
+        },
+        "swapDeviceProvisioning": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/swap-device",
+          "confirmed": true
+        },
+        "termsAndConditionsAccepted": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/tc",
+          "confirmed": true
+        },
+        "traceSdkResponse": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/trace",
+          "confirmed": true
+        },
+        "updateAppUuid": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/line/updateAppUuid",
+          "confirmed": true
+        },
+        "updateFamilyLineSettings": {
+          "method": "POST",
+          "path": "/callandtext/frisco/familyline/v1/fl/settings",
+          "confirmed": true
+        },
+        "validateAddress": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/address/validate",
+          "confirmed": true
+        }
       }
     },
-    "screen_time": {
-      "summary": "Daily screen-time limits and schedules (bedtime/offtime/downtime).",
-      "id_field": "profileId",
+    "feature_permissions": {
+      "summary": "Feature permissions operations.",
+      "id_field": "",
       "operations": {
-        "get":       { "method": "GET",  "path": "/frisco/v7/screen-time-limits", "confirmed": false },
-        "set":       { "method": "POST", "path": "/frisco/v7/screen-time-limits", "confirmed": false },
-        "schedules": { "method": "GET",  "path": "/frisco/v6/schedules", "confirmed": false },
-        "ask_time":  { "method": "POST", "path": "/frisco/v7/screen-time-limits/askTime", "confirmed": false }
+        "getParentalControlFeaturePermissions": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/view/featurePermissions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "featureGroup"
+          ]
+        },
+        "changeUserProfileRole": {
+          "method": "PUT",
+          "path": "/account/fam/userprofile-management/v5/accounts/userprofiles/role",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getManagedUserProfiles": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/connections",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updatePermissions": {
+          "method": "PUT",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/permissions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateUserProfileAccess": {
+          "method": "PATCH",
+          "path": "/account/fam/userprofile-management/v5/userprofiles/access",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
-    "activity": {
-      "summary": "Web and app activity: history, categories, insights, top apps.",
-      "id_field": "profileId",
+    "flightdetection": {
+      "summary": "Flightdetection operations.",
+      "id_field": "",
       "operations": {
-        "web":        { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/websites", "confirmed": false },
-        "apps":       { "method": "GET", "path": "/frisco/v7/web-app-activity/apps", "confirmed": false },
-        "top_apps":   { "method": "GET", "path": "/frisco/v5/web-app-activity/topApps", "confirmed": false },
-        "categories": { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/categories", "confirmed": false },
-        "insights":   { "method": "GET", "path": "/frisco/parental-control/v6/web-app-activity/insights", "confirmed": false },
-        "app_usage":  { "method": "GET", "path": "/frisco/parental-control/v1/app-usage", "confirmed": false }
+        "getFlightDetectionStatus": {
+          "method": "GET",
+          "path": "/location/vsf/location/v5/flight/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateFlightDetectionSetting": {
+          "method": "PUT",
+          "path": "/location/vsf/location/v5/flight/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateFlightDetectionStatus": {
+          "method": "POST",
+          "path": "/location/vsf/location/v5/locationResponse",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "geofence": {
+      "summary": "Location boundaries and boundary alerts.",
+      "id_field": "",
+      "operations": {
+        "createDeviceGeofenceSettings": {
+          "method": "POST",
+          "path": "/vsf/location/v6/geofence/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getGeofenceSettings": {
+          "method": "GET",
+          "path": "/vsf/location/v6/geofence/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "withGeofence"
+          ]
+        },
+        "getSavedLocations": {
+          "method": "GET",
+          "path": "/vsf/location/v6/geofence/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "withGeofence",
+            "strategy"
+          ]
+        },
+        "updateDeviceGeofenceSettings": {
+          "method": "PUT",
+          "path": "/vsf/location/v6/geofence/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "gizmo_activation": {
+      "summary": "Gizmo activation operations.",
+      "id_field": "",
+      "operations": {
+        "validateGizmoActivation": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/gizmo/activation/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "identity": {
+      "summary": "Identity operations.",
+      "id_field": "authPath",
+      "operations": {
+        "childRefreshToken": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
+          "confirmed": true
+        },
+        "refreshToken": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
+          "confirmed": true
+        },
+        "getAppLoginTokens": {
+          "method": "POST",
+          "path": "/{authPath}",
+          "confirmed": true,
+          "placeholders": [
+            "authPath"
+          ]
+        },
+        "getChildDeviceAccessToken": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/deviceauth/auth/token",
+          "confirmed": true
+        },
+        "logOut": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/user/auth/logout",
+          "confirmed": true
+        },
+        "loginActivity": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/l1/login/activity",
+          "confirmed": true
+        },
+        "auditLogin": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v5/user/login/audit",
+          "confirmed": true
+        },
+        "postBiometricAudit": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/user/auth/audit",
+          "confirmed": true
+        },
+        "sendAuthOtp": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp",
+          "confirmed": true
+        },
+        "sendOtp": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp",
+          "confirmed": true
+        },
+        "validateAuthOtp": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
+          "confirmed": true
+        },
+        "validateOtp": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp/validate",
+          "confirmed": true
+        },
+        "verifyMdn": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/phonenumber/validate",
+          "confirmed": true
+        }
+      }
+    },
+    "installed_apps": {
+      "summary": "Installed apps operations.",
+      "id_field": "",
+      "operations": {
+        "sendInstalledApps": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v5/installed-apps",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "invite": {
+      "summary": "Invite operations.",
+      "id_field": "",
+      "operations": {
+        "getAccountLines": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/accounts/lines",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getFeaturePermissions": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/featurepermissions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "replaceDevice": {
+          "method": "PATCH",
+          "path": "/account/fam/userprofile-management/v5/gizmo/device/replace",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "retryPairing": {
+          "method": "PUT",
+          "path": "/account/fam/userprofile-management/v5/gizmo/device/pairing",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "sendInvite": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v6/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "sendStandaloneInvite": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/onboarding/device",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateFeaturePermissions": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/featurepermissions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "createWifiDevice": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v6/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAccountLines2": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v6/accounts/lines",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "setRelationships": {
+          "method": "PUT",
+          "path": "/callandtext/vsf/callandtext/v5/gizmo/managecontacts/bulkupdate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "legal": {
+      "summary": "Legal operations.",
+      "id_field": "",
+      "operations": {
+        "getDownloadLink": {
+          "method": "GET",
+          "path": "/account/frisco/customer/v5/userprofiles/privacydata/download",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "requestPrivacyDataDownload": {
+          "method": "POST",
+          "path": "/account/frisco/customer/v5/userprofiles/privacydata/download",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
     "location": {
-      "summary": "Real-time location of a profile's device.",
-      "id_field": "profileId",
+      "summary": "Real-time and historical location.",
+      "id_field": "",
       "operations": {
-        "get": { "method": "GET", "path": "/frisco/parental-control/v5/provider/account/location", "confirmed": false }
+        "checkIn": {
+          "method": "POST",
+          "path": "/vsf/location/v5/checkin",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "checkInSeen": {
+          "method": "PUT",
+          "path": "/vsf/location/v5/checkin",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteGeofenceSettings": {
+          "method": "DELETE",
+          "path": "/vsf/location/v6/geofence/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventId",
+            "eventType"
+          ]
+        },
+        "fetchHistory": {
+          "method": "GET",
+          "path": "/vsf/location/v5/history",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "startTime"
+          ]
+        },
+        "getAvailableParentForPickMeUp": {
+          "method": "GET",
+          "path": "/vsf/location/v5/events/active?eventType=pickMeUp&profileRole=CHILD&operation=getAvailableParents",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType=pickMeUp",
+            "profileRole=CHILD",
+            "operation=getAvailableParents"
+          ]
+        },
+        "getDashboardDetails": {
+          "method": "GET",
+          "path": "/vsf/location/v5/dashboard",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "locationEnabled",
+            "locPermission",
+            "onlyLastKnownLoc",
+            "source",
+            "onDemand"
+          ]
+        },
+        "getHistoryStatus": {
+          "method": "GET",
+          "path": "/vsf/location/v5/history/available",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId"
+          ]
+        },
+        "getPickMeUpStatus": {
+          "method": "GET",
+          "path": "/vsf/location/v5/events/active",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "eventType",
+            "eventStatus",
+            "profileRole"
+          ]
+        },
+        "manageLiveLocationRequest": {
+          "method": "POST",
+          "path": "/vsf/location/v5/live",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "pickMeUp": {
+          "method": "POST",
+          "path": "/vsf/location/v5/pickmeup",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postGeofenceViolationEvent": {
+          "method": "POST",
+          "path": "/vsf/location/v5/geofence/event",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postLocationTamper": {
+          "method": "POST",
+          "path": "/vsf/location/v5/tamper",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putPickMeUp": {
+          "method": "PUT",
+          "path": "/vsf/location/v5/pickmeup",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "sendGeoFenceConfirmation": {
+          "method": "PUT",
+          "path": "/vsf/location/v6/geofence/settings?operation=configGeoDevice",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "operation=configGeoDevice"
+          ]
+        },
+        "getLocationSharingConfigEvent": {
+          "method": "GET",
+          "path": "/vsf/location/v6/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileId"
+          ]
+        },
+        "getLocationSharingSettings": {
+          "method": "GET",
+          "path": "/vsf/location/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileId"
+          ]
+        },
+        "getWithWhomIamSharingLocation": {
+          "method": "GET",
+          "path": "/vsf/location/v6/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileId"
+          ]
+        },
+        "updateLocationSharingSetting": {
+          "method": "PUT",
+          "path": "/vsf/location/v5/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateLocationSharingSettingConfig": {
+          "method": "PUT",
+          "path": "/vsf/location/v6/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileId"
+          ]
+        }
       }
     },
-    "notification": {
-      "summary": "Alerts and notifications feed.",
-      "id_field": "notificationId",
+    "medical_id": {
+      "summary": "Medical id operations.",
+      "id_field": "",
       "operations": {
-        "print":        { "method": "GET", "path": "/frisco/v6/notifications", "confirmed": false },
-        "unread_count": { "method": "GET", "path": "/frisco/v6/notifications/unreadCount", "confirmed": false },
-        "filters":      { "method": "GET", "path": "/frisco/v5/notifications/filters", "confirmed": false }
+        "postMedicalId": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/medical-Id",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putMedicalId": {
+          "method": "PUT",
+          "path": "/comms/fam/v1/device/medical-Id",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
       }
     },
-    "driving": {
-      "summary": "Driving insights: crash notifications and settings (SafePath Drive).",
-      "id_field": "profileId",
+    "messaging": {
+      "summary": "Messaging operations.",
+      "id_field": "group-id",
       "operations": {
-        "settings":     { "method": "GET", "path": "/frisco/driving-insights/v5/settings", "confirmed": false },
-        "crash_alerts": { "method": "GET", "path": "/frisco/driving-insights/v5/crash-notifications", "confirmed": false }
+        "addMembers": {
+          "method": "PUT",
+          "path": "/account/fam/group-management/v5/groups/{group-id}/members",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id"
+          ]
+        },
+        "clearAllGroupChatMessages": {
+          "method": "DELETE",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/messages",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "chatGroupId"
+          ]
+        },
+        "createNewGroup": {
+          "method": "POST",
+          "path": "/account/fam/group-management/v5/groups",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteGroupChat": {
+          "method": "DELETE",
+          "path": "/account/fam/group-management/v5/groups/{group-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id"
+          ]
+        },
+        "deleteGroupMember": {
+          "method": "DELETE",
+          "path": "/account/fam/group-management/v5/groups/{group-id}/members/{member-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id",
+            "member-id"
+          ]
+        },
+        "exitGroup": {
+          "method": "DELETE",
+          "path": "/account/fam/group-management/v5/groups/{group-id}/exit",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id"
+          ]
+        },
+        "getAllEligibleMembers": {
+          "method": "GET",
+          "path": "/account/fam/group-management/v5/groups/members/eligible",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAllGroupMessage": {
+          "method": "POST",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/messages",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAllGroups": {
+          "method": "GET",
+          "path": "/account/fam/group-management/v5/groups",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getGroupMediaMessage": {
+          "method": "GET",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/message",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "chatGroupId",
+            "messageId",
+            "presignedUrl"
+          ]
+        },
+        "getRemainingMembersToAddGroup": {
+          "method": "GET",
+          "path": "/account/fam/group-management/v5/groups/{group-id}/members/eligible",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id"
+          ]
+        },
+        "messageRead": {
+          "method": "POST",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/messages/read",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "chatGroupId"
+          ]
+        },
+        "sendGroupMediaMessage": {
+          "method": "POST",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/message",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "chatGroupId"
+          ]
+        },
+        "sendGroupTextMessage": {
+          "method": "POST",
+          "path": "/callandtext/vsf/callandtext/v5/groupchat/message",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "chatGroupId"
+          ]
+        },
+        "updateGroupChat": {
+          "method": "PATCH",
+          "path": "/account/fam/group-management/v5/groups/{group-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "group-id"
+          ]
+        },
+        "deleteMessages": {
+          "method": "DELETE",
+          "path": "/comms/fam/v1/messages",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getMediaMessage": {
+          "method": "GET",
+          "path": "/comms/fam/v1/messageMedia",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "messageId",
+            "presignedUrl"
+          ]
+        },
+        "getMessageList": {
+          "method": "GET",
+          "path": "/comms/fam/v1/messageList",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "messageId",
+            "limit",
+            "direction"
+          ]
+        },
+        "postMessageMedia": {
+          "method": "POST",
+          "path": "/comms/fam/v1/messageMedia",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id",
+            "x-transaction-id"
+          ]
+        }
       }
     },
-    "accessibility_pin": {
-      "summary": "The parental-control accessibility PIN (anti-tamper).",
-      "id_field": "profileId",
+    "most_used_apps": {
+      "summary": "Most used apps operations.",
+      "id_field": "",
       "operations": {
-        "retrieve": { "method": "GET",  "path": "/frisco/parental-control/v5/accessibility/pin/retrieve", "confirmed": false },
-        "validate": { "method": "POST", "path": "/frisco/parental-control/v5/accessibility/pin/validate", "confirmed": false }
+        "getTopApps": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v5/web-app-activity/topApps",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "date",
+            "count",
+            "timezone"
+          ]
+        }
       }
+    },
+    "notifications": {
+      "summary": "Notifications operations.",
+      "id_field": "eventId",
+      "operations": {
+        "getNotificationFeed": {
+          "method": "GET",
+          "path": "/frisco/commsplatform/v5/notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "productType",
+            "notificationType",
+            "exclude"
+          ]
+        },
+        "getObjectionableWeb": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/noteworthy-details/{eventId}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "notification-type"
+          ],
+          "placeholders": [
+            "eventId"
+          ]
+        },
+        "getReportSettings": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getFilters": {
+          "method": "GET",
+          "path": "/comms/frisco/v5/notifications/filters",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "resolution",
+            "sz"
+          ]
+        },
+        "getNotificationCount": {
+          "method": "GET",
+          "path": "/comms/frisco/v6/notifications/unreadCount",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "productType",
+            "notificationType"
+          ]
+        },
+        "getNotifications": {
+          "method": "GET",
+          "path": "/comms/frisco/v6/notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "page",
+            "per-page",
+            "filters",
+            "productType",
+            "notificationType",
+            "exclude"
+          ]
+        },
+        "getReportSettings2": {
+          "method": "GET",
+          "path": "/comms/vsf/v8/report-settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "markAllRead": {
+          "method": "PATCH",
+          "path": "/comms/fam/v6/notifications/updateAll",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "productType",
+            "notificationType"
+          ]
+        },
+        "updateReportSettings": {
+          "method": "POST",
+          "path": "/comms/vsf/v7/report-settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
+          ]
+        }
+      }
+    },
+    "onboarding": {
+      "summary": "Onboarding operations.",
+      "id_field": "",
+      "operations": {
+        "getProfileAvatars": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v5/profile-avatars",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "resolution"
+          ]
+        }
+      }
+    },
+    "pairing": {
+      "summary": "Child device pairing and consent.",
+      "id_field": "eventId",
+      "operations": {
+        "getConsent": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/profiles/devices/consent",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDefaultDOHLocation": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/provider/account/location",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "setConsent": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/profiles/consent",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addDeviceToProfile": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "createProfile": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getIdTokenUsingOtp": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/wifi/token",
+          "confirmed": true
+        },
+        "getOtpStatus": {
+          "method": "GET",
+          "path": "/frisco/frisco-iam-user-auth/v5/wifi/otp",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "resendOtp": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-user-auth/v5/wifi/otp",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getWebAppVisibility": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/web-app-activity/visibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "vpn-retry-type"
+          ]
+        },
+        "reSendInvite": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles/services/invites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getNotificationFeed": {
+          "method": "GET",
+          "path": "/frisco/commsplatform/v5/notifications",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "productType",
+            "notificationType",
+            "exclude"
+          ]
+        },
+        "getObjectionableWeb": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/noteworthy-details/{eventId}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "notification-type"
+          ],
+          "placeholders": [
+            "eventId"
+          ]
+        },
+        "getReportSettings": {
+          "method": "GET",
+          "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "reportCategory"
+          ]
+        },
+        "validateGizmoActivation": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/gizmo/activation/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDeviceShadowDetails": {
+          "method": "GET",
+          "path": "/vsf/tamper/v6/view/getDeviceShadowDetails",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "deviceID",
+            "featureIds",
+            "retrieveLevel"
+          ]
+        },
+        "checkUpgrade": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/fota/upgradeCheck",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDeviceStatus": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/status",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "onDemand"
+          ]
+        },
+        "upgrade": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/fota/upgrade",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getMediaList": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/mediaList",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getInteractionData": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/ai/logs",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "logId",
+            "limit",
+            "direction"
+          ]
+        },
+        "findGizmo": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/findMy",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "powerOffGizmoDevice": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/powerOff",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "addDevice": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "createDependentProfile": {
+          "method": "POST",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteMediaBackupEntries": {
+          "method": "DELETE",
+          "path": "/comms/fam/v1/device/backup/media",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getGizmoDevices": {
+          "method": "GET",
+          "path": "/fam/comms/v1/device",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getMdnLookupResponse": {
+          "method": "GET",
+          "path": "/frisco/comms/v1/gizmo-mdn-lookup",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getMediaBackupList": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/backup/mediaList",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "childId",
+            "mediaId",
+            "direction",
+            "limit"
+          ]
+        },
+        "getMediaBackupStorageStatus": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/status",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "statusType"
+          ]
+        },
+        "gizmoDevicesCheckEligibility": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/user-profiles/gizmo-devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ],
+          "query": [
+            "eligibility-check"
+          ]
+        },
+        "gizmoDevicesGetLists": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/user-profiles/gizmo-devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ],
+          "query": [
+            "eligibility-check"
+          ]
+        },
+        "gizmoImportDevices": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/gizmo/import/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ],
+          "query": [
+            "canLink"
+          ]
+        },
+        "gizmoImportDevicesNotSignedInUser": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v1/gizmo/import/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "canLink"
+          ]
+        },
+        "gizmoImportEligibility": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v5/gizmo/import/eligibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        },
+        "gizmoImportEligibilityNotSignedInUser": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v1/gizmo/import/eligibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "gizmoImportInitiate": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/gizmo/import/initiate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        },
+        "gizmoImportInitiateNotSignedInUser": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v1/gizmo/import/initiate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "linkGizmoAccount": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-gizmo-auth/v1/gizmo/auth/token",
+          "confirmed": true,
+          "headers": [
+            "x-trace-transaction-id"
+          ]
+        },
+        "unlinkGizmoAccount": {
+          "method": "DELETE",
+          "path": "/fam/userprofile-management/v5/userprofiles/gizmo/unlink",
+          "confirmed": true,
+          "headers": [
+            "x-trace-transaction-id"
+          ]
+        },
+        "updateProfileImage": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/accounts/userprofiles/images",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updatePairing": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/userprofiles/pairing/devices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "validateGizmoMdn": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v5/gizmo/pairing/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getDeviceStatus2": {
+          "method": "GET",
+          "path": "/vsf/device/v5/deviceStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "deviceId"
+          ]
+        },
+        "getDeviceLogDownloadUrl": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/logs/download",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ],
+          "query": [
+            "id"
+          ]
+        },
+        "getDeviceLogs": {
+          "method": "GET",
+          "path": "/comms/fam/v1/device/logs/list",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "getDeviceSettings": {
+          "method": "GET",
+          "path": "/fam/comms/v1/device/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ],
+          "query": [
+            "settingsType",
+            "timezone"
+          ]
+        },
+        "postDeviceSettings": {
+          "method": "POST",
+          "path": "/fam/comms/v1/device/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "triggerLogUpload": {
+          "method": "POST",
+          "path": "/comms/fam/v1/device/logs/retrieve",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        }
+      }
+    },
+    "pause_internet": {
+      "summary": "Pause/resume a profile's internet.",
+      "id_field": "",
+      "operations": {
+        "getDevices": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v6/device/pause",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "pauseInternet": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/device/pause",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "unPauseInternet": {
+          "method": "DELETE",
+          "path": "/frisco/parental-control/v5/device/pause",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "pet_tracker": {
+      "summary": "Pet tracker operations.",
+      "id_field": "session-id",
+      "operations": {
+        "endRttOrLpm": {
+          "method": "PATCH",
+          "path": "/safety/fam/pet-tracker/v6/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "escalateRttToLpm": {
+          "method": "PATCH",
+          "path": "/safety/fam/pet-tracker/v6/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAllAvailableEmergencyContacts": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/userprofiles/contacts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getPetLiveTrackerSessionInfo": {
+          "method": "GET",
+          "path": "/safety/fam/pet-tracker/v6/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getPetTrackerLocationHistory": {
+          "method": "GET",
+          "path": "/safety/fam/pet-tracker/v6/sessions/{session-id}/location/history",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "session-id"
+          ]
+        },
+        "getPetTrackerSMSLink": {
+          "method": "GET",
+          "path": "/safety/fam/pet-tracker/v6/sessions/{session-id}/sms/url",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "session-id"
+          ]
+        },
+        "submitPetLiveTracker": {
+          "method": "POST",
+          "path": "/safety/fam/pet-tracker/v6/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteWifiDetails": {
+          "method": "DELETE",
+          "path": "/tracker/fam/v1/pet/wifi",
+          "confirmed": true
+        },
+        "firmwareUpdateStatus": {
+          "method": "POST",
+          "path": "/comms/vsf/tamper/v5/fwUpdate",
+          "confirmed": true
+        },
+        "getActivity": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/pet/activity",
+          "confirmed": true
+        },
+        "getActivityV2": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/pet/activity",
+          "confirmed": true
+        },
+        "getBreeds": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/breeds",
+          "confirmed": true,
+          "query": [
+            "species"
+          ]
+        },
+        "getCollarSoftwareInfo": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/device/status",
+          "confirmed": true
+        },
+        "getEncryptionKey": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/keys",
+          "confirmed": true
+        },
+        "getPurchaseLink": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/purchaseLink",
+          "confirmed": true
+        },
+        "getReportingToken": {
+          "method": "POST",
+          "path": "/tracker/fam/v1/pet/mobile-sdk-reporting-token",
+          "confirmed": true
+        },
+        "getRest": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/pet/rest",
+          "confirmed": true
+        },
+        "getSdkToken": {
+          "method": "POST",
+          "path": "/tracker/fam/v1/sdk-oauth-token",
+          "confirmed": true
+        },
+        "getStepDistribution": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/step-distribution",
+          "confirmed": true,
+          "query": [
+            "breedId",
+            "name",
+            "ageInYears"
+          ]
+        },
+        "getTutorialVideoDetails": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/hw-works",
+          "confirmed": true
+        },
+        "getWifiList": {
+          "method": "GET",
+          "path": "/tracker/fam/v1/pet/wifi",
+          "confirmed": true
+        },
+        "logFiSdkInteractionEvent": {
+          "method": "POST",
+          "path": "/tracker/fam/v1/trace/logs",
+          "confirmed": true
+        },
+        "saveWifiDetails": {
+          "method": "POST",
+          "path": "/tracker/fam/v1/pet/wifi",
+          "confirmed": true
+        },
+        "updateWifiDetails": {
+          "method": "PUT",
+          "path": "/tracker/fam/v1/pet/wifi",
+          "confirmed": true
+        }
+      }
+    },
+    "professional_monitoring": {
+      "summary": "Professional monitoring operations.",
+      "id_field": "subscriber-id",
+      "operations": {
+        "createHelp": {
+          "method": "POST",
+          "path": "/fam/prof-monitoring/v5/helps",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "createSubscribers": {
+          "method": "POST",
+          "path": "/fam/prof-monitoring/v5/subscribers",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deactivateProfile": {
+          "method": "PATCH",
+          "path": "/safety/fam/prof-monitoring/v6/subscribers/{subscriber-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "subscriber-id"
+          ]
+        },
+        "getRemoteProfessionalMonitoringAddress": {
+          "method": "GET",
+          "path": "/fam/userprofile-management/v5/userprofiles/address",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getSubscriberSetupInfo": {
+          "method": "GET",
+          "path": "/fam/prof-monitoring/v5/subscribers",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "reactivateProfile": {
+          "method": "PATCH",
+          "path": "/safety/fam/prof-monitoring/v6/subscribers/{subscriber-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "subscriber-id"
+          ]
+        },
+        "updateAddress": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/userprofiles/address/{address-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "address-id"
+          ]
+        },
+        "updateFirstAndLastName": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateSubscribers": {
+          "method": "PUT",
+          "path": "/fam/prof-monitoring/v5/subscribers",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "validateAddress": {
+          "method": "POST",
+          "path": "/fam/prof-monitoring/v5/addresses/validation",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "profile": {
+      "summary": "Family member profiles and avatars.",
+      "id_field": "",
+      "operations": {
+        "reSendInvite": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles/services/invites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getTopApps": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v5/web-app-activity/topApps",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "date",
+            "count",
+            "timezone"
+          ]
+        },
+        "getProfileAvatars": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v5/profile-avatars",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "resolution"
+          ]
+        }
+      }
+    },
+    "pubnub": {
+      "summary": "Pubnub operations.",
+      "id_field": "",
+      "operations": {
+        "getPubNubConfig": {
+          "method": "GET",
+          "path": "/frisco/commsplatform/v5/profiles/pubnubConfiguration",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getPubNubToken": {
+          "method": "POST",
+          "path": "/frisco/commsplatform/v5/pubnub-token",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putDeviceToken": {
+          "method": "PUT",
+          "path": "/frisco/commsplatform/v5/profiles/pushToken",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "real_time_tracking": {
+      "summary": "Real time tracking operations.",
+      "id_field": "",
+      "operations": {
+        "getHistoryEvents": {
+          "method": "GET",
+          "path": "/vsf/location/v5/rtt",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "includeLocEvents"
+          ]
+        },
+        "invoke": {
+          "method": "POST",
+          "path": "/vsf/location/v5/rtt",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "restricted_usage": {
+      "summary": "Restricted usage operations.",
+      "id_field": "",
+      "operations": {
+        "addLimit": {
+          "method": "PUT",
+          "path": "/vsf/callandtext/v5/usagelimits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getAllTheLimits": {
+          "method": "GET",
+          "path": "/vsf/callandtext/v5/usagelimits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileId",
+            "deviceId",
+            "limitType"
+          ]
+        },
+        "resetLimit": {
+          "method": "DELETE",
+          "path": "/vsf/callandtext/v5/usagelimits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "reviews": {
+      "summary": "Reviews operations.",
+      "id_field": "",
+      "operations": {
+        "getReviewEligibility": {
+          "method": "GET",
+          "path": "/user-review/fam/gizmo/v5/review",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "submitReview": {
+          "method": "POST",
+          "path": "/user-review/fam/gizmo/v5/review",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateReviewAction": {
+          "method": "PATCH",
+          "path": "/user-review/fam/gizmo/v5/review",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      },
+      "tier": "p2"
+    },
+    "roadside_assistance": {
+      "summary": "Roadside assistance operations.",
+      "id_field": "vehicle-id",
+      "operations": {
+        "addVehicle": {
+          "method": "POST",
+          "path": "/fam/rsa/v5/vehicles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "cancelRequest": {
+          "method": "PUT",
+          "path": "/fam/rsa/v5/rescue",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteExistVehicle": {
+          "method": "DELETE",
+          "path": "/fam/rsa/v5/vehicles/{vehicle-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "vehicle-id"
+          ]
+        },
+        "dismissRsaNotificationBanner": {
+          "method": "PATCH",
+          "path": "/fam/rsa/v5/rescue/setup",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "dismissWhatsNew": {
+          "method": "PATCH",
+          "path": "/safety/fam/rsa/v6/rescue/whatsnew",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getCarMakes": {
+          "method": "GET",
+          "path": "/frisco/rsa/v5/makes/{year}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "year"
+          ]
+        },
+        "getCarModels": {
+          "method": "POST",
+          "path": "/frisco/rsa/v5/models",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getRescueHistory": {
+          "method": "GET",
+          "path": "/fam/rsa/v5/rescue/history",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getRescueInfo": {
+          "method": "GET",
+          "path": "/fam/rsa/v5/rescue",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getRsaMemberAccess": {
+          "method": "GET",
+          "path": "/fam/rsa/v5/rescue/dependents",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getTowLocations": {
+          "method": "POST",
+          "path": "/fam/rsa/v5/rescue/tow/locations",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "setUpRsaIntroBottomSheet": {
+          "method": "POST",
+          "path": "/fam/rsa/v5/rescue/setup",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "submitRescue": {
+          "method": "POST",
+          "path": "/fam/rsa/v5/rescue",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateExistingUserVehicleDetails": {
+          "method": "PUT",
+          "path": "/fam/rsa/v5/vehicles/{vehicle-id}",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "vehicle-id"
+          ]
+        },
+        "updateRsaMemberAccess": {
+          "method": "PATCH",
+          "path": "/fam/rsa/v5/rescue/dependents",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "validateTowLocation": {
+          "method": "POST",
+          "path": "/fam/rsa/v5/rescue/tow/validate",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      },
+      "tier": "p2"
+    },
+    "safety_alerts": {
+      "summary": "Safety alerts operations.",
+      "id_field": "",
+      "operations": {
+        "getSafetyAlerts": {
+          "method": "GET",
+          "path": "/safety/fam/wm-sos/v5/safety-alerts",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "schedule_alert": {
+      "summary": "Schedule alert operations.",
+      "id_field": "",
+      "operations": {
+        "deleteScheduledAlert": {
+          "method": "DELETE",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getScheduledAlerts": {
+          "method": "GET",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileRole",
+            "profileId"
+          ]
+        },
+        "postScheduleAlert": {
+          "method": "POST",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateScheduledAlert": {
+          "method": "PUT",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "schedules": {
+      "summary": "Bedtime/school/downtime schedules.",
+      "id_field": "",
+      "operations": {
+        "putAppUsageStats": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/web-app-activity",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateSchedulerRunStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/screenTimeScheduler",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getScreenTime": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v1/app-usage",
+          "confirmed": true,
+          "query": [
+            "<@QueryMap HashMap<String,String> \u2014 dynamic query keys>"
+          ]
+        },
+        "acceptDeclineAskTimeRequest": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId"
+          ]
+        },
+        "getAppTimeLimits": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "resolution",
+            "sz",
+            "timezone"
+          ]
+        },
+        "getAskTimeRequests": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v8/app-limits/askTime",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId",
+            "screenTimeLimitId",
+            "packageName",
+            "timezone",
+            "additionalTimeId"
+          ]
+        },
+        "postAppTimeLimit": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v7/app-limits/askTime",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getSchedules": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v6/schedules",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postSchedule": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v6/schedules",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putSchedule": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v6/schedules",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteSchedule": {
+          "method": "DELETE",
+          "path": "/parental-control/frisco/v6/schedules",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "schedule-id"
+          ]
+        },
+        "getScreenTimeData": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/screen-time-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "timezone"
+          ]
+        },
+        "postScreenTimeData": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v7/screen-time-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putScreenTimeData": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v7/screen-time-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "actionOnScreenTimeData": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v7/screen-time-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "requestType"
+          ]
+        },
+        "deleteScreenTimeData": {
+          "method": "DELETE",
+          "path": "/parental-control/frisco/v7/screen-time-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "screenTimeLimitId"
+          ]
+        },
+        "askForMoreScreenTime": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v7/screen-time-limits/askTime",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getCategories": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/categories",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<@QueryMap HashMap<String,String> \u2014 dynamic query keys>"
+          ]
+        },
+        "getInsights": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/insights",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "timezone",
+            "usageType",
+            "categorySupported"
+          ]
+        },
+        "createAppLimit": {
+          "method": "POST",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateAppLimit": {
+          "method": "PUT",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId"
+          ]
+        },
+        "deleteAppLimit": {
+          "method": "DELETE",
+          "path": "/parental-control/frisco/v7/app-limits",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "appLimitsId"
+          ]
+        },
+        "getScheduledAlerts": {
+          "method": "GET",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "eventType",
+            "profileRole",
+            "profileId"
+          ]
+        },
+        "postScheduleAlert": {
+          "method": "POST",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateScheduledAlert": {
+          "method": "PUT",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "deleteScheduledAlert": {
+          "method": "DELETE",
+          "path": "/vsf/location/v5/scheduled/alert/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "security_threat": {
+      "summary": "Security-threat (malware/phishing) blocking.",
+      "id_field": "",
+      "operations": {
+        "getThreats": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/security-threats",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "(dynamic @QueryMap HashMap<String,String>)"
+          ]
+        }
+      }
+    },
+    "services_hub": {
+      "summary": "Services hub operations.",
+      "id_field": "",
+      "operations": {
+        "getEligibleServices": {
+          "method": "GET",
+          "path": "/servicecatalog/fam/servicescatalog/v6/eligibleservices",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-app-uuid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getSetupStatus": {
+          "method": "GET",
+          "path": "/servicecatalog/fam/servicescatalog/v5/setupstatus",
+          "confirmed": true,
+          "headers": [
+            "If-None-Match",
+            "x-fp-identifier-app-uuid",
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "tile-id"
+          ]
+        },
+        "getTileImages": {
+          "method": "GET",
+          "path": "/servicecatalog/fam/servicescatalog/v1/images",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "setup_wizard": {
+      "summary": "Setup wizard operations.",
+      "id_field": "",
+      "operations": {
+        "getUserTasks": {
+          "method": "GET",
+          "path": "/account/fam/task-management/v5/userprofiles/tasks",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateUserTask": {
+          "method": "PATCH",
+          "path": "/account/fam/task-management/v5/userprofiles/tasks",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-profileid",
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "sos": {
+      "summary": "Sos operations.",
+      "id_field": "session-id",
+      "operations": {
+        "manageWmsPin": {
+          "method": "PATCH",
+          "path": "/fam/wm-sos/v5/profiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postWmsOnboardProfile": {
+          "method": "POST",
+          "path": "/fam/wm-sos/v5/profiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateSafeWalkProfile": {
+          "method": "PATCH",
+          "path": "/fam/wm-sos/v5/profiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "escalateToSoSRequest": {
+          "method": "PATCH",
+          "path": "/fam/wm-sos/v5/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "extendSoSSession": {
+          "method": "PATCH",
+          "path": "/fam/wm-sos/v5/sessions/extend",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getWatchMeSoSSessionInfo": {
+          "method": "GET",
+          "path": "/fam/wm-sos/v5/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "markSafeWatchMeSoSRequest": {
+          "method": "PATCH",
+          "path": "/fam/wm-sos/v5/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "submitWatchMeRequest": {
+          "method": "POST",
+          "path": "/fam/wm-sos/v5/sessions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "watchMeSosAlerts": {
+          "method": "GET",
+          "path": "/safety/fam/wm-sos/v6/sessions/insights/summary",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "watchMeSosInsightSummaryList": {
+          "method": "GET",
+          "path": "/fam/wm-sos/v5/sessions/insights/list",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "getWatchMeSoSHistory": {
+          "method": "GET",
+          "path": "/fam/wm-sos/v5/sessions/{session-id}/location/history",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "placeholders": [
+            "session-id"
+          ]
+        }
+      }
+    },
+    "step_counter": {
+      "summary": "Step counter operations.",
+      "id_field": "",
+      "operations": {
+        "getChartStepsTracking": {
+          "method": "GET",
+          "path": "/comms/frisco/v1/stepsTracking",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        },
+        "setStepGoals": {
+          "method": "POST",
+          "path": "/fam/comms/v1/device/settings",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "subscription": {
+      "summary": "Subscription operations.",
+      "id_field": "",
+      "operations": {
+        "cancelSubscription": {
+          "method": "DELETE",
+          "path": "/account/fam/userprofile-management/v5/accounts/subscription",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "tamper": {
+      "summary": "Tamper operations.",
+      "id_field": "",
+      "operations": {
+        "postAccessibilityStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/androidAccessibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postAdminStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/adminStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postBannerStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/bannerStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postCallOnlyModeStatus": {
+          "method": "POST",
+          "path": "/comms/vsf/tamper/v5/callOnlyMode",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postHibernationStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/hibernation",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postParentalControlsRemoved": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/parentalControlsRemoved",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postScreenTimeCallOnlyModeStatus": {
+          "method": "POST",
+          "path": "/comms/vsf/tamper/v5/screenTimeCallOnlyMode",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "putTamperInstructions": {
+          "method": "PUT",
+          "path": "/fam/userprofile-management/v5/tamper/instructions",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postBatteryUsage": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/batteryOptimization",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postBluetoothScan": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/bluetoothScan",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postNotificationStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/notificationStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postPhysicalActivityStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/physicalActivityStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postPowerSaving": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/powerSaving",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateScreenTimeTamperStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/screenTimeStatus",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateVpnTamperStatus": {
+          "method": "POST",
+          "path": "/vsf/tamper/v5/vpn",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "todo": {
+      "summary": "Todo operations.",
+      "id_field": "",
+      "operations": {
+        "createTodo": {
+          "method": "POST",
+          "path": "/comms/fam/v1/todos",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        },
+        "deleteTodo": {
+          "method": "DELETE",
+          "path": "/comms/fam/v1/todos",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "todoId"
+          ]
+        },
+        "invoke (getTodos)": {
+          "method": "GET",
+          "path": "/comms/fam/v1/todos",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "updateTodo": {
+          "method": "PUT",
+          "path": "/comms/fam/v1/todos",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        }
+      }
+    },
+    "user_setting": {
+      "summary": "User setting operations.",
+      "id_field": "",
+      "operations": {
+        "updateUserSettings": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/user/auth/setting",
+          "confirmed": true
+        }
+      }
+    },
+    "video_calling": {
+      "summary": "Video calling operations.",
+      "id_field": "",
+      "operations": {
+        "callManage": {
+          "method": "POST",
+          "path": "/comms/fam/v1/webrtc/callManage",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "initCall": {
+          "method": "POST",
+          "path": "/comms/fam/v1/webrtc/initCall",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "initCallAnswer": {
+          "method": "POST",
+          "path": "/comms/fam/v1/webrtc/initCallAnswer",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "vpn_status": {
+      "summary": "Vpn status operations.",
+      "id_field": "",
+      "operations": {
+        "getWebAppVisibility": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/web-app-activity/visibility",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "vpn-retry-type"
+          ]
+        }
+      }
+    },
+    "wearable": {
+      "summary": "Wearable operations.",
+      "id_field": "",
+      "operations": {
+        "confirmWatchPairing": {
+          "method": "POST",
+          "path": "/auth/frisco/frisco-iam-wearable-auth/v1/watch/auth/verify",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "notifyGuardianFromDependantWatch": {
+          "method": "POST",
+          "path": "/safety/fam/wearable/v6/locations/notification",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-transaction-id"
+          ]
+        },
+        "onboardWearableWatch": {
+          "method": "POST",
+          "path": "/account/fam/userprofile-management/v6/accounts/userprofiles",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid",
+            "x-trace-transaction-id"
+          ]
+        },
+        "resendInvite": {
+          "method": "PATCH",
+          "path": "/fam/userprofile-management/v5/userprofiles/services/invites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "watchAuth": {
+          "method": "POST",
+          "path": "/frisco/frisco-iam-device-auth/v5/watch/auth/token",
+          "confirmed": true,
+          "headers": [
+            "x-trace-transaction-id"
+          ]
+        }
+      }
+    },
+    "web_and_apps": {
+      "summary": "Web and apps operations.",
+      "id_field": "",
+      "operations": {
+        "getAppUsageDetails": {
+          "method": "GET",
+          "path": "/parental-control/frisco/v7/web-app-activity/apps",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<QueryMap: HashMap<String,String>>"
+          ]
+        },
+        "getCategories": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/categories",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<QueryMap: HashMap<String,String>>"
+          ]
+        },
+        "getInsights": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/insights",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "timezone",
+            "usageType",
+            "categorySupported"
+          ]
+        },
+        "getWebsite": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/websites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<QueryMap: HashMap<String,String> (nullable)>"
+          ]
+        },
+        "getWebsiteDetails": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v6/web-app-activity/details/website",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<QueryMap: Map<String,String>>"
+          ]
+        },
+        "getWebsites": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/web-app-activity/websites",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "<QueryMap: HashMap<String,String>>"
+          ]
+        },
+        "getWebsites2": {
+          "method": "GET",
+          "path": "/frisco/parental-control/v5/website",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "website": {
+      "summary": "Website allow/block lists.",
+      "id_field": "",
+      "operations": {
+        "deleteWebsite": {
+          "method": "DELETE",
+          "path": "/frisco/parental-control/v5/website",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
+          "query": [
+            "profileDomainId"
+          ]
+        },
+        "disableSafeSearch": {
+          "method": "DELETE",
+          "path": "/frisco/parental-control/v5/website/safesearch",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "enableSafeSearch": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/website/safesearch",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postWebsite": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/website",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        },
+        "postWebsites": {
+          "method": "POST",
+          "path": "/frisco/parental-control/v5/website",
+          "confirmed": true,
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ]
+        }
+      }
+    },
+    "whats_new": {
+      "summary": "Whats new operations.",
+      "id_field": "",
+      "operations": {
+        "getWhatsNew": {
+          "method": "GET",
+          "path": "/account/fam/userprofile-management/v1/releases",
+          "confirmed": true
+        }
+      },
+      "tier": "p2"
     }
   }
 }
