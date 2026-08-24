@@ -70,7 +70,7 @@ func TestRunCallGET(t *testing.T) {
 	cl.BaseURL = srv.URL
 
 	var out strings.Builder
-	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, &out, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, nil, &out, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotMethod != "GET" || gotAuth != "THE.ID.TOKEN" {
@@ -98,7 +98,7 @@ func TestRunCallSendsServiceIDHeader(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1234567"}
-	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, &strings.Builder{}, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, nil, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotSvc != "1234567" {
@@ -111,7 +111,7 @@ func TestRunCallSendsServiceIDHeader(t *testing.T) {
 func TestRunCallMissingServiceID(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T") // no server: must fail before any request
-	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", nil, &strings.Builder{}, true)
+	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", nil, nil, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "service-id") {
 		t.Errorf("want a --service-id guidance error, got %v", err)
 	}
@@ -127,7 +127,7 @@ func TestRunCallErrorStatus(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
-	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, &strings.Builder{}, true)
+	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, nil, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Errorf("want a 403 error, got %v", err)
 	}
@@ -137,7 +137,7 @@ func TestRunCallRejectsBadData(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T")
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
-	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "setCFCategories", "", "{not json", idh, &strings.Builder{}, true); err == nil {
+	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "setCFCategories", "", "{not json", idh, nil, &strings.Builder{}, true); err == nil {
 		t.Error("want error for invalid --data JSON")
 	}
 }
@@ -175,5 +175,54 @@ func TestIdentityHeaders(t *testing.T) {
 	// A header name no op declares must never be emitted.
 	if _, ok := m["x-fp-identifier-mdn"]; ok {
 		t.Error("x-fp-identifier-mdn must not be emitted (no op declares it)")
+	}
+}
+
+// runCall appends provided query parameters to the request URL — the mechanism ops whose
+// required inputs live in Operation.Query (e.g. accessibility_pin validatePin's pin) need
+// to be callable at all.
+func TestRunCallAppendsQuery(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotURI string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotURI = r.URL.RequestURI()
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	q := map[string]string{"pin": "1234", "foo": "b ar"}
+	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, q, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if !strings.Contains(gotURI, "pin=1234") || !strings.Contains(gotURI, "foo=b+ar") {
+		t.Errorf("query not appended to URL: %q", gotURI)
+	}
+}
+
+// An op that declares x-trace-transaction-id gets a fresh UUID generated for it — the app
+// sends one, and newAppRequest only adds x-transaction-id automatically.
+func TestRunCallGeneratesTraceHeader(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotTrace, gotSvc string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotTrace = r.Header.Get("x-trace-transaction-id")
+		gotSvc = r.Header.Get("x-fp-identifier-target-serviceid")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	if err := runCall(context.Background(), cl.DoH, d, "device_settings", "getDeviceLogs", "", "", idh, nil, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotSvc != "svc" {
+		t.Errorf("service id header = %q", gotSvc)
+	}
+	if len(gotTrace) < 32 || !strings.Contains(gotTrace, "-") {
+		t.Errorf("x-trace-transaction-id not generated (got %q)", gotTrace)
 	}
 }

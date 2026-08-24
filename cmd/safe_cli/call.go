@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/ejc3/safe_cli/internal/client"
@@ -19,13 +20,14 @@ import (
 // It is the generic engine behind the data model; the descriptor is the source of the
 // method, path, and id placeholder.
 type callCmd struct {
-	Entity    string `arg:"" help:"Entity (see 'safe_cli entities')."`
-	Op        string `arg:"" help:"Operation or action (see 'safe_cli describe <entity>')."`
-	ID        string `arg:"" optional:"" help:"Resource id to fill a {placeholder} in the path."`
-	Data      string `name:"data" help:"JSON request body (for create/update/action operations)."`
-	ServiceID string `name:"service-id" help:"Target (child's) service id for the x-fp-identifier-target-serviceid header."`
-	ProfileID string `name:"profile-id" help:"Target profile id (defaults to the id_token's own profile)."`
-	DeviceID  string `name:"device-id" help:"Target device id (defaults to the id_token's own device)."`
+	Entity    string   `arg:"" help:"Entity (see 'safe_cli entities')."`
+	Op        string   `arg:"" help:"Operation or action (see 'safe_cli describe <entity>')."`
+	ID        string   `arg:"" optional:"" help:"Resource id to fill a {placeholder} in the path."`
+	Data      string   `name:"data" help:"JSON request body (for create/update/action operations)."`
+	ServiceID string   `name:"service-id" help:"Target (child's) service id for the x-fp-identifier-target-serviceid header."`
+	ProfileID string   `name:"profile-id" help:"Target profile id (defaults to the id_token's own profile)."`
+	DeviceID  string   `name:"device-id" help:"Target device id (defaults to the id_token's own device)."`
+	Query     []string `name:"query" short:"q" help:"Query parameter as key=value (repeatable), for operations that declare query params (see 'safe_cli describe <entity>')."`
 }
 
 func (c *callCmd) Run(rc *runContext) error {
@@ -41,7 +43,27 @@ func (c *callCmd) Run(rc *runContext) error {
 	// must not block every other call — identityHeaders just omits the header.
 	appUUID, _ := resolveAppUUID(ts)
 	hdrs := identityHeaders(idt, c.ServiceID, c.ProfileID, c.DeviceID, appUUID)
-	return runCall(context.Background(), authedRequest(rc, st, ts), rc.D, c.Entity, c.Op, c.ID, c.Data, hdrs, rc.Out, rc.G.JSON)
+	query, err := parseKV(c.Query)
+	if err != nil {
+		return err
+	}
+	return runCall(context.Background(), authedRequest(rc, st, ts), rc.D, c.Entity, c.Op, c.ID, c.Data, hdrs, query, rc.Out, rc.G.JSON)
+}
+
+// parseKV turns repeated key=value flags into a map (nil for none).
+func parseKV(pairs []string) (map[string]string, error) {
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	m := make(map[string]string, len(pairs))
+	for _, p := range pairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok || k == "" {
+			return nil, fmt.Errorf("--query %q must be key=value", p)
+		}
+		m[k] = v
+	}
+	return m, nil
 }
 
 // doFunc sends an HTTP request (with the given extra request-identity headers) and returns
@@ -54,16 +76,20 @@ type doFunc func(ctx context.Context, method, path string, body []byte, headers 
 // Parental-control endpoints are plain id_token-authed (confirmed from the decompiled
 // TokenAwareInterceptor — Authorization: <id_token>, no SigV4); each declares which
 // x-fp-identifier-* headers it needs (the child's service id is the near-universal one).
-func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, entity, op, id, data string, idHeaders map[string]string, out io.Writer, asJSON bool) error {
+func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, entity, op, id, data string, idHeaders, query map[string]string, out io.Writer, asJSON bool) error {
 	o, err := resolveOp(d, entity, op)
 	if err != nil {
 		return err
+	}
+	if strings.Contains(o.Path, "@") {
+		return fmt.Errorf("%s %s has a runtime-resolved (@Url) path the CLI cannot construct: %q", entity, op, o.Path)
 	}
 	ent, _ := d.Entity(entity)
 	path, err := fillPath(o.Path, ent.IDField, id)
 	if err != nil {
 		return err
 	}
+	path = appendQuery(path, query)
 	body, err := buildBody(o.Body, data)
 	if err != nil {
 		return err
@@ -71,9 +97,17 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, entity, o
 	headers := make(map[string]string)
 	var missingSvc []string
 	for _, h := range o.Headers {
-		if v := idHeaders[h]; v != "" {
-			headers[h] = v
-		} else if strings.Contains(h, "serviceid") {
+		switch {
+		case idHeaders[h] != "":
+			headers[h] = idHeaders[h]
+		case h == "x-trace-transaction-id":
+			// The app supplies a fresh UUID here; newAppRequest only adds x-transaction-id.
+			tid, terr := client.TraceID()
+			if terr != nil {
+				return terr
+			}
+			headers[h] = tid
+		case strings.Contains(h, "serviceid"):
 			missingSvc = append(missingSvc, h)
 		}
 	}
@@ -85,6 +119,33 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, entity, o
 		return err
 	}
 	return writeAPIResponse(out, asJSON, resp)
+}
+
+// appendQuery appends query parameters (sorted, for deterministic URLs) onto path,
+// choosing ? or & as needed.
+func appendQuery(path string, query map[string]string) string {
+	if len(query) == 0 {
+		return path
+	}
+	keys := make([]string, 0, len(query))
+	for k := range query {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	var b strings.Builder
+	b.WriteString(path)
+	for _, k := range keys {
+		b.WriteString(sep)
+		b.WriteString(url.QueryEscape(k))
+		b.WriteByte('=')
+		b.WriteString(url.QueryEscape(query[k]))
+		sep = "&"
+	}
+	return b.String()
 }
 
 // identityHeaders builds the x-fp-identifier-* header VALUES keyed by the wire header

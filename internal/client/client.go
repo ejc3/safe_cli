@@ -31,9 +31,9 @@ import (
 	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
-// traceID returns a random v4 UUID for the x-trace-transaction-id header the token
+// TraceID returns a random v4 UUID for the x-trace-transaction-id header the token
 // endpoint requires.
-func traceID() (string, error) {
+func TraceID() (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", err
@@ -202,7 +202,7 @@ func (c *Client) postTokenRequest(ctx context.Context, path string, pr parentTok
 	// The token endpoint requires a trace id: without x-trace-transaction-id it rejects
 	// the refresh with 400 "Invalid Request" (confirmed live). The app supplies it from
 	// HeaderProvider.getAuthTokenHeaders; a fresh v4 UUID satisfies it.
-	trace, err := traceID()
+	trace, err := TraceID()
 	if err != nil {
 		return nil, err
 	}
