@@ -186,3 +186,21 @@ func TestSetHeaderCanonicalizesReserved(t *testing.T) {
 		t.Errorf("app-specific header casing not preserved: %v", h)
 	}
 }
+
+// A caller override with different casing than an app header replaces it (no duplicate,
+// case-insensitively) rather than sending both values.
+func TestSetHeaderDedupsCaseInsensitively(t *testing.T) {
+	h := http.Header{}
+	setRaw(h, "x-transaction-id", "app-generated") // the app default (lowercase)
+	setHeader(h, "X-Transaction-Id", "caller")     // caller override, different casing
+	// Exactly one value across all casings.
+	var vals []string
+	for k := range h {
+		if http.CanonicalHeaderKey(k) == "X-Transaction-Id" {
+			vals = append(vals, h[k]...)
+		}
+	}
+	if len(vals) != 1 || vals[0] != "caller" {
+		t.Errorf("x-transaction-id values = %v, want exactly [caller]", vals)
+	}
+}

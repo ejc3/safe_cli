@@ -156,6 +156,15 @@ func setHeader(h http.Header, key, value string) {
 		h.Set(key, value)
 		return
 	}
+	// Drop any existing case-insensitive match first, so a caller's differently-cased
+	// override replaces the app default instead of coexisting with it (e.g. --header
+	// X-Transaction-Id=… must not leave the generated lowercase x-transaction-id behind).
+	canon := http.CanonicalHeaderKey(key)
+	for k := range h {
+		if http.CanonicalHeaderKey(k) == canon {
+			delete(h, k)
+		}
+	}
 	setRaw(h, key, value)
 }
 
