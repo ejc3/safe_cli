@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,28 +32,32 @@ func TestResolveOp(t *testing.T) {
 
 func TestFillPath(t *testing.T) {
 	// placeholder substitution
-	if got, err := fillPath("/frisco/v8/devices/{deviceId}/appsSync", "deviceId", "D1"); err != nil || got != "/frisco/v8/devices/D1/appsSync" {
+	if got, err := fillPath("/frisco/v8/devices/{deviceId}/appsSync", "deviceId", "D1", nil); err != nil || got != "/frisco/v8/devices/D1/appsSync" {
 		t.Errorf("substitute: %q %v", got, err)
 	}
 	// placeholder present but no id
-	if _, err := fillPath("/x/{deviceId}", "deviceId", ""); err == nil {
+	if _, err := fillPath("/x/{deviceId}", "deviceId", "", nil); err == nil {
 		t.Error("want error: placeholder but no id")
 	}
 	// fixed path + id -> query param
-	if got, err := fillPath("/frisco/v7/filterContent", "profileId", "P1"); err != nil || got != "/frisco/v7/filterContent?profileId=P1" {
+	if got, err := fillPath("/frisco/v7/filterContent", "profileId", "P1", nil); err != nil || got != "/frisco/v7/filterContent?profileId=P1" {
 		t.Errorf("query append: %q %v", got, err)
 	}
 	// fixed path that already has a query -> append with '&'
-	if got, err := fillPath("/frisco/v7/filterContent?scope=all", "profileId", "P1"); err != nil || got != "/frisco/v7/filterContent?scope=all&profileId=P1" {
+	if got, err := fillPath("/frisco/v7/filterContent?scope=all", "profileId", "P1", nil); err != nil || got != "/frisco/v7/filterContent?scope=all&profileId=P1" {
 		t.Errorf("amp append: %q %v", got, err)
 	}
 	// multi-placeholder path: the leading {id_field} is filled but another remains -> error
-	if _, err := fillPath("/groups/{groupId}/members/{memberId}", "groupId", "G1"); err == nil {
+	if _, err := fillPath("/groups/{groupId}/members/{memberId}", "groupId", "G1", nil); err == nil {
 		t.Error("want error: path still has an unfilled placeholder")
 	}
 	// no id, fixed path -> unchanged
-	if got, err := fillPath("/vsf/account-management/v1/accounts", "accountId", ""); err != nil || got != "/vsf/account-management/v1/accounts" {
+	if got, err := fillPath("/vsf/account-management/v1/accounts", "accountId", "", nil); err != nil || got != "/vsf/account-management/v1/accounts" {
 		t.Errorf("no id: %q %v", got, err)
+	}
+	// multi-placeholder path: positional id fills {id_field}, --path fills the rest
+	if got, err := fillPath("/g/{group-id}/m/{member-id}", "group-id", "G1", map[string]string{"member-id": "M2"}); err != nil || got != "/g/G1/m/M2" {
+		t.Errorf("multi-placeholder: %q %v", got, err)
 	}
 }
 
@@ -70,7 +75,7 @@ func TestRunCallGET(t *testing.T) {
 	cl.BaseURL = srv.URL
 
 	var out strings.Builder
-	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, nil, &out, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "account", op: "getAccountDetails"}, &out, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotMethod != "GET" || gotAuth != "THE.ID.TOKEN" {
@@ -98,7 +103,7 @@ func TestRunCallSendsServiceIDHeader(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1234567"}
-	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, nil, &strings.Builder{}, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh}, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotSvc != "1234567" {
@@ -111,7 +116,7 @@ func TestRunCallSendsServiceIDHeader(t *testing.T) {
 func TestRunCallMissingServiceID(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T") // no server: must fail before any request
-	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", nil, nil, &strings.Builder{}, true)
+	err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent"}, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "service-id") {
 		t.Errorf("want a --service-id guidance error, got %v", err)
 	}
@@ -127,7 +132,7 @@ func TestRunCallErrorStatus(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
-	err := runCall(context.Background(), cl.DoH, d, "content_filter", "getFilterContent", "", "", idh, nil, &strings.Builder{}, true)
+	err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh}, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "403") {
 		t.Errorf("want a 403 error, got %v", err)
 	}
@@ -137,7 +142,7 @@ func TestRunCallRejectsBadData(t *testing.T) {
 	d, _ := descriptor.Default()
 	cl := client.New("T")
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "1"}
-	if err := runCall(context.Background(), cl.DoH, d, "content_filter", "setCFCategories", "", "{not json", idh, nil, &strings.Builder{}, true); err == nil {
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "setCFCategories", data: "{not json", idHeaders: idh}, &strings.Builder{}, true); err == nil {
 		t.Error("want error for invalid --data JSON")
 	}
 }
@@ -193,7 +198,7 @@ func TestRunCallAppendsQuery(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	q := map[string]string{"pin": "1234", "foo": "b ar"}
-	if err := runCall(context.Background(), cl.DoH, d, "account", "getAccountDetails", "", "", nil, q, &strings.Builder{}, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "account", op: "getAccountDetails", query: q}, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if !strings.Contains(gotURI, "pin=1234") || !strings.Contains(gotURI, "foo=b+ar") {
@@ -216,7 +221,7 @@ func TestRunCallGeneratesTraceHeader(t *testing.T) {
 	cl := client.New("T")
 	cl.BaseURL = srv.URL
 	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
-	if err := runCall(context.Background(), cl.DoH, d, "device_settings", "getDeviceLogs", "", "", idh, nil, &strings.Builder{}, true); err != nil {
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "device_settings", op: "getDeviceLogs", idHeaders: idh}, &strings.Builder{}, true); err != nil {
 		t.Fatalf("runCall: %v", err)
 	}
 	if gotSvc != "svc" {
@@ -235,8 +240,82 @@ func TestRunCallRejectsDynamicURL(t *testing.T) {
 		t.Fatal(err)
 	}
 	// No server: the guard must fire before any request is attempted.
-	err = runCall(context.Background(), client.New("T").DoH, d, "config", "getX", "", "", nil, nil, &strings.Builder{}, true)
+	err = runCall(context.Background(), client.New("T").DoH, d, callArgs{entity: "config", op: "getX"}, &strings.Builder{}, true)
 	if err == nil || !strings.Contains(err.Error(), "@Url") {
 		t.Errorf("want an @Url rejection error, got %v", err)
+	}
+}
+
+// A multi-placeholder path is fully constructed from the positional id ({group-id}) plus
+// --path name=value for the rest ({member-id}) — otherwise these ops are uncallable.
+func TestRunCallFillsNamedPathParams(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotPath, gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotMethod = r.URL.Path, r.Method
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	args := callArgs{
+		entity: "messaging", op: "deleteGroupMember", id: "G1",
+		idHeaders:  map[string]string{"x-fp-identifier-target-serviceid": "svc"},
+		pathParams: map[string]string{"member-id": "M2"},
+	}
+	if err := runCall(context.Background(), cl.DoH, d, args, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotMethod != "DELETE" || gotPath != "/account/fam/group-management/v5/groups/G1/members/M2" {
+		t.Errorf("method=%q path=%q", gotMethod, gotPath)
+	}
+}
+
+// An arbitrary --header a op needs (e.g. timezone, schedule-type) is sent even when no
+// dedicated flag covers it.
+func TestRunCallSendsUserHeader(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotTZ string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotTZ = r.Header.Get("timezone")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	args := callArgs{entity: "account", op: "getAccountDetails", userHeaders: map[string]string{"timezone": "UTC"}}
+	if err := runCall(context.Background(), cl.DoH, d, args, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotTZ != "UTC" {
+		t.Errorf("timezone header = %q, want UTC", gotTZ)
+	}
+}
+
+// A mutating op (POST) sends its method, the merged JSON body, and the required identity
+// header — the write pathways behave the same as reads through the one dispatcher.
+func TestRunCallPostsBody(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotMethod, gotBody, gotSvc string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotMethod, gotBody, gotSvc = r.Method, string(b), r.Header.Get("x-fp-identifier-target-serviceid")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	args := callArgs{
+		entity: "content_filter", op: "setCFCategories", data: `{"category":"social","allowed":false}`,
+		idHeaders: map[string]string{"x-fp-identifier-target-serviceid": "svc"},
+	}
+	if err := runCall(context.Background(), cl.DoH, d, args, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotMethod != "POST" || gotSvc != "svc" || !strings.Contains(gotBody, `"category":"social"`) {
+		t.Errorf("method=%q svc=%q body=%q", gotMethod, gotSvc, gotBody)
 	}
 }

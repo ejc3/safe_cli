@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/alecthomas/kong"
 
@@ -97,15 +98,24 @@ func (c *describeCmd) Run(rc *runContext) error {
 		}
 	}
 	var rows [][]string
+	row := func(name string, op descriptor.Operation) []string {
+		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), confirmed(op.Confirmed)}
+	}
 	for _, k := range e.OperationNames() {
-		op := e.Operations[k]
-		rows = append(rows, []string{k, op.Method, op.Path, confirmed(op.Confirmed)})
+		rows = append(rows, row(k, e.Operations[k]))
 	}
 	for _, k := range e.ActionNames() {
-		op := e.Actions[k]
-		rows = append(rows, []string{k + " (action)", op.Method, op.Path, confirmed(op.Confirmed)})
+		rows = append(rows, row(k+" (action)", e.Actions[k]))
 	}
-	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "CONFIRMED"}, rows)
+	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "QUERY", "HEADERS", "CONFIRMED"}, rows)
+}
+
+// joinOr renders a descriptor string list for the table, or "-" when empty.
+func joinOr(xs []string) string {
+	if len(xs) == 0 {
+		return "-"
+	}
+	return strings.Join(xs, ",")
 }
 
 func confirmed(b bool) string {
