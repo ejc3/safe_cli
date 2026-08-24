@@ -8,10 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ejc3/safe_cli/internal/apkkey"
 	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/outfmt"
 	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
+
+// extractSigningKey is a package var so tests can stub the APK read.
+var extractSigningKey = apkkey.ExtractSigningKey
 
 // redact keeps a token recognizable without exposing it.
 func redact(s string) string {
@@ -40,9 +44,30 @@ func loadTokens() (*tokenstore.Store, *tokenstore.TokenSet, error) {
 }
 
 type authCmd struct {
-	Import authImportCmd `cmd:"" help:"Import a captured frisco token JSON and persist it (0600)."`
-	Status authStatusCmd `cmd:"" help:"Show stored token status."`
-	Logout authLogoutCmd `cmd:"" help:"Delete stored tokens."`
+	Import     authImportCmd     `cmd:"" help:"Import a captured frisco token JSON and persist it (0600)."`
+	Status     authStatusCmd     `cmd:"" help:"Show stored token status."`
+	Logout     authLogoutCmd     `cmd:"" help:"Delete stored tokens."`
+	ExtractKey authExtractKeyCmd `cmd:"" name:"extract-key" help:"Read the request-signing key from your own APK and print it."`
+}
+
+// authExtractKeyCmd surfaces the app's HMAC request-signing key from the operator's
+// own licensed APK. The key is not shipped with this tool; this is how the operator
+// supplies it (see docs/PROCESS.md §11). Its output IS the key — pipe or capture it,
+// e.g. `export SAFE_CLI_SIGNING_KEY=$(safe_cli auth extract-key --apk your.apk)`.
+type authExtractKeyCmd struct {
+	APK string `name:"apk" type:"existingfile" required:"" help:"Path to your own Verizon Family APK."`
+}
+
+func (c *authExtractKeyCmd) Run(rc *runContext) error {
+	key, err := extractSigningKey(c.APK)
+	if err != nil {
+		return err
+	}
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, map[string]string{"signing_key": key})
+	}
+	_, err = fmt.Fprintln(rc.Out, key)
+	return err
 }
 
 type authImportCmd struct {

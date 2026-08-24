@@ -93,8 +93,9 @@ build constant; publishing interoperability *code* is different from redistribut
 live shared credential, and there is no clean authority that committing it is lawful.
 So `internal/signing` ships the algorithm only, keyed by a secret the operator
 supplies at runtime from their **own licensed copy of the app** (extraction is a local
-step the operator runs — see `docs/PROCESS.md` §11). The CLI must never persist, log,
-or print the key.
+step the operator runs — see `docs/PROCESS.md` §11). The CLI never writes the key to
+disk or logs it; the one exception is `auth extract-key`, whose explicit purpose is to
+print the key you asked it to read from your APK.
 
 **The one embedded constant is the OAuth `client_id`** — a public OAuth *client
 identifier*, not a secret: it grants nothing on its own, and a real login still needs
