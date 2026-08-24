@@ -73,7 +73,8 @@ Run the gate before calling a PR green or merging:
 ```bash
 make build      # -> bin/safe_cli
 make test       # go test -race ./...
-make lint       # gofmt check + go vet + golangci-lint
+make lint       # go vet + go mod tidy check + gofmt check + golangci-lint (17 linters)
+make vuln       # govulncheck ./... (also gated in CI)
 make fmt        # gofmt -w
 ./bin/safe_cli entities
 ./bin/safe_cli describe web_filter

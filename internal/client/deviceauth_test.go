@@ -21,7 +21,7 @@ func TestRequestDeviceOTP(t *testing.T) {
 		gotSig = r.Header.Get("x-signature")
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"state":"OTP_SENT","statusCode":200}`))
 	}))
 	defer srv.Close()
@@ -52,7 +52,7 @@ func TestValidateDeviceOTP(t *testing.T) {
 		gotPath = r.URL.Path
 		b, _ := io.ReadAll(r.Body)
 		gotBody = string(b)
-		w.WriteHeader(207)
+		w.WriteHeader(http.StatusMultiStatus)
 		_, _ = w.Write([]byte(`{"state":"AM_LOGIN_PAGE","tokens":[{"token_type":"login_recom_token","id_token":"RECOM.JWT.VALUE","expires_in":1800}]}`))
 	}))
 	defer srv.Close()
@@ -80,7 +80,7 @@ func TestValidateDeviceOTP(t *testing.T) {
 
 func TestValidateDeviceOTPNoToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"state":"INVALID_OTP","tokens":[]}`))
 	}))
 	defer srv.Close()
