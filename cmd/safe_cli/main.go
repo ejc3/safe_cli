@@ -102,14 +102,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 		if op.Destructive {
 			name = "⚠ " + name // catastrophic: requires --confirm
 		}
-		body := "-"
-		if op.TakesBody {
-			body = "yes"
-		}
-		if op.Multipart {
-			body = "multipart"
-		}
-		return []string{name, op.Method, op.Path, joinOr(op.Query), joinOr(op.Headers), body, confirmed(op.Confirmed)}
+		return []string{name, op.Method, opFlags(op), op.Description}
 	}
 	for _, k := range e.OperationNames() {
 		rows = append(rows, row(k, e.Operations[k]))
@@ -117,22 +110,40 @@ func (c *describeCmd) Run(rc *runContext) error {
 	for _, k := range e.ActionNames() {
 		rows = append(rows, row(k+" (action)", e.Actions[k]))
 	}
-	return outfmt.Table(rc.Out, []string{"OP", "METHOD", "PATH", "QUERY", "HEADERS", "BODY", "CONFIRMED"}, rows)
+	if err := outfmt.Table(rc.Out, []string{"OP", "METHOD", "FLAGS", "WHAT IT DOES"}, rows); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=needs --service-id (child)  body=needs --data  query=takes --query  "+
+		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. Full paths/headers: --json.")
+	return err
 }
 
-// joinOr renders a descriptor string list for the table, or "-" when empty.
-func joinOr(xs []string) string {
-	if len(xs) == 0 {
+// opFlags summarizes, in a few tokens, what a caller must supply to invoke op — so an agent
+// can see at a glance which flags each verb needs.
+func opFlags(op descriptor.Operation) string {
+	var f []string
+	for _, h := range op.Headers {
+		if strings.Contains(h, "serviceid") {
+			f = append(f, "svc")
+			break
+		}
+	}
+	switch {
+	case op.Multipart:
+		f = append(f, "multipart")
+	case op.TakesBody:
+		f = append(f, "body")
+	}
+	if len(op.Query) > 0 {
+		f = append(f, "query")
+	}
+	if op.Destructive {
+		f = append(f, "confirm")
+	}
+	if len(f) == 0 {
 		return "-"
 	}
-	return strings.Join(xs, ",")
-}
-
-func confirmed(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no (static)"
+	return strings.Join(f, ",")
 }
 
 func main() {

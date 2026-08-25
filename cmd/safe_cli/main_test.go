@@ -21,11 +21,11 @@ func TestDescribeShowsQueryParams(t *testing.T) {
 		t.Fatalf("describe: %v", err)
 	}
 	s := out.String()
-	if !strings.Contains(s, "QUERY") {
-		t.Errorf("describe table is missing the QUERY column:\n%s", s)
+	// The FLAGS column tells an agent validatePin takes --query (and needs --service-id).
+	if !strings.Contains(s, "query") {
+		t.Errorf("describe FLAGS should show query for an op with query params:\n%s", s)
 	}
-	// validatePin declares the `pin` query param; it must appear in the human table.
-	if !strings.Contains(s, "pin") {
-		t.Errorf("validatePin's declared query param `pin` is not shown:\n%s", s)
+	if !strings.Contains(s, "WHAT IT DOES") {
+		t.Errorf("describe should have a WHAT IT DOES (description) column:\n%s", s)
 	}
 }

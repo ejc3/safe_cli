@@ -26,8 +26,11 @@ var embedded []byte
 // interfaces but not yet consumed (fillPath handles only the single {id_field} segment,
 // so multi-placeholder paths are not yet callable — a documented follow-up).
 type Operation struct {
-	Method       string         `json:"method"`
-	Path         string         `json:"path"`
+	Method string `json:"method"`
+	Path   string `json:"path"`
+	// Description is a short, agent-facing explanation of what the op does and when to use
+	// it — surfaced by `describe` so a human or LLM agent can pick the right verb.
+	Description  string         `json:"description,omitempty"`
 	Body         map[string]any `json:"body,omitempty"`
 	Headers      []string       `json:"headers,omitempty"`
 	Query        []string       `json:"query,omitempty"`

@@ -45,7 +45,7 @@
   },
   "entities": {
     "accessibility_pin": {
-      "summary": "Accessibility pin operations.",
+      "summary": "Accessibility-protection PIN lock for the child device: retrieve, SMS-send, and validate the guard PIN, plus the age-capture notification flag and device-shadow tamper state.",
       "id_field": "",
       "operations": {
         "retrievePin": {
@@ -57,7 +57,8 @@
           ],
           "query": [
             "newPin"
-          ]
+          ],
+          "description": "Retrieve the accessibility protection PIN; newPin=true asks the backend to generate a fresh one."
         },
         "sendPin": {
           "method": "POST",
@@ -67,7 +68,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"templateType\":\"PIN_SEND\",\"tokens\":{\"pinNo\":1234}}"
+          "body_example": "{\"templateType\":\"PIN_SEND\",\"tokens\":{\"pinNo\":1234}}",
+          "description": "Send the accessibility PIN to the device/guardian via an SMS push notification."
         },
         "validatePin": {
           "method": "GET",
@@ -78,7 +80,8 @@
           ],
           "query": [
             "pin"
-          ]
+          ],
+          "description": "Validate a submitted PIN against the accessibility protection lock (returns whether it matches)."
         },
         "getAgeCaptureNotification": {
           "method": "GET",
@@ -86,7 +89,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read the age-capture notification setting/flag for the accessibility-protection feature."
         },
         "postAgeCaptureNotification": {
           "method": "POST",
@@ -96,7 +100,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"ageCaptured\":true}"
+          "body_example": "{\"ageCaptured\":true}",
+          "description": "Create/send an age-capture notification (POST with body) for the accessibility-protection feature."
         },
         "putAgeCaptureNotification": {
           "method": "PUT",
@@ -104,7 +109,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Update the age-capture notification flag (PUT, no body — toggles/acknowledges it)."
         },
         "getDeviceShadowDetails": {
           "method": "GET",
@@ -117,12 +123,13 @@
             "deviceID",
             "featureIds",
             "retrieveLevel"
-          ]
+          ],
+          "description": "Read the device 'shadow' details — tamper/accessibility-protection state reported for the child device."
         }
       }
     },
     "account": {
-      "summary": "The Verizon Family account, lines and members.",
+      "summary": "The Verizon Family account itself: read and edit member profiles (name, avatar, DOB attestation), enrolled devices, and the subscription plan, including deleting profiles/devices or leaving the service.",
       "id_field": "planType",
       "operations": {
         "addDevice": {
@@ -133,7 +140,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}",
+          "description": "Add/register a device under a user profile (POST with device body)."
         },
         "addOnboardingDevice": {
           "method": "POST",
@@ -143,7 +151,8 @@
             "x-fp-identifier-target-serviceid",
             "x-pairing-required"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Register a device during initial onboarding (POST with body)."
         },
         "attestDob": {
           "method": "PATCH",
@@ -153,7 +162,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "description": "Attest (self-declare) a profile's date of birth (PATCH age/attestation)."
         },
         "choosePlan": {
           "method": "POST",
@@ -161,7 +171,8 @@
           "confirmed": false,
           "placeholders": [
             "planType"
-          ]
+          ],
+          "description": "Subscribe the account to the given {planType} plan (POST, no body)."
         },
         "deleteDevice": {
           "method": "DELETE",
@@ -170,7 +181,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently remove a device from a profile — deletes its enrollment (irreversible)."
         },
         "deleteMyself": {
           "method": "DELETE",
@@ -179,7 +191,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Remove the current user's own SafePath service enrollment — leaves the family service (irreversible)."
         },
         "deleteProfile": {
           "method": "DELETE",
@@ -188,7 +201,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently delete a user profile from the account (irreversible)."
         },
         "getAccountDetails": {
           "method": "GET",
@@ -196,7 +210,8 @@
           "confirmed": true,
           "headers": [
             "(@HeaderMap dynamic)"
-          ]
+          ],
+          "description": "Read the account and all its user profiles (v8 accounts/userprofiles)."
         },
         "getProfileImage": {
           "method": "GET",
@@ -204,7 +219,8 @@
           "confirmed": false,
           "headers": [
             "(@HeaderMap dynamic)"
-          ]
+          ],
+          "description": "Fetch a user profile's avatar image."
         },
         "selfRemoveProfile": {
           "method": "DELETE",
@@ -213,7 +229,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Remove one's own profile from the account (self DELETE — irreversible)."
         },
         "updateDeviceName": {
           "method": "PATCH",
@@ -223,7 +240,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"deviceNickName\":\"Kids iPad\",\"serialnumber\":\"F2LXXXXXXXXX\"}"
+          "body_example": "{\"deviceNickName\":\"Kids iPad\",\"serialnumber\":\"F2LXXXXXXXXX\"}",
+          "description": "Rename a device (PATCH devices with the new name)."
         },
         "updateFamilyNameOrTimeZone": {
           "method": "PATCH",
@@ -234,7 +252,8 @@
             "x-pending-activation"
           ],
           "takes_body": true,
-          "body_example": "{\"familyName\":\"The Smiths\",\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"familyName\":\"The Smiths\",\"timezone\":\"America/New_York\"}",
+          "description": "Update the family/account display name or time zone (PATCH accounts)."
         },
         "updatePlan": {
           "method": "PUT",
@@ -245,7 +264,8 @@
           ],
           "placeholders": [
             "planType"
-          ]
+          ],
+          "description": "Change the account's subscription to {planType} (PUT, no body)."
         },
         "updateProfile": {
           "method": "PATCH",
@@ -255,7 +275,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "description": "Update general user-profile fields (PATCH userprofiles with body)."
         },
         "updateProfileImage": {
           "method": "PUT",
@@ -265,7 +286,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "description": "Set or replace a profile's avatar image (PUT images with body)."
         },
         "updateProfileName": {
           "method": "PATCH",
@@ -276,12 +298,13 @@
             "x-pending-activation"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "description": "Rename a user profile (PATCH accounts/userprofiles with body)."
         }
       }
     },
     "activity_tracking": {
-      "summary": "Activity tracking operations.",
+      "summary": "The child device's activity timeline from the SafePath comms feed — pull activity events overall or scoped to a single day.",
       "id_field": "",
       "operations": {
         "getActivity": {
@@ -293,7 +316,8 @@
             "If-None-Match",
             "timezone",
             "schedule-type"
-          ]
+          ],
+          "description": "List a device's activity events from the comms activity feed (requires a schedule-type filter)."
         },
         "getDailyActivities": {
           "method": "GET",
@@ -304,12 +328,13 @@
             "If-None-Match",
             "timezone",
             "schedule-type"
-          ]
+          ],
+          "description": "List a device's activity for a day from the same feed (timezone required, day-scoped view)."
         }
       }
     },
     "age_verification": {
-      "summary": "Age verification operations.",
+      "summary": "Adult/age identity verification via the Mitek ID-scan SDK — fetch its license and public keys and submit ID/DOB data to verify a profile's age.",
       "id_field": "",
       "operations": {
         "getPublicKey": {
@@ -321,7 +346,8 @@
           ],
           "query": [
             "user-profile-id"
-          ]
+          ],
+          "description": "Fetch the Mitek public key used to encrypt ID-document data before age/identity verification."
         },
         "getSdkLicenseKey": {
           "method": "GET",
@@ -332,7 +358,8 @@
           ],
           "query": [
             "keys"
-          ]
+          ],
+          "description": "Fetch the license key for the on-device ID-scan (Mitek) SDK."
         },
         "submitVerification": {
           "method": "POST",
@@ -346,12 +373,13 @@
             "user-profile-id"
           ],
           "takes_body": true,
-          "body_example": "{\"data\":\"eyJ2ZXJpZmljYXRpb24iOiJ0b2tlbiJ9\"}"
+          "body_example": "{\"data\":\"eyJ2ZXJpZmljYXRpb24iOiJ0b2tlbiJ9\"}",
+          "description": "Submit age/identity verification — POST ID/DOB data to userprofiles/age/verify."
         }
       }
     },
     "app_block": {
-      "summary": "App block operations.",
+      "summary": "App blocking on the child device — block apps via content-filter subcategories, read the device's blocked-apps list, and report accessibility and per-app enforcement status.",
       "id_field": "deviceId",
       "operations": {
         "blockApp": {
@@ -362,7 +390,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}"
+          "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}",
+          "description": "Block (or change the block state of) an app by posting a content-filter subcategory entry."
         },
         "getBlockedApps": {
           "method": "GET",
@@ -374,7 +403,8 @@
           ],
           "placeholders": [
             "deviceId"
-          ]
+          ],
+          "description": "Fetch the blocked-apps sync list for a device (deviceId in path; ETag-cached)."
         },
         "sendAccessibilityStatus": {
           "method": "POST",
@@ -384,7 +414,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"feature\":\"APP_BLOCKING\",\"status\":\"ENABLED\",\"appName\":\"Instagram\",\"appPackageName\":\"com.instagram.android\"}"
+          "body_example": "{\"feature\":\"APP_BLOCKING\",\"status\":\"ENABLED\",\"appName\":\"Instagram\",\"appPackageName\":\"com.instagram.android\"}",
+          "description": "Report the child device's accessibility-service status (needed to enforce blocking)."
         },
         "sendBlockStatus": {
           "method": "POST",
@@ -394,12 +425,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"apps\":[{\"name\":\"Instagram\",\"packageName\":\"com.instagram.android\",\"blockedOnDevice\":true}]}"
+          "body_example": "{\"apps\":[{\"name\":\"Instagram\",\"packageName\":\"com.instagram.android\",\"blockedOnDevice\":true}]}",
+          "description": "Report per-app block-enforcement results for Android apps in a batch (offline token)."
         }
       }
     },
     "app_management": {
-      "summary": "App management operations.",
+      "summary": "Managed-app control and usage on the child device — read and update app install/enable status, pull per-app usage stats, and fetch Gizmo AI interaction logs.",
       "id_field": "",
       "operations": {
         "getInteractionData": {
@@ -413,7 +445,8 @@
             "logId",
             "limit",
             "direction"
-          ]
+          ],
+          "description": "Fetch Gizmo AI assistant interaction logs (paged by logId/limit/direction)."
         },
         "getAppUsages": {
           "method": "GET",
@@ -424,7 +457,8 @@
             "timezone",
             "usage-type",
             "If-None-Match"
-          ]
+          ],
+          "description": "Read per-app usage stats for the device from the comms usage feed."
         },
         "updateAppStatus": {
           "method": "POST",
@@ -435,7 +469,8 @@
             "x-fp-identifier-profileid"
           ],
           "takes_body": true,
-          "body_example": "{\"name\":\"Instagram\",\"id\":\"98765\",\"consentGiven\":true,\"enabled\":false}"
+          "body_example": "{\"name\":\"Instagram\",\"id\":\"98765\",\"consentGiven\":true,\"enabled\":false}",
+          "description": "Update managed-app status — request install/uninstall/enable changes (POST with body)."
         },
         "getAppStatus": {
           "method": "GET",
@@ -443,12 +478,13 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read managed-app status (install/enable state) for the device."
         }
       }
     },
     "calendar_sync": {
-      "summary": "Calendar sync operations.",
+      "summary": "School-calendar sync (geocal): find a child's school by ZIP, select its calendar, pull school-day/holiday events, and manage sync preferences.",
       "id_field": "",
       "operations": {
         "completeResyncOperation": {
@@ -460,7 +496,8 @@
           ],
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "Signal that a school-calendar resync has finished for the selected school"
         },
         "createCalendarSelection": {
           "method": "POST",
@@ -470,7 +507,8 @@
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "takes_body": true,
-          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}"
+          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}",
+          "description": "Select and save which school calendar to sync for a child"
         },
         "deleteCalendarSelection": {
           "method": "DELETE",
@@ -482,7 +520,8 @@
           ],
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "Remove the saved school-calendar selection"
         },
         "getCalendarEvents": {
           "method": "GET",
@@ -494,7 +533,8 @@
           ],
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "List events (school days, holidays) from the selected school calendar"
         },
         "getCalendarSelection": {
           "method": "GET",
@@ -502,7 +542,8 @@
           "confirmed": false,
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "Read the current saved school-calendar selection"
         },
         "getGoogleCalendarTokens": {
           "method": "POST",
@@ -511,7 +552,8 @@
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Exchange for a parent IAM auth token used by the calendar-sync flow"
         },
         "getSchoolSelection": {
           "method": "GET",
@@ -519,7 +561,8 @@
           "confirmed": false,
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "Read the selected school (school-detail response variant)"
         },
         "getSchoolSuggestion": {
           "method": "GET",
@@ -527,7 +570,8 @@
           "confirmed": false,
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "Get suggested schools/calendars to sync"
         },
         "getSchoolsForZipCode": {
           "method": "GET",
@@ -538,7 +582,8 @@
           ],
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
-          ]
+          ],
+          "description": "List schools available for a given ZIP code"
         },
         "updateCalendarSelection": {
           "method": "PUT",
@@ -548,7 +593,8 @@
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "takes_body": true,
-          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}"
+          "body_example": "{\"schoolId\":4521,\"previousSchoolId\":3310}",
+          "description": "Replace the school-calendar selection"
         },
         "updateCalendarSyncPreferences": {
           "method": "PATCH",
@@ -558,12 +604,13 @@
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "takes_body": true,
-          "body_example": "{\"schoolId\":4521,\"subscriptionType\":\"SCHOOL_HOLIDAYS\"}"
+          "body_example": "{\"schoolId\":4521,\"subscriptionType\":\"SCHOOL_HOLIDAYS\"}",
+          "description": "Partially update calendar-sync preferences for the selection"
         }
       }
     },
     "calls_and_texts": {
-      "summary": "Calls and texts operations.",
+      "summary": "Call and text monitoring: trust/block/watch contact lists, address-book name mappings, restriction schedules, and per-contact activity logs and summaries.",
       "id_field": "",
       "operations": {
         "addContactToTheList": {
@@ -574,7 +621,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}"
+          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
+          "description": "Add a contact to the trust/block/watch list"
         },
         "addCustomNameToAddressBook": {
           "method": "PUT",
@@ -585,7 +633,8 @@
             "x-fp-identifier-deviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}"
+          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}",
+          "description": "Set or update a custom display name for a number in the address book"
         },
         "addNamesToAddressBook": {
           "method": "POST",
@@ -596,7 +645,8 @@
             "x-fp-identifier-deviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}"
+          "body_example": "{\"contact_address\":[{\"address_book_type\":\"WHITELIST\",\"mdn\":\"5551234567\",\"name\":\"Grandma\"}]}",
+          "description": "Add name-to-number entries to the address book"
         },
         "deleteContactFromTheList": {
           "method": "DELETE",
@@ -610,7 +660,8 @@
             "contactType",
             "contactInfo",
             "deviceId"
-          ]
+          ],
+          "description": "Remove a contact from the trust/block/watch list"
         },
         "getAllTrustBlockWatchContactList": {
           "method": "GET",
@@ -623,7 +674,8 @@
             "profileId",
             "deviceId",
             "contactType"
-          ]
+          ],
+          "description": "List all trusted, blocked, and watched contacts"
         },
         "getCallAndTextActivityListV7": {
           "method": "GET",
@@ -639,7 +691,8 @@
             "activityType",
             "timezone",
             "betaProviders"
-          ]
+          ],
+          "description": "List call and text activity-log entries"
         },
         "getCallAndTextProfileSummaryListV7": {
           "method": "GET",
@@ -655,7 +708,8 @@
             "activityType",
             "timezone",
             "betaProviders"
-          ]
+          ],
+          "description": "Get the per-profile call/text activity summary"
         },
         "getCallAndTextSpecificContactActivityListV7": {
           "method": "GET",
@@ -671,7 +725,8 @@
             "activityType",
             "timezone",
             "betaProviders"
-          ]
+          ],
+          "description": "List call/text activity for one specific contact"
         },
         "getSchedulesRequest": {
           "method": "GET",
@@ -679,7 +734,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get call/text restriction schedules"
         },
         "getTopContactListByActivityV7": {
           "method": "GET",
@@ -696,12 +752,13 @@
             "activityType",
             "timezone",
             "betaProviders"
-          ]
+          ],
+          "description": "List the top contacts ranked by call/text activity"
         }
       }
     },
     "config": {
-      "summary": "Config operations.",
+      "summary": "App configuration delivery: secure and non-secure remote config, service/API keys, and static CDN JSON for the config file and map styles.",
       "id_field": "",
       "operations": {
         "getConfigData": {
@@ -713,22 +770,26 @@
           ],
           "headers": [
             "(@HeaderMap dynamic)"
-          ]
+          ],
+          "description": "Fetch secure remote app config (dynamic query/header params)"
         },
         "getConfigData (Call variant)": {
           "method": "GET",
           "path": "/sf/v1/prd/mcfg.json",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the static app config file (mcfg.json) from the CDN"
         },
         "getCustomMapSatelliteStyle": {
           "method": "GET",
           "path": "/sf/v1/prd/satelliteStyle.json",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the satellite map style JSON"
         },
         "getCustomMapStreetStyle": {
           "method": "GET",
           "path": "/sf/v1/prd/style.json",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the street map style JSON"
         },
         "getNonSecureConfigData": {
           "method": "GET",
@@ -739,7 +800,8 @@
           ],
           "headers": [
             "(@HeaderMap dynamic)"
-          ]
+          ],
+          "description": "Fetch non-secure (unauthenticated) remote config"
         },
         "getServiceKeys": {
           "method": "GET",
@@ -750,12 +812,13 @@
           ],
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Fetch service/API keys from key management"
         }
       }
     },
     "contacts": {
-      "summary": "Contacts operations.",
+      "summary": "Manage child/Gizmo device contacts: add, update, and bulk-delete calling contacts and buddies, handle invites and permissions, and validate numbers.",
       "id_field": "",
       "operations": {
         "acceptDeclineBuddyRequest": {
@@ -766,7 +829,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}",
+          "description": "Accept or decline a Gizmo calling-buddy invite"
         },
         "acceptDeclineFamilyInvite": {
           "method": "PATCH",
@@ -776,7 +840,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}"
+          "body_example": "{\"inviteStatus\":\"ACCEPTED\"}",
+          "description": "Accept or decline a family-services invite"
         },
         "addCallingContact": {
           "method": "POST",
@@ -786,7 +851,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\"}}",
+          "description": "Add a calling contact to a Gizmo device"
         },
         "bulkDeleteContacts": {
           "method": "DELETE",
@@ -797,7 +863,8 @@
           ],
           "destructive": true,
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contactInfoList\":[\"5551234567\",\"5559876543\"]}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contactInfoList\":[\"5551234567\",\"5559876543\"]}",
+          "description": "DELETE (with body): permanently delete multiple Gizmo contacts at once"
         },
         "bulkUpdateContacts": {
           "method": "PUT",
@@ -807,7 +874,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}",
+          "description": "Update multiple Gizmo contacts in one call"
         },
         "getFamilyMembersAndBuddies": {
           "method": "GET",
@@ -820,7 +888,8 @@
             "contactType",
             "filterAvailableMdns",
             "filterPermissions"
-          ]
+          ],
+          "description": "List family members and calling buddies for a Gizmo"
         },
         "getGizmoContactImage": {
           "method": "GET",
@@ -834,7 +903,8 @@
             "contactType",
             "contactInfo",
             "contactId"
-          ]
+          ],
+          "description": "Fetch a Gizmo contact's image (ETag-cached)"
         },
         "getGizmoContacts": {
           "method": "GET",
@@ -847,7 +917,8 @@
             "contactType",
             "filterAvailableMdns",
             "filterPermissions"
-          ]
+          ],
+          "description": "List Gizmo contacts, filtered by permissions"
         },
         "getInAppBanner": {
           "method": "GET",
@@ -858,7 +929,8 @@
           ],
           "query": [
             "pageId"
-          ]
+          ],
+          "description": "Fetch in-app banner content for a given page"
         },
         "getTrustedContacts": {
           "method": "GET",
@@ -869,7 +941,8 @@
           ],
           "query": [
             "settingId"
-          ]
+          ],
+          "description": "Read the trusted-contacts feature settings"
         },
         "removeContact": {
           "method": "DELETE",
@@ -881,7 +954,8 @@
           "query": [
             "contactType",
             "contactInfo"
-          ]
+          ],
+          "description": "Remove a single Gizmo contact"
         },
         "sendInvite": {
           "method": "POST",
@@ -891,7 +965,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}",
+          "description": "Send a family/profile invite"
         },
         "updateContact": {
           "method": "PUT",
@@ -901,7 +976,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}}"
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}}",
+          "description": "Update a Gizmo contact's details"
         },
         "updatePermissions": {
           "method": "POST",
@@ -911,7 +987,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"userServices\":[{\"serviceId\":8000,\"featurePermissions\":{\"alert\":true,\"activities\":true,\"videoCalling\":false,\"emergencyAnswering\":false}}]}"
+          "body_example": "{\"userServices\":[{\"serviceId\":8000,\"featurePermissions\":{\"alert\":true,\"activities\":true,\"videoCalling\":false,\"emergencyAnswering\":false}}]}",
+          "description": "Update a Gizmo contact/user's feature permissions"
         },
         "updateTrustedContacts": {
           "method": "POST",
@@ -921,7 +998,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"settingId\":8000,\"settingValue\":1}"
+          "body_example": "{\"settingId\":8000,\"settingValue\":1}",
+          "description": "Update the trusted-contacts feature settings"
         },
         "validateGizmoMdn": {
           "method": "POST",
@@ -931,7 +1009,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "description": "Validate a Gizmo contact phone number (MDN)"
         },
         "addContactToTheList": {
           "method": "POST",
@@ -941,7 +1020,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}"
+          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
+          "description": "Add a contact to the managed contact list"
         },
         "deleteContactFromTheList": {
           "method": "DELETE",
@@ -955,7 +1035,8 @@
             "contactType",
             "contactInfo",
             "deviceId"
-          ]
+          ],
+          "description": "Remove a contact from the managed contact list"
         },
         "getAllContactsRequest": {
           "method": "GET",
@@ -968,7 +1049,8 @@
             "profileId",
             "deviceId",
             "contactType"
-          ]
+          ],
+          "description": "List all managed contacts"
         },
         "putPrivateRestrictedCall": {
           "method": "PUT",
@@ -978,12 +1060,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"PRIVATE\",\"deviceId\":\"device-123\",\"profileId\":\"profile-456\"}"
+          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"PRIVATE\",\"deviceId\":\"device-123\",\"profileId\":\"profile-456\"}",
+          "description": "Set a contact's private/restricted calling flag"
         }
       }
     },
     "content_filter": {
-      "summary": "Website/app content filtering: categories, age groups, safe search, objectionable content.",
+      "summary": "Website/app content filtering: block categories and subcategories, set age-group policies, configure app time limits, and manage objectionable-content report settings.",
       "id_field": "",
       "operations": {
         "getParentalControls": {
@@ -995,7 +1078,8 @@
           ],
           "query": [
             "profileId"
-          ]
+          ],
+          "description": "Get parental-control settings for a profile"
         },
         "createGroupPolicy": {
           "method": "POST",
@@ -1008,7 +1092,8 @@
             "categorySupported"
           ],
           "takes_body": true,
-          "body_example": "{\"groupId\":123}"
+          "body_example": "{\"groupId\":123}",
+          "description": "Create an age-group content-filter policy (defaults to category schema v6)"
         },
         "getAgeGroupMetaData": {
           "method": "GET",
@@ -1019,7 +1104,8 @@
           ],
           "query": [
             "profileId"
-          ]
+          ],
+          "description": "Get age-group definitions/metadata"
         },
         "getObjectionableSettings": {
           "method": "GET",
@@ -1030,7 +1116,8 @@
           ],
           "query": [
             "reportCategory"
-          ]
+          ],
+          "description": "Read objectionable-content report settings (reportCategory=individual)"
         },
         "postObjectionableSettings": {
           "method": "POST",
@@ -1042,7 +1129,8 @@
           "query": [
             "reportCategory"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update objectionable-content report settings (reportCategory=individual)"
         },
         "createAppLimit": {
           "method": "POST",
@@ -1052,7 +1140,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "description": "Create an app time limit"
         },
         "deleteAppLimit": {
           "method": "DELETE",
@@ -1063,7 +1152,8 @@
           ],
           "query": [
             "appLimitsId"
-          ]
+          ],
+          "description": "Remove an app time limit by appLimitsId"
         },
         "updateAppLimit": {
           "method": "PUT",
@@ -1076,7 +1166,8 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "description": "Update an existing app time limit"
         },
         "getFilterContent": {
           "method": "GET",
@@ -1088,7 +1179,8 @@
           ],
           "query": [
             "include-description"
-          ]
+          ],
+          "description": "Read current content-filter settings"
         },
         "updateSubcategory": {
           "method": "POST",
@@ -1097,7 +1189,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Block or allow a specific content subcategory"
         },
         "getCategories": {
           "method": "GET",
@@ -1115,7 +1208,8 @@
             "resolution",
             "sz",
             "r"
-          ]
+          ],
+          "description": "List content-filter categories"
         },
         "getSubCategoriesDetail": {
           "method": "GET",
@@ -1127,7 +1221,8 @@
           ],
           "query": [
             "subcategory-id"
-          ]
+          ],
+          "description": "Get details for a content subcategory"
         },
         "setCFCategories": {
           "method": "POST",
@@ -1137,12 +1232,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"categories\":[{\"id\":\"1\",\"categoryId\":5,\"name\":\"Social\",\"blocked\":1}]}"
+          "body_example": "{\"categories\":[{\"id\":\"1\",\"categoryId\":5,\"name\":\"Social\",\"blocked\":1}]}",
+          "description": "Set which content-filter categories are blocked/allowed"
         }
       }
     },
     "cross_sell": {
-      "summary": "Cross sell operations.",
+      "summary": "Upsell/cross-sell surface: list and dismiss product and promotion recommendations, check free-trial eligibility and enrollment, and fetch add-on purchase links.",
       "id_field": "",
       "operations": {
         "getEnrollFreeTrialData": {
@@ -1151,7 +1247,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get free-trial enrollment data/subscriptions"
         },
         "deleteCrossSellRecommendation": {
           "method": "DELETE",
@@ -1163,7 +1260,8 @@
           "query": [
             "contentId",
             "id"
-          ]
+          ],
+          "description": "Dismiss a cross-sell recommendation by contentId/id"
         },
         "deleteUpSellRecommendation": {
           "method": "DELETE",
@@ -1176,7 +1274,8 @@
             "contentId",
             "id",
             "screenTag"
-          ]
+          ],
+          "description": "Dismiss an upsell/promotion recommendation"
         },
         "getCrossSellRecommendations": {
           "method": "GET",
@@ -1184,7 +1283,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List cross-sell product recommendations"
         },
         "getPetTrackerPurchaseLink": {
           "method": "GET",
@@ -1192,7 +1292,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get the pet-tracker add-on purchase link"
         },
         "getTrialEligibility": {
           "method": "GET",
@@ -1200,7 +1301,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Check free-trial eligibility"
         },
         "getUpSellRecommendations": {
           "method": "GET",
@@ -1208,13 +1310,14 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List upsell/promotion recommendations"
         }
       },
       "tier": "p2"
     },
     "dashboard": {
-      "summary": "Dashboard operations.",
+      "summary": "Home dashboard: load the account/lines overview, create and invite member profiles, tune activity-report notification settings, and surface tamper-protection banners.",
       "id_field": "",
       "operations": {
         "acknowledgeLuciqPush": {
@@ -1224,19 +1327,22 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report delivery/acknowledgement status for a Luciq (Instabug) push notification"
         },
         "createProfile": {
           "method": "POST",
           "path": "/vsf/account-management/v1/profiles",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"devices\":[],\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"timeZone\":\"America/New_York\",\"age\":\"12\",\"requestedProfile\":false,\"isSelected\":false}"
+          "body_example": "{\"devices\":[],\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"timeZone\":\"America/New_York\",\"age\":\"12\",\"requestedProfile\":false,\"isSelected\":false}",
+          "description": "POST a new family-member profile onto the account"
         },
         "dashboardFlow": {
           "method": "GET",
           "path": "/vsf/account-management/v1/accounts",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the main dashboard: account overview with all lines/members and their status"
         },
         "getEligibility": {
           "method": "GET",
@@ -1244,7 +1350,8 @@
           "confirmed": false,
           "headers": [
             "x-user-action"
-          ]
+          ],
+          "description": "Check which account features are eligible/available (optional x-user-action context)"
         },
         "getReportSetting": {
           "method": "GET",
@@ -1255,7 +1362,8 @@
           ],
           "query": [
             "reportCategory"
-          ]
+          ],
+          "description": "Read account-wide activity-report notification settings (reportCategory=all)"
         },
         "getReportSettings": {
           "method": "GET",
@@ -1266,7 +1374,8 @@
           ],
           "query": [
             "reportCategory"
-          ]
+          ],
+          "description": "Read per-member activity-report notification settings (reportCategory=individual)"
         },
         "getSubscriptions": {
           "method": "GET",
@@ -1274,7 +1383,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the account's subscriptions/plans across member profiles"
         },
         "getViewBanner": {
           "method": "GET",
@@ -1286,7 +1396,8 @@
           "query": [
             "profiles",
             "hasParentalCtrlPermissions"
-          ]
+          ],
+          "description": "Fetch the tamper-protection status banner for the dashboard (hasParentalCtrlPermissions flag)"
         },
         "getViewBannerDetails": {
           "method": "GET",
@@ -1299,7 +1410,8 @@
             "feature",
             "profiles",
             "hasParentalCtrlPermissions"
-          ]
+          ],
+          "description": "Fetch the full details behind the tamper status banner"
         },
         "postReportSetting": {
           "method": "POST",
@@ -1311,7 +1423,8 @@
           "query": [
             "reportCategory"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update account-wide activity-report notification settings (reportCategory=all)"
         },
         "postReportSettings": {
           "method": "POST",
@@ -1324,7 +1437,8 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}"
+          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}",
+          "description": "Update per-member activity-report notification settings (reportCategory=individual)"
         },
         "putRestrictionsBackOn": {
           "method": "PUT",
@@ -1334,7 +1448,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"alertLimit\":true,\"deviceId\":\"9876543\",\"profileId\":\"1234567\"}"
+          "body_example": "{\"alertLimit\":true,\"deviceId\":\"9876543\",\"profileId\":\"1234567\"}",
+          "description": "Re-enable call/text restrictions that were temporarily lifted for a 911 emergency"
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -1343,19 +1458,22 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the tamper-remediation instructions shown when protection is disabled"
         },
         "queryEligibleLines": {
           "method": "GET",
           "path": "/vsf/account-management/v1/accounts/lines",
-          "confirmed": false
+          "confirmed": false,
+          "description": "List account lines eligible to be added as managed profiles"
         },
         "sendInvitation": {
           "method": "PUT",
           "path": "/vsf/account-management/v1/profiles/invite",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"profileIds\":[111,222]}"
+          "body_example": "{\"profileIds\":[111,222]}",
+          "description": "Send an invite to add a line/member to the family account"
         },
         "getParentingTips": {
           "method": "GET",
@@ -1364,12 +1482,13 @@
           "query": [
             "offset",
             "limit"
-          ]
+          ],
+          "description": "Fetch parenting / digital-world CMS articles, paged via offset and limit"
         }
       }
     },
     "device_settings": {
-      "summary": "Device settings operations.",
+      "summary": "Per-device settings and diagnostic logs: read and write a device's settings, and list, trigger upload of, and get download URLs for its device logs.",
       "id_field": "",
       "operations": {
         "getDeviceLogDownloadUrl": {
@@ -1382,7 +1501,8 @@
           ],
           "query": [
             "id"
-          ]
+          ],
+          "description": "Get a download URL for a specific device diagnostic log by id"
         },
         "getDeviceLogs": {
           "method": "GET",
@@ -1391,7 +1511,8 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List available device diagnostic logs for the service/device"
         },
         "getDeviceSettings": {
           "method": "GET",
@@ -1404,7 +1525,8 @@
           "query": [
             "settingsType",
             "timezone"
-          ]
+          ],
+          "description": "Read a device's settings for a given settingsType"
         },
         "postDeviceSettings": {
           "method": "POST",
@@ -1414,7 +1536,8 @@
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update a device's settings (same endpoint as the GET, write path)"
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -1423,12 +1546,13 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Command the device to collect and upload its diagnostic logs to the server"
         }
       }
     },
     "driving_insights": {
-      "summary": "Driving Insights telematics (P2 — separate AWS/S3-backed credential path).",
+      "summary": "Driving Insights telematics: list and inspect trips and detected crashes, configure crash-detection and speed-alert settings, reclassify transportation mode, and obtain the SDK auth code.",
       "id_field": "crashId",
       "operations": {
         "getAuthCode": {
@@ -1437,7 +1561,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Obtain the auth code for the driving-insights telematics SDK / S3 backend"
         },
         "getSettings": {
           "method": "GET",
@@ -1445,7 +1570,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read driving-insights settings (crash detection, speed alerts, etc.)"
         },
         "getTripDetail": {
           "method": "GET",
@@ -1456,7 +1582,8 @@
           ],
           "query": [
             "driveId"
-          ]
+          ],
+          "description": "Fetch detailed data (route/events) for a specific driving trip"
         },
         "getTripSummary": {
           "method": "GET",
@@ -1467,7 +1594,8 @@
           ],
           "query": [
             "timezone"
-          ]
+          ],
+          "description": "Fetch a summary of driving trips (timezone optional)"
         },
         "getTrips": {
           "method": "GET",
@@ -1478,7 +1606,8 @@
           ],
           "query": [
             "timeZone"
-          ]
+          ],
+          "description": "List driving trips (timeZone query, camel-case Z)"
         },
         "patchTransportationMode": {
           "method": "PATCH",
@@ -1491,7 +1620,8 @@
             "driveId"
           ],
           "takes_body": true,
-          "body_example": "{\"transportation_mode\":\"DRIVING\"}"
+          "body_example": "{\"transportation_mode\":\"DRIVING\"}",
+          "description": "Reclassify a trip's transportation mode (e.g. driver vs passenger)"
         },
         "postSettings": {
           "method": "POST",
@@ -1501,7 +1631,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"UPDATE\",\"role\":\"PARENT\",\"serviceId\":\"1234567\"}"
+          "body_example": "{\"operation\":\"UPDATE\",\"role\":\"PARENT\",\"serviceId\":\"1234567\"}",
+          "description": "Create driving-insights settings"
         },
         "putSettings": {
           "method": "PUT",
@@ -1510,7 +1641,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update driving-insights settings"
         },
         "putSpeedAlertLimit": {
           "method": "PUT",
@@ -1520,7 +1652,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}"
+          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}",
+          "description": "Set the speed-alert threshold (same settings endpoint, speed-limit body)"
         },
         "getCrashDetail": {
           "method": "GET",
@@ -1531,7 +1664,8 @@
           ],
           "placeholders": [
             "crashId"
-          ]
+          ],
+          "description": "Fetch full detail for a single detected crash event by crashId"
         },
         "getCrashNotifications": {
           "method": "GET",
@@ -1540,7 +1674,8 @@
           "headers": [
             "crash-date-time",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List crash-detection notifications/alerts for the driver"
         },
         "patchCrashNotification": {
           "method": "PATCH",
@@ -1549,7 +1684,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update/acknowledge a crash notification (v6), e.g. mark handled or false alarm"
         },
         "updateCrashNotifications": {
           "method": "POST",
@@ -1559,13 +1695,14 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":123456,\"profileId\":789,\"deviceId\":42,\"eventDate\":1700000000000,\"dismissFlag\":true,\"falseCrash\":false}"
+          "body_example": "{\"accountId\":123456,\"profileId\":789,\"deviceId\":42,\"eventDate\":1700000000000,\"dismissFlag\":true,\"falseCrash\":false}",
+          "description": "Create/update crash-notification configuration"
         }
       },
       "tier": "p2"
     },
     "emergency_contacts": {
-      "summary": "Emergency contacts operations.",
+      "summary": "Emergency contacts for family members: list them per profile or account-wide, add contacts, replace the entire list, and delete a single contact.",
       "id_field": "contact-id",
       "operations": {
         "addEmergencyContactsToProfile": {
@@ -1576,7 +1713,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Grandma\",\"userProfileId\":12345}]}"
+          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Grandma\",\"userProfileId\":12345}]}",
+          "description": "Add one or more emergency contacts to a member's profile"
         },
         "deleteEmergencyContact": {
           "method": "DELETE",
@@ -1587,7 +1725,8 @@
           ],
           "placeholders": [
             "contact-id"
-          ]
+          ],
+          "description": "Remove a single emergency contact from a profile by contact-id"
         },
         "getAllAvailableEmergencyContacts": {
           "method": "GET",
@@ -1595,7 +1734,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List all emergency contacts on a member's profile"
         },
         "getAllAvailableEmergencyContactsBasedOnAccountId": {
           "method": "GET",
@@ -1603,7 +1743,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List all emergency contacts available across the account"
         },
         "updateEmergencyContacts": {
           "method": "PUT",
@@ -1613,126 +1754,146 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Jane Doe\",\"userProfileId\":12345}]}"
+          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Jane Doe\",\"userProfileId\":12345}]}",
+          "description": "Replace a member's entire emergency-contact list with a new set"
         }
       }
     },
     "family_line": {
-      "summary": "Family line operations.",
+      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings.",
       "id_field": "",
       "operations": {
         "acceptFamilyLineInvite": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/line",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Accept an invitation to join a Family Line"
         },
         "deProvisionFamilyLine": {
           "method": "DELETE",
           "path": "/account/fam/userprofile-management/v5/accounts/subscriptions/feature/FAMILYLINE",
           "confirmed": false,
-          "destructive": true
+          "destructive": true,
+          "description": "Cancel the FAMILYLINE feature subscription, permanently deprovisioning the line"
         },
         "getAddress": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/address",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the saved Family Line address (e.g. E911 location)"
         },
         "getEligibleLines": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/line/eligible",
-          "confirmed": false
+          "confirmed": false,
+          "description": "List lines eligible to be added to Family Line"
         },
         "getFamilyLines": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/line",
-          "confirmed": false
+          "confirmed": false,
+          "description": "List the current Family Lines"
         },
         "getProvisioningStatus": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/status",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Check Family Line provisioning status"
         },
         "getSpcToken": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/token",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Obtain an SPC token for the Family Line SDK/session"
         },
         "logoutFamilyLine": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/line/logout",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Log out of the Family Line session"
         },
         "provisionUser": {
           "method": "POST",
           "path": "/account/fam/userprofile-management/v5/accounts/subscriptions/feature/FAMILYLINE",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Provision/enable the FAMILYLINE feature for a user"
         },
         "removeUserFromFamilyLine": {
           "method": "DELETE",
           "path": "/callandtext/frisco/familyline/v1/fl/line",
           "confirmed": false,
-          "destructive": true
+          "destructive": true,
+          "description": "Remove a user from the Family Line, revoking their shared line"
         },
         "saveAddress": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/address",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}"
+          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "description": "Save or update the Family Line address (E911)"
         },
         "sendCallLog": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/call/logs",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"callLog\":{\"callJoined\":true,\"otherPartyMdn\":\"5551234567\",\"direction\":\"INCOMING\",\"subDirection\":\"\",\"startTime\":1700000000000,\"sessionDuration\":120,\"callId\":\"abc123\",\"isEmergencyCall\":false,\"isRemote\":false,\"networkLineIndex\":0,\"activityType\":\"CALL\",\"subActivityType\":\"\"}}"
+          "body_example": "{\"callLog\":{\"callJoined\":true,\"otherPartyMdn\":\"5551234567\",\"direction\":\"INCOMING\",\"subDirection\":\"\",\"startTime\":1700000000000,\"sessionDuration\":120,\"callId\":\"abc123\",\"isEmergencyCall\":false,\"isRemote\":false,\"networkLineIndex\":0,\"activityType\":\"CALL\",\"subActivityType\":\"\"}}",
+          "description": "Upload the device's call logs to Family Line"
         },
         "sendFamilyLineInvite": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/line/invite",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Send an invitation to add someone to the Family Line"
         },
         "swapDeviceProvisioning": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/swap-device",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Swap the Family Line provisioning over to a different device"
         },
         "termsAndConditionsAccepted": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/tc",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Record acceptance of the Family Line terms and conditions"
         },
         "traceSdkResponse": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/trace",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}"
+          "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}",
+          "description": "Send SDK diagnostic/trace data for the Family Line"
         },
         "updateAppUuid": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/line/updateAppUuid",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the app UUID (appUUID) associated with the Family Line"
         },
         "updateFamilyLineSettings": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/settings",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update Family Line settings"
         },
         "validateAddress": {
           "method": "POST",
           "path": "/account/fam/userprofile-management/v5/userprofiles/address/validate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}"
+          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "description": "Validate an address (E911) before saving it to the Family Line"
         }
       }
     },
     "feature_permissions": {
-      "summary": "Feature permissions operations.",
+      "summary": "Roles and feature permissions across family members: view managed profiles, change a member's role, and read/update who can view or use which parental-control features.",
       "id_field": "",
       "operations": {
         "getParentalControlFeaturePermissions": {
@@ -1744,7 +1905,8 @@
           ],
           "query": [
             "featureGroup"
-          ]
+          ],
+          "description": "Read who-can-view feature permissions for a group (featureGroup defaults to parentalcontrols)"
         },
         "changeUserProfileRole": {
           "method": "PUT",
@@ -1754,7 +1916,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"role\":\"parent\",\"relationship\":\"mother\"}"
+          "body_example": "{\"role\":\"parent\",\"relationship\":\"mother\"}",
+          "description": "Change a member's profile role (e.g. parent/admin vs child)"
         },
         "getManagedUserProfiles": {
           "method": "GET",
@@ -1762,7 +1925,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the user profiles this account manages (parent-child connections)"
         },
         "updatePermissions": {
           "method": "PUT",
@@ -1772,7 +1936,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"userProfileId\":\"1234567\",\"permissionDetails\":{\"isElevatedAccess\":false,\"locationManagement\":true,\"parentalControls\":true}}"
+          "body_example": "{\"userProfileId\":\"1234567\",\"permissionDetails\":{\"isElevatedAccess\":false,\"locationManagement\":true,\"parentalControls\":true}}",
+          "description": "Update a member's feature permissions"
         },
         "updateUserProfileAccess": {
           "method": "PATCH",
@@ -1782,12 +1947,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"userProfileAccessList\":{\"add\":[123456],\"remove\":[789012]}}"
+          "body_example": "{\"userProfileAccessList\":{\"add\":[123456],\"remove\":[789012]}}",
+          "description": "Update a member's access level to profiles/features"
         }
       }
     },
     "flightdetection": {
-      "summary": "Flightdetection operations.",
+      "summary": "Flight-detection uses a line's device location to detect air travel: read the current setting, change it, and post the location-response that confirms flight status.",
       "id_field": "",
       "operations": {
         "getFlightDetectionStatus": {
@@ -1796,7 +1962,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read the flight-detection setting/status for a line (GET location v5 flight/settings)."
         },
         "updateFlightDetectionSetting": {
           "method": "PUT",
@@ -1806,7 +1973,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"settingsStatus\":true}"
+          "body_example": "{\"settingsStatus\":true}",
+          "description": "Update the flight-detection configuration for a line (PUT flight/settings, sends config body)."
         },
         "updateFlightDetectionStatus": {
           "method": "POST",
@@ -1816,12 +1984,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"FLIGHT_DETECTED\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"TAKEOFF\",\"locationDetails\":{\"latitude\":40.7,\"longitude\":-74.0}}]}"
+          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"FLIGHT_DETECTED\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"TAKEOFF\",\"locationDetails\":{\"latitude\":40.7,\"longitude\":-74.0}}]}",
+          "description": "Post a location response to update/confirm flight-detection status (POST location v5 locationResponse)."
         }
       }
     },
     "geofence": {
-      "summary": "Location boundaries and boundary alerts.",
+      "summary": "Location geofences and saved places for a device: create, read, list, and update the boundaries that trigger arrival/departure alerts.",
       "id_field": "",
       "operations": {
         "createDeviceGeofenceSettings": {
@@ -1832,7 +2001,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}"
+          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}",
+          "description": "Create a geofence / saved-place boundary for a device (POST location v6 geofence/settings)."
         },
         "getGeofenceSettings": {
           "method": "GET",
@@ -1845,7 +2015,8 @@
             "eventType",
             "withGeofence",
             "strategy"
-          ]
+          ],
+          "description": "Read a device's geofence settings; withGeofence boolean toggles inclusion of the boundary geometry."
         },
         "getSavedLocations": {
           "method": "GET",
@@ -1858,7 +2029,8 @@
             "eventType",
             "withGeofence",
             "strategy"
-          ]
+          ],
+          "description": "List a device's saved locations (same endpoint, NotNull strategy param; withGeofence boolean)."
         },
         "updateDeviceGeofenceSettings": {
           "method": "PUT",
@@ -1871,12 +2043,13 @@
             "operation=configGeoDevice"
           ],
           "takes_body": true,
-          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}"
+          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}",
+          "description": "Update an existing device geofence / saved-place boundary (PUT location v6 geofence/settings)."
         }
       }
     },
     "gizmo_activation": {
-      "summary": "Gizmo activation operations.",
+      "summary": "Validates activation of a Gizmo watch device during the self-activation onboarding flow.",
       "id_field": "",
       "operations": {
         "validateGizmoActivation": {
@@ -1887,19 +2060,21 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}"
+          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
+          "description": "Validate a Gizmo watch's activation during self-activation setup (POST v5 gizmo/activation/validate)."
         }
       }
     },
     "identity": {
-      "summary": "Identity operations.",
+      "summary": "OAuth/OIDC identity and authentication: acquire and refresh parent/child device tokens, send and validate login OTPs, verify phone numbers (MDN), log out, and record login/biometric audit events.",
       "id_field": "authPath",
       "operations": {
         "childRefreshToken": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Refresh a child device's access token (POST device-auth v6 deviceauth/refreshtoken)."
         },
         "refreshToken": {
           "method": "POST",
@@ -1908,7 +2083,8 @@
           "headers": [
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Acquire or refresh the parent OAuth access token (POST device-auth v7 user/auth/token)."
         },
         "getAppLoginTokens": {
           "method": "POST",
@@ -1917,81 +2093,92 @@
           "placeholders": [
             "authPath"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Acquire app login tokens from the parent-auth token URL (POST to dynamic {authPath})."
         },
         "getChildDeviceAccessToken": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/deviceauth/auth/token",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Acquire a child device access token (POST device-auth v5 deviceauth/auth/token)."
         },
         "logOut": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/logout",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"code\":\"AUTHCODE123\",\"grant_type\":\"refresh_token\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"frisco_token_type\":\"online\",\"triggeredBy\":\"user\"}"
+          "body_example": "{\"code\":\"AUTHCODE123\",\"grant_type\":\"refresh_token\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"frisco_token_type\":\"online\",\"triggeredBy\":\"user\"}",
+          "description": "Log the user out and invalidate the session (POST device-auth v5 user/auth/logout)."
         },
         "loginActivity": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/l1/login/activity",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"identityProvider\":\"VZ\",\"code\":\"AUTHCODE123\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\"}"
+          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"identityProvider\":\"VZ\",\"code\":\"AUTHCODE123\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\"}",
+          "description": "Record a login-activity event (POST device-auth v7 user/auth/l1/login/activity)."
         },
         "auditLogin": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v5/user/login/audit",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"eventType\":\"LOGIN\",\"subEventType\":\"PASSWORD\",\"eventTime\":1690000000000,\"code\":\"200\",\"appUuid\":\"abc-123-uuid\",\"grantType\":\"identifier_code\",\"clientId\":\"your_oauth_client_id\"}"
+          "body_example": "{\"eventType\":\"LOGIN\",\"subEventType\":\"PASSWORD\",\"eventTime\":1690000000000,\"code\":\"200\",\"appUuid\":\"abc-123-uuid\",\"grantType\":\"identifier_code\",\"clientId\":\"your_oauth_client_id\"}",
+          "description": "Record a user login audit event (POST device-auth v5 user/login/audit)."
         },
         "postBiometricAudit": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/audit",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"events\":[{\"event_type\":\"BIOMETRIC_AUTH\",\"triggeredBy\":\"USER\",\"fidoGuid\":\"guid-123\",\"status_code\":200,\"status\":\"SUCCESS\",\"event_time\":1690000000000}]}"
+          "body_example": "{\"events\":[{\"event_type\":\"BIOMETRIC_AUTH\",\"triggeredBy\":\"USER\",\"fidoGuid\":\"guid-123\",\"status_code\":200,\"status\":\"SUCCESS\",\"event_time\":1690000000000}]}",
+          "description": "Record a biometric-auth audit event (POST device-auth v5 user/auth/audit)."
         },
         "sendAuthOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "description": "Send an authentication OTP via the device-auth service (POST device-auth v7 user/auth/otp)."
         },
         "sendOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\",\"triggerType\":\"LOGIN\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"triggerType\":\"LOGIN\"}",
+          "description": "Send an OTP via the user-auth service (POST frisco-iam-user-auth v6 user/otp)."
         },
         "validateAuthOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}",
+          "description": "Validate an auth OTP via the device-auth service (POST device-auth v7 user/auth/otp/validate)."
         },
         "validateOtp": {
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp/validate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}"
+          "body_example": "{\"mdn\":\"5551234567\",\"otp\":\"123456\"}",
+          "description": "Validate an OTP via the user-auth service (POST frisco-iam-user-auth v6 user/otp/validate)."
         },
         "verifyMdn": {
           "method": "POST",
           "path": "/fam/userprofile-management/v5/phonenumber/validate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "description": "Verify/validate a phone number (MDN) (POST userprofile-management v5 phonenumber/validate)."
         }
       }
     },
     "installed_apps": {
-      "summary": "Installed apps operations.",
+      "summary": "Reports the inventory of apps installed on a child's device up to the parental-control backend.",
       "id_field": "",
       "operations": {
         "sendInstalledApps": {
@@ -2002,12 +2189,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"events\":[{\"appName\":\"Chrome\",\"packageName\":\"com.android.chrome\",\"versionName\":\"120.0\",\"systemApp\":false}],\"timeZone\":\"America/New_York\",\"newAppInstall\":true,\"lastRefreshTime\":1710000000000}"
+          "body_example": "{\"events\":[{\"appName\":\"Chrome\",\"packageName\":\"com.android.chrome\",\"versionName\":\"120.0\",\"systemApp\":false}],\"timeZone\":\"America/New_York\",\"newAppInstall\":true,\"lastRefreshTime\":1710000000000}",
+          "description": "Report the child device's installed-apps inventory to the backend (POST parental-control v5 installed-apps)."
         }
       }
     },
     "invite": {
-      "summary": "Invite operations.",
+      "summary": "Onboards new family members and devices: send invites, list invitable account lines, create Wi-Fi/standalone/Gizmo devices, retry pairing, and set profile feature permissions and relationships.",
       "id_field": "",
       "operations": {
         "getAccountLines": {
@@ -2016,7 +2204,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the account's phone lines available to invite (GET v5 accounts/lines)."
         },
         "getFeaturePermissions": {
           "method": "GET",
@@ -2024,7 +2213,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read feature permissions for account userprofiles (GET v5 accounts/userprofiles/featurepermissions)."
         },
         "replaceDevice": {
           "method": "PATCH",
@@ -2034,7 +2224,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceType\":\"smartphone\",\"deviceCarrier\":\"Verizon\",\"deviceOS\":\"iOS\",\"deviceNickName\":\"Kid's Phone\",\"mdn\":\"5551234567\",\"imei\":\"356789012345678\"}"
+          "body_example": "{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceType\":\"smartphone\",\"deviceCarrier\":\"Verizon\",\"deviceOS\":\"iOS\",\"deviceNickName\":\"Kid's Phone\",\"mdn\":\"5551234567\",\"imei\":\"356789012345678\"}",
+          "description": "Replace a paired Gizmo device with a new one (PATCH v5 gizmo/device/replace)."
         },
         "retryPairing": {
           "method": "PUT",
@@ -2043,7 +2234,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Retry pairing a Gizmo device (PUT v5 gizmo/device/pairing)."
         },
         "sendInvite": {
           "method": "POST",
@@ -2053,7 +2245,8 @@
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create a userprofile and send a family invite (POST v6 accounts/userprofiles)."
         },
         "sendStandaloneInvite": {
           "method": "POST",
@@ -2063,7 +2256,8 @@
             "x-fp-identifier-target-serviceid",
             "x-pairing-required"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Invite/onboard a standalone device; x-pairing-required header (POST v5 onboarding/device)."
         },
         "updateFeaturePermissions": {
           "method": "POST",
@@ -2073,7 +2267,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"featurepermissions\":[{\"feature\":\"LOCATION\",\"enabled\":true}]}"
+          "body_example": "{\"featurepermissions\":[{\"feature\":\"LOCATION\",\"enabled\":true}]}",
+          "description": "Update feature permissions for account userprofiles (POST v5 accounts/userprofiles/featurepermissions)."
         },
         "createWifiDevice": {
           "method": "POST",
@@ -2083,7 +2278,8 @@
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create a Wi-Fi-only (non-cellular) child device profile (POST v6 accounts/userprofiles)."
         },
         "getAccountLines2": {
           "method": "GET",
@@ -2091,7 +2287,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the account's phone lines, v6 variant (GET v6 accounts/lines)."
         },
         "setRelationships": {
           "method": "PUT",
@@ -2100,12 +2297,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Bulk-set Gizmo contact relationships (PUT vsf/callandtext v5 gizmo/managecontacts/bulkupdate)."
         }
       }
     },
     "legal": {
-      "summary": "Legal operations.",
+      "summary": "Data-privacy export: request a downloadable copy of a user profile's stored personal data and fetch the resulting file link.",
       "id_field": "",
       "operations": {
         "getDownloadLink": {
@@ -2114,7 +2312,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get the download link for a previously requested privacy-data (personal data) export."
         },
         "requestPrivacyDataDownload": {
           "method": "POST",
@@ -2123,12 +2322,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Request a privacy-data export: kick off generating the profile's downloadable personal-data file."
         }
       }
     },
     "location": {
-      "summary": "Real-time and historical location.",
+      "summary": "Family location tracking: live and historical positions, a location dashboard, check-ins, Pick Me Up ride requests, geofence violation/tamper events, and who-shares-with-whom sharing settings.",
       "id_field": "",
       "operations": {
         "checkIn": {
@@ -2139,7 +2339,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Send a check-in sharing the profile's current location with the family."
         },
         "checkInSeen": {
           "method": "PUT",
@@ -2149,7 +2350,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Mark a received check-in as seen/acknowledged."
         },
         "deleteGeofenceSettings": {
           "method": "DELETE",
@@ -2161,7 +2363,8 @@
           "query": [
             "eventId",
             "eventType"
-          ]
+          ],
+          "description": "Remove a saved geofence/place (by eventId+eventType) from the profile's location settings."
         },
         "fetchHistory": {
           "method": "GET",
@@ -2173,7 +2376,8 @@
           "query": [
             "profileId",
             "startTime"
-          ]
+          ],
+          "description": "Fetch a profile's location history trail (optional startTime cutoff)."
         },
         "getAvailableParentForPickMeUp": {
           "method": "GET",
@@ -2190,7 +2394,8 @@
             "eventType",
             "eventStatus",
             "profileRole"
-          ]
+          ],
+          "description": "List parents currently available to answer a child's Pick Me Up ride request."
         },
         "getDashboardDetails": {
           "method": "GET",
@@ -2205,7 +2410,8 @@
             "onlyLastKnownLoc",
             "source",
             "onDemand"
-          ]
+          ],
+          "description": "Get the location dashboard: last-known or on-demand positions for family members."
         },
         "getHistoryStatus": {
           "method": "GET",
@@ -2216,7 +2422,8 @@
           ],
           "query": [
             "profileId"
-          ]
+          ],
+          "description": "Check whether location history is available for the given profile."
         },
         "getPickMeUpStatus": {
           "method": "GET",
@@ -2233,7 +2440,8 @@
             "eventType",
             "eventStatus",
             "profileRole"
-          ]
+          ],
+          "description": "Get the status of active location events (Pick Me Up, etc.) for a profile/role."
         },
         "manageLiveLocationRequest": {
           "method": "POST",
@@ -2243,7 +2451,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Start, stop, or manage a live real-time location-tracking session."
         },
         "pickMeUp": {
           "method": "POST",
@@ -2253,7 +2462,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Send a Pick Me Up request (child asks an available parent for a ride)."
         },
         "postGeofenceViolationEvent": {
           "method": "POST",
@@ -2263,7 +2473,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}"
+          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "description": "Report a geofence boundary crossing (enter/exit) event."
         },
         "postLocationTamper": {
           "method": "POST",
@@ -2273,7 +2484,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Report a location-tamper event (location turned off or spoofed on the device)."
         },
         "putPickMeUp": {
           "method": "PUT",
@@ -2283,7 +2495,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}"
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "description": "Update or respond to an existing Pick Me Up request."
         },
         "sendGeoFenceConfirmation": {
           "method": "PUT",
@@ -2296,7 +2509,8 @@
             "operation=configGeoDevice"
           ],
           "takes_body": true,
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}"
+          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "description": "Confirm geofence device setup (operation=configGeoDevice, v6)."
         },
         "getLocationSharingConfigEvent": {
           "method": "GET",
@@ -2308,7 +2522,8 @@
           "query": [
             "eventType",
             "profileId"
-          ]
+          ],
+          "description": "Read location-sharing config for a given event type (v6 settings)."
         },
         "getLocationSharingSettings": {
           "method": "GET",
@@ -2320,7 +2535,8 @@
           "query": [
             "eventType",
             "profileId"
-          ]
+          ],
+          "description": "Read the profile's location-sharing settings (v5)."
         },
         "getWithWhomIamSharingLocation": {
           "method": "GET",
@@ -2332,7 +2548,8 @@
           "query": [
             "eventType",
             "profileId"
-          ]
+          ],
+          "description": "List who you are currently sharing your location with (v6 settings)."
         },
         "updateLocationSharingSetting": {
           "method": "PUT",
@@ -2341,7 +2558,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the profile's location-sharing settings (v5)."
         },
         "updateLocationSharingSettingConfig": {
           "method": "PUT",
@@ -2355,12 +2573,13 @@
             "profileId"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"LOCATION_SHARING\",\"events\":[]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"LOCATION_SHARING\",\"events\":[]}",
+          "description": "Update location-sharing config for a specific event type/profile (v6)."
         }
       }
     },
     "medical_id": {
-      "summary": "Medical id operations.",
+      "summary": "A family member's device Medical ID emergency health card: create or update the emergency medical info stored on the device.",
       "id_field": "",
       "operations": {
         "postMedicalId": {
@@ -2370,7 +2589,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create the emergency Medical ID card stored on the device."
         },
         "putMedicalId": {
           "method": "PUT",
@@ -2379,12 +2599,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the emergency Medical ID card stored on the device."
         }
       }
     },
     "messaging": {
-      "summary": "Messaging operations.",
+      "summary": "Family group-chat and messaging: create and manage groups and members, send text and media messages, list/read/download conversations, and delete messages or whole chats.",
       "id_field": "group-id",
       "operations": {
         "addMembers": {
@@ -2398,7 +2619,8 @@
             "group-id"
           ],
           "takes_body": true,
-          "body_example": "{\"groupMembers\":[{\"memberId\":\"1234567\"}]}"
+          "body_example": "{\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
+          "description": "Add members to an existing group chat (PUT to the group's members list)."
         },
         "clearAllGroupChatMessages": {
           "method": "DELETE",
@@ -2410,7 +2632,8 @@
           "query": [
             "chatGroupId"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently delete ALL messages in a group chat, wiping its entire history."
         },
         "createNewGroup": {
           "method": "POST",
@@ -2420,7 +2643,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"name\":\"Family\",\"image\":\"https://cdn.example.com/g.png\",\"type\":\"GROUP\",\"groupMembers\":[{\"memberId\":\"1234567\"}]}"
+          "body_example": "{\"name\":\"Family\",\"image\":\"https://cdn.example.com/g.png\",\"type\":\"GROUP\",\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
+          "description": "Create a new group chat."
         },
         "deleteGroupChat": {
           "method": "DELETE",
@@ -2432,7 +2656,8 @@
           "placeholders": [
             "group-id"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently delete an entire group chat and its messages."
         },
         "deleteGroupMember": {
           "method": "DELETE",
@@ -2445,7 +2670,8 @@
             "group-id",
             "member-id"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently remove a specific member from a group chat."
         },
         "exitGroup": {
           "method": "DELETE",
@@ -2456,7 +2682,8 @@
           ],
           "placeholders": [
             "group-id"
-          ]
+          ],
+          "description": "Leave a group chat yourself (self-exit)."
         },
         "getAllEligibleMembers": {
           "method": "GET",
@@ -2464,7 +2691,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List account members eligible to be added to a group."
         },
         "getAllGroupMessage": {
           "method": "POST",
@@ -2474,7 +2702,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"requestedGroups\":[{\"chatGroupId\":101,\"currentMessageId\":5000,\"requestedList\":\"NEXT\"}],\"limit\":50,\"includePreview\":true}"
+          "body_example": "{\"requestedGroups\":[{\"chatGroupId\":101,\"currentMessageId\":5000,\"requestedList\":\"NEXT\"}],\"limit\":50,\"includePreview\":true}",
+          "description": "Fetch all messages in a group chat (POST-based query)."
         },
         "getAllGroups": {
           "method": "GET",
@@ -2482,7 +2711,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List all of the account's group chats."
         },
         "getGroupMediaMessage": {
           "method": "GET",
@@ -2495,7 +2725,8 @@
             "chatGroupId",
             "messageId",
             "presignedUrl"
-          ]
+          ],
+          "description": "Download a media attachment from a group message (by messageId; optional presigned URL)."
         },
         "getRemainingMembersToAddGroup": {
           "method": "GET",
@@ -2506,7 +2737,8 @@
           ],
           "placeholders": [
             "group-id"
-          ]
+          ],
+          "description": "List members still eligible to add to a specific group."
         },
         "messageRead": {
           "method": "POST",
@@ -2519,7 +2751,8 @@
             "chatGroupId"
           ],
           "takes_body": true,
-          "body_example": "{\"lastReadMessageUser\":\"1234567\"}"
+          "body_example": "{\"lastReadMessageUser\":\"1234567\"}",
+          "description": "Mark group chat message(s) as read."
         },
         "sendGroupMediaMessage": {
           "method": "POST",
@@ -2532,7 +2765,8 @@
             "chatGroupId"
           ],
           "takes_body": true,
-          "multipart": true
+          "multipart": true,
+          "description": "Send a media message to a group chat (multipart file upload)."
         },
         "sendGroupTextMessage": {
           "method": "POST",
@@ -2545,7 +2779,8 @@
             "chatGroupId"
           ],
           "takes_body": true,
-          "body_example": "{\"message\":\"Hello team\"}"
+          "body_example": "{\"message\":\"Hello team\"}",
+          "description": "Send a text message to a group chat."
         },
         "updateGroupChat": {
           "method": "PATCH",
@@ -2558,7 +2793,8 @@
             "group-id"
           ],
           "takes_body": true,
-          "body_example": "{\"name\":\"Family Chat\",\"image\":\"https://cdn.example.com/g.png\"}"
+          "body_example": "{\"name\":\"Family Chat\",\"image\":\"https://cdn.example.com/g.png\"}",
+          "description": "Update a group chat's details (e.g. its name)."
         },
         "deleteMessages": {
           "method": "DELETE",
@@ -2567,7 +2803,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Permanently delete message(s) (target message id supplied via header)."
         },
         "getMediaMessage": {
           "method": "GET",
@@ -2579,7 +2816,8 @@
           "query": [
             "messageId",
             "presignedUrl"
-          ]
+          ],
+          "description": "Download a media attachment from a 1:1 message (by messageId)."
         },
         "getMessageList": {
           "method": "GET",
@@ -2592,7 +2830,8 @@
             "messageId",
             "limit",
             "direction"
-          ]
+          ],
+          "description": "List messages, paged by messageId/direction/limit."
         },
         "postMessageMedia": {
           "method": "POST",
@@ -2604,12 +2843,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "multipart": true
+          "multipart": true,
+          "description": "Upload and send a media attachment in a 1:1 message (multipart upload)."
         }
       }
     },
     "most_used_apps": {
-      "summary": "Most used apps operations.",
+      "summary": "Most-used apps report: list a monitored profile's top apps ranked by usage.",
       "id_field": "",
       "operations": {
         "getTopApps": {
@@ -2623,12 +2863,13 @@
             "date",
             "count",
             "timezone"
-          ]
+          ],
+          "description": "List a monitored profile's most-used apps, ranked by usage (limited by count)."
         }
       }
     },
     "notifications": {
-      "summary": "Notifications operations.",
+      "summary": "Notification center: fetch the notifications feed and unread count, get filter options and event details, read/update report (alert) settings, and mark all read.",
       "id_field": "eventId",
       "operations": {
         "getNotificationFeed": {
@@ -2642,7 +2883,8 @@
             "productType",
             "notificationType",
             "exclude"
-          ]
+          ],
+          "description": "Get the notifications feed (v5 commsplatform), filtered by product/notification type."
         },
         "getObjectionableWeb": {
           "method": "GET",
@@ -2656,7 +2898,8 @@
           ],
           "placeholders": [
             "eventId"
-          ]
+          ],
+          "description": "Get details for a noteworthy/objectionable-web notification event by eventId."
         },
         "getReportSettings": {
           "method": "GET",
@@ -2667,7 +2910,8 @@
           ],
           "query": [
             "reportCategory"
-          ]
+          ],
+          "description": "Read per-individual notification report settings (reportCategory=individual)."
         },
         "getFilters": {
           "method": "GET",
@@ -2679,7 +2923,8 @@
           "query": [
             "resolution",
             "sz"
-          ]
+          ],
+          "description": "Get available notification filter options (icons sized by resolution/sz)."
         },
         "getNotificationCount": {
           "method": "GET",
@@ -2691,7 +2936,8 @@
           "query": [
             "productType",
             "notificationType"
-          ]
+          ],
+          "description": "Get the unread-notification count, filtered by product/notification type (v6)."
         },
         "getNotifications": {
           "method": "GET",
@@ -2707,7 +2953,8 @@
             "productType",
             "notificationType",
             "exclude"
-          ]
+          ],
+          "description": "Get the paged notifications list (v6), with filters and exclude options."
         },
         "getReportSettings2": {
           "method": "GET",
@@ -2715,7 +2962,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read notification report settings (v8 report-settings)."
         },
         "markAllRead": {
           "method": "PATCH",
@@ -2727,7 +2975,8 @@
           "query": [
             "productType",
             "notificationType"
-          ]
+          ],
+          "description": "Mark all notifications as read, by product/notification type (v6)."
         },
         "updateReportSettings": {
           "method": "POST",
@@ -2740,12 +2989,13 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "body_example": "{\"settings\":{\"lowBattery\":true,\"appInstalled\":false}}"
+          "body_example": "{\"settings\":{\"lowBattery\":true,\"appInstalled\":false}}",
+          "description": "Update notification report settings (reportCategory query, v7)."
         }
       }
     },
     "onboarding": {
-      "summary": "Onboarding operations.",
+      "summary": "Onboarding asset lookup: fetch the gallery of selectable profile-avatar images shown while setting up a new family member.",
       "id_field": "",
       "operations": {
         "getProfileAvatars": {
@@ -2757,12 +3007,13 @@
           ],
           "query": [
             "resolution"
-          ]
+          ],
+          "description": "List the selectable profile-avatar images offered during setup, at the requested resolution."
         }
       }
     },
     "pairing": {
-      "summary": "Child device pairing and consent.",
+      "summary": "Pair and manage children's phones and Gizmo watches: create profiles, grant pairing consent, import/link/unlink Gizmo devices, read device status/logs/media/settings, and push firmware, find, or power-off commands.",
       "id_field": "eventId",
       "operations": {
         "getConsent": {
@@ -2771,7 +3022,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Read a child device's pairing-consent status."
         },
         "getDefaultDOHLocation": {
           "method": "GET",
@@ -2779,7 +3031,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get the default DNS-over-HTTPS provider account location."
         },
         "setConsent": {
           "method": "POST",
@@ -2788,7 +3041,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Record/grant a child device's pairing consent."
         },
         "addDeviceToProfile": {
           "method": "POST",
@@ -2797,7 +3051,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Add a WiFi/companion device to a family member's profile."
         },
         "createProfile": {
           "method": "POST",
@@ -2806,13 +3061,15 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create a new family member profile under the account."
         },
         "getIdTokenUsingOtp": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/wifi/token",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Exchange a WiFi OTP for a device id-token during pairing (token exchange)."
         },
         "getOtpStatus": {
           "method": "GET",
@@ -2820,7 +3077,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Check the status of a WiFi pairing OTP."
         },
         "resendOtp": {
           "method": "POST",
@@ -2828,7 +3086,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Resend the WiFi pairing OTP."
         },
         "getWebAppVisibility": {
           "method": "GET",
@@ -2839,7 +3098,8 @@
           ],
           "query": [
             "vpn-retry-type"
-          ]
+          ],
+          "description": "Get web/app-activity visibility (VPN status) for a profile."
         },
         "reSendInvite": {
           "method": "PATCH",
@@ -2848,7 +3108,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Resend a pending family-member invite."
         },
         "getNotificationFeed": {
           "method": "GET",
@@ -2861,7 +3122,8 @@
             "productType",
             "notificationType",
             "exclude"
-          ]
+          ],
+          "description": "Fetch the notifications feed for the account."
         },
         "getObjectionableWeb": {
           "method": "GET",
@@ -2875,7 +3137,8 @@
           ],
           "placeholders": [
             "eventId"
-          ]
+          ],
+          "description": "Get details of a noteworthy/objectionable web event by eventId."
         },
         "getReportSettings": {
           "method": "GET",
@@ -2886,7 +3149,8 @@
           ],
           "query": [
             "reportCategory"
-          ]
+          ],
+          "description": "Read individual report/notification settings."
         },
         "validateGizmoActivation": {
           "method": "POST",
@@ -2896,7 +3160,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}"
+          "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
+          "description": "Validate a Gizmo device activation."
         },
         "getDeviceShadowDetails": {
           "method": "GET",
@@ -2909,7 +3174,8 @@
             "deviceID",
             "featureIds",
             "retrieveLevel"
-          ]
+          ],
+          "description": "Read a device's shadow (tamper) state details."
         },
         "checkUpgrade": {
           "method": "POST",
@@ -2919,7 +3185,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"autoUpgrade\":true}"
+          "body_example": "{\"autoUpgrade\":true}",
+          "description": "Check whether a firmware (FOTA) update is available for a device."
         },
         "getDeviceStatus": {
           "method": "GET",
@@ -2931,7 +3198,8 @@
           "query": [
             "onDemand",
             "statusType"
-          ]
+          ],
+          "description": "Get a device's current status, with optional on-demand refresh."
         },
         "upgrade": {
           "method": "POST",
@@ -2939,7 +3207,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Trigger a firmware (FOTA) upgrade on a device."
         },
         "getMediaList": {
           "method": "GET",
@@ -2948,7 +3217,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "gizmo-device-model"
-          ]
+          ],
+          "description": "List media stored on a device."
         },
         "getInteractionData": {
           "method": "GET",
@@ -2961,7 +3231,8 @@
             "logId",
             "limit",
             "direction"
-          ]
+          ],
+          "description": "Fetch a Gizmo device's AI interaction logs."
         },
         "findGizmo": {
           "method": "POST",
@@ -2969,7 +3240,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Trigger find-my to locate a Gizmo device."
         },
         "powerOffGizmoDevice": {
           "method": "POST",
@@ -2977,7 +3249,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Remotely power off a Gizmo device."
         },
         "addDevice": {
           "method": "POST",
@@ -2987,7 +3260,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}"
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"ANDROID\"}]}",
+          "description": "Add a device to a family member's user profile."
         },
         "createDependentProfile": {
           "method": "POST",
@@ -2996,7 +3270,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create a dependent (child) profile under the account."
         },
         "deleteMediaBackupEntries": {
           "method": "DELETE",
@@ -3007,7 +3282,8 @@
           ],
           "destructive": true,
           "takes_body": true,
-          "body_example": "{\"childId\":\"12345\",\"mediaIds\":[1001,1002]}"
+          "body_example": "{\"childId\":\"12345\",\"mediaIds\":[1001,1002]}",
+          "description": "Permanently delete backed-up media entries from a device's cloud backup (DELETE with body)."
         },
         "getGizmoDevices": {
           "method": "GET",
@@ -3015,7 +3291,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the account's Gizmo devices."
         },
         "getMdnLookupResponse": {
           "method": "GET",
@@ -3024,7 +3301,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-mdn"
-          ]
+          ],
+          "description": "Look up a Gizmo device by MDN (phone number)."
         },
         "getMediaBackupList": {
           "method": "GET",
@@ -3038,7 +3316,8 @@
             "mediaId",
             "direction",
             "limit"
-          ]
+          ],
+          "description": "List a device's cloud media-backup entries."
         },
         "getMediaBackupStorageStatus": {
           "method": "GET",
@@ -3050,7 +3329,8 @@
           "query": [
             "onDemand",
             "statusType"
-          ]
+          ],
+          "description": "Get a device's cloud-backup storage status."
         },
         "gizmoDevicesCheckEligibility": {
           "method": "GET",
@@ -3063,7 +3343,8 @@
           ],
           "query": [
             "eligibility-check"
-          ]
+          ],
+          "description": "Check whether the profile is eligible to add Gizmo devices."
         },
         "gizmoDevicesGetLists": {
           "method": "GET",
@@ -3076,7 +3357,8 @@
           ],
           "query": [
             "eligibility-check"
-          ]
+          ],
+          "description": "List Gizmo devices available to the profile."
         },
         "gizmoImportDevices": {
           "method": "GET",
@@ -3088,7 +3370,8 @@
           ],
           "query": [
             "canLink"
-          ]
+          ],
+          "description": "List importable Gizmo devices for a signed-in user."
         },
         "gizmoImportDevicesNotSignedInUser": {
           "method": "GET",
@@ -3099,7 +3382,8 @@
           ],
           "query": [
             "canLink"
-          ]
+          ],
+          "description": "List importable Gizmo devices (not-signed-in v1 variant)."
         },
         "gizmoImportEligibility": {
           "method": "GET",
@@ -3108,7 +3392,8 @@
           "headers": [
             "x-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Check eligibility to import Gizmo devices."
         },
         "gizmoImportEligibilityNotSignedInUser": {
           "method": "GET",
@@ -3116,7 +3401,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Check Gizmo import eligibility (not-signed-in v1 variant)."
         },
         "gizmoImportInitiate": {
           "method": "POST",
@@ -3125,7 +3411,8 @@
           "headers": [
             "x-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Start importing Gizmo devices into the account."
         },
         "gizmoImportInitiateNotSignedInUser": {
           "method": "POST",
@@ -3133,7 +3420,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Start a Gizmo import (not-signed-in v1 variant)."
         },
         "linkGizmoAccount": {
           "method": "POST",
@@ -3143,7 +3431,8 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"code\":\"123456\",\"grantType\":\"gizmo_otp\",\"gizmoUserId\":\"user-abc\",\"mdn\":\"5551234567\"}"
+          "body_example": "{\"code\":\"123456\",\"grantType\":\"gizmo_otp\",\"gizmoUserId\":\"user-abc\",\"mdn\":\"5551234567\"}",
+          "description": "Link/authenticate a Gizmo account via token exchange."
         },
         "unlinkGizmoAccount": {
           "method": "DELETE",
@@ -3152,7 +3441,8 @@
           "headers": [
             "x-trace-transaction-id"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Unlink a Gizmo account from the profile, permanently removing the link."
         },
         "updateProfileImage": {
           "method": "PUT",
@@ -3162,7 +3452,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}"
+          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "description": "Update/replace a profile's image."
         },
         "updatePairing": {
           "method": "PUT",
@@ -3171,7 +3462,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update a profile's device pairing."
         },
         "validateGizmoMdn": {
           "method": "POST",
@@ -3181,7 +3473,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"mdn\":\"5551234567\"}"
+          "body_example": "{\"mdn\":\"5551234567\"}",
+          "description": "Validate a Gizmo MDN before pairing."
         },
         "getDeviceStatus2": {
           "method": "GET",
@@ -3192,7 +3485,8 @@
           ],
           "query": [
             "deviceId"
-          ]
+          ],
+          "description": "Get device status via the alternate v5 vsf device-status endpoint."
         },
         "getDeviceLogDownloadUrl": {
           "method": "GET",
@@ -3204,7 +3498,8 @@
           ],
           "query": [
             "id"
-          ]
+          ],
+          "description": "Get a download URL for a device's uploaded log file."
         },
         "getDeviceLogs": {
           "method": "GET",
@@ -3213,7 +3508,8 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List a device's available log files."
         },
         "getDeviceSettings": {
           "method": "GET",
@@ -3226,7 +3522,8 @@
           "query": [
             "settingsType",
             "timezone"
-          ]
+          ],
+          "description": "Read a device's settings for a given settingsType."
         },
         "postDeviceSettings": {
           "method": "POST",
@@ -3236,7 +3533,8 @@
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update a device's settings."
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -3245,12 +3543,13 @@
           "headers": [
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Ask a device to upload its logs to the cloud."
         }
       }
     },
     "pause_internet": {
-      "summary": "Pause/resume a profile's internet.",
+      "summary": "Pause or resume a child profile's internet access: list devices with their current pause state and toggle a pause on or off.",
       "id_field": "",
       "operations": {
         "getDevices": {
@@ -3259,7 +3558,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List devices and their current internet-pause state (v6)."
         },
         "pauseInternet": {
           "method": "POST",
@@ -3268,7 +3568,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Pause internet access for a profile's device(s)."
         },
         "unPauseInternet": {
           "method": "DELETE",
@@ -3276,12 +3577,13 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Resume (un-pause) internet access for the device(s)."
         }
       }
     },
     "pet_tracker": {
-      "summary": "Pet tracker operations.",
+      "summary": "Pet collar tracker: start/end/escalate live-location sessions, read activity/rest/step data, manage the collar's WiFi networks and firmware, and fetch breeds, keys, tokens, and the purchase link.",
       "id_field": "session-id",
       "operations": {
         "endRttOrLpm": {
@@ -3291,7 +3593,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "End a real-time-tracking (RTT) or lost-pet-mode (LPM) session."
         },
         "escalateRttToLpm": {
           "method": "PATCH",
@@ -3301,7 +3604,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}"
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}",
+          "description": "Escalate a real-time-tracking session to lost-pet mode."
         },
         "getAllAvailableEmergencyContacts": {
           "method": "GET",
@@ -3309,7 +3613,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List the profile's available emergency contacts."
         },
         "getPetLiveTrackerSessionInfo": {
           "method": "GET",
@@ -3317,7 +3622,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get info on the current live-tracking session."
         },
         "getPetTrackerLocationHistory": {
           "method": "GET",
@@ -3328,7 +3634,8 @@
           ],
           "placeholders": [
             "session-id"
-          ]
+          ],
+          "description": "Get location history for a live-tracking session by session-id."
         },
         "getPetTrackerSMSLink": {
           "method": "GET",
@@ -3339,7 +3646,8 @@
           ],
           "placeholders": [
             "session-id"
-          ]
+          ],
+          "description": "Get a shareable SMS link for a live-tracking session by session-id."
         },
         "submitPetLiveTracker": {
           "method": "POST",
@@ -3348,21 +3656,24 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Start a pet live-tracking session."
         },
         "deleteWifiDetails": {
           "method": "DELETE",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "description": "Remove a saved WiFi network from the pet collar (DELETE with body)."
         },
         "firmwareUpdateStatus": {
           "method": "POST",
           "path": "/comms/vsf/tamper/v5/fwUpdate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"featureValue\":1}"
+          "body_example": "{\"featureValue\":1}",
+          "description": "Report/update the collar's firmware-update status."
         },
         "getActivity": {
           "method": "GET",
@@ -3370,7 +3681,8 @@
           "confirmed": false,
           "headers": [
             "duration"
-          ]
+          ],
+          "description": "Get the pet's activity data over a given duration."
         },
         "getActivityV2": {
           "method": "GET",
@@ -3378,7 +3690,8 @@
           "confirmed": false,
           "headers": [
             "duration"
-          ]
+          ],
+          "description": "Get the pet's activity data over a duration (v2 response model)."
         },
         "getBreeds": {
           "method": "GET",
@@ -3386,17 +3699,20 @@
           "confirmed": false,
           "query": [
             "species"
-          ]
+          ],
+          "description": "List pet breeds, optionally filtered by species."
         },
         "getCollarSoftwareInfo": {
           "method": "GET",
           "path": "/tracker/fam/v1/device/status",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Get the collar's device/software status info."
         },
         "getEncryptionKey": {
           "method": "GET",
           "path": "/tracker/fam/v1/keys",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the pet-tracker encryption key."
         },
         "getPurchaseLink": {
           "method": "GET",
@@ -3404,12 +3720,14 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get the pet-tracker purchase link."
         },
         "getReportingToken": {
           "method": "POST",
           "path": "/tracker/fam/v1/pet/mobile-sdk-reporting-token",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Get a mobile-SDK reporting token (POST, no body)."
         },
         "getRest": {
           "method": "GET",
@@ -3417,12 +3735,14 @@
           "confirmed": false,
           "headers": [
             "duration"
-          ]
+          ],
+          "description": "Get the pet's rest/sleep data over a given duration."
         },
         "getSdkToken": {
           "method": "POST",
           "path": "/tracker/fam/v1/sdk-oauth-token",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Get an SDK OAuth token (POST, no body)."
         },
         "getStepDistribution": {
           "method": "GET",
@@ -3432,43 +3752,49 @@
             "breedId",
             "name",
             "ageInYears"
-          ]
+          ],
+          "description": "Get step-count distribution benchmarked by breed/age."
         },
         "getTutorialVideoDetails": {
           "method": "GET",
           "path": "/tracker/fam/v1/hw-works",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Get how-it-works tutorial video details."
         },
         "getWifiList": {
           "method": "GET",
           "path": "/tracker/fam/v1/pet/wifi",
-          "confirmed": false
+          "confirmed": false,
+          "description": "List the WiFi networks saved on the collar."
         },
         "logFiSdkInteractionEvent": {
           "method": "POST",
           "path": "/tracker/fam/v1/trace/logs",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}"
+          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}",
+          "description": "Log a Fi-SDK interaction/trace event."
         },
         "saveWifiDetails": {
           "method": "POST",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "description": "Save a new WiFi network to the collar."
         },
         "updateWifiDetails": {
           "method": "PUT",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}"
+          "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
+          "description": "Update a saved WiFi network on the collar."
         }
       }
     },
     "professional_monitoring": {
-      "summary": "Professional monitoring operations.",
+      "summary": "Professional (agent-assisted) safety monitoring enrollment: create/update/activate/deactivate subscribers, file a help/SOS request, and manage the monitored address and subscriber name.",
       "id_field": "subscriber-id",
       "operations": {
         "createHelp": {
@@ -3478,7 +3804,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "File a help/SOS request to the professional-monitoring service."
         },
         "createSubscribers": {
           "method": "POST",
@@ -3487,7 +3814,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Enroll a subscriber into professional monitoring."
         },
         "deactivateProfile": {
           "method": "PATCH",
@@ -3500,7 +3828,8 @@
             "subscriber-id"
           ],
           "destructive": true,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Deactivate a subscriber's professional-monitoring profile by subscriber-id."
         },
         "getRemoteProfessionalMonitoringAddress": {
           "method": "GET",
@@ -3509,7 +3838,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "addressType"
-          ]
+          ],
+          "description": "Get the monitoring address on file for a profile."
         },
         "getSubscriberSetupInfo": {
           "method": "GET",
@@ -3517,7 +3847,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Get subscriber setup/enrollment info."
         },
         "reactivateProfile": {
           "method": "PATCH",
@@ -3530,7 +3861,8 @@
             "subscriber-id"
           ],
           "destructive": true,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Reactivate a previously deactivated subscriber's monitoring profile by subscriber-id."
         },
         "updateAddress": {
           "method": "PUT",
@@ -3543,7 +3875,8 @@
             "address-id"
           ],
           "takes_body": true,
-          "body_example": "{\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zipcode\":\"02118\",\"country\":\"US\"}"
+          "body_example": "{\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zipcode\":\"02118\",\"country\":\"US\"}",
+          "description": "Update a saved monitoring address by address-id."
         },
         "updateFirstAndLastName": {
           "method": "PATCH",
@@ -3552,7 +3885,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the subscriber's first and last name."
         },
         "updateSubscribers": {
           "method": "PUT",
@@ -3561,7 +3895,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update a subscriber's professional-monitoring enrollment details."
         },
         "validateAddress": {
           "method": "POST",
@@ -3570,12 +3905,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Validate a monitoring address before enrollment."
         }
       }
     },
     "profile": {
-      "summary": "Family member profiles and avatars.",
+      "summary": "A family member's profile: fetch selectable avatars, view the member's most-used apps, and resend a pending invite.",
       "id_field": "",
       "operations": {
         "reSendInvite": {
@@ -3585,7 +3921,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Resend a pending family-member invite."
         },
         "getTopApps": {
           "method": "GET",
@@ -3598,7 +3935,8 @@
             "date",
             "count",
             "timezone"
-          ]
+          ],
+          "description": "Get a profile's most-used apps (top N by usage count)."
         },
         "getProfileAvatars": {
           "method": "GET",
@@ -3609,12 +3947,13 @@
           ],
           "query": [
             "resolution"
-          ]
+          ],
+          "description": "List the selectable profile-avatar images at the requested resolution."
         }
       }
     },
     "pubnub": {
-      "summary": "Pubnub operations.",
+      "summary": "PubNub realtime-messaging plumbing: fetch the profile's PubNub channel configuration, mint subscribe tokens, and register the device's push-notification token.",
       "id_field": "",
       "operations": {
         "getPubNubConfig": {
@@ -3623,7 +3962,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET the profile's PubNub realtime-messaging configuration (channels/keys) used to receive live updates."
         },
         "getPubNubToken": {
           "method": "POST",
@@ -3631,7 +3971,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "POST to mint a PubNub access token authorizing subscription to the account's realtime channels."
         },
         "putDeviceToken": {
           "method": "PUT",
@@ -3641,12 +3982,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"feature\":\"location\",\"deviceId\":123456,\"pushToken\":\"fcm-token-abc123\",\"appName\":\"VZFamily\",\"osType\":\"android\",\"osVersion\":\"14\"}"
+          "body_example": "{\"feature\":\"location\",\"deviceId\":123456,\"pushToken\":\"fcm-token-abc123\",\"appName\":\"VZFamily\",\"osType\":\"android\",\"osVersion\":\"14\"}",
+          "description": "PUT to register or update this device's push-notification token on the profile."
         }
       }
     },
     "real_time_tracking": {
-      "summary": "Real time tracking operations.",
+      "summary": "Real-time location tracking (RTT) sessions: start or refresh a live-tracking session for a device and read back its location-event history.",
       "id_field": "",
       "operations": {
         "getHistoryEvents": {
@@ -3658,7 +4000,8 @@
           ],
           "query": [
             "includeLocEvents"
-          ]
+          ],
+          "description": "GET the current RTT session, optionally including its accumulated live location events (includeLocEvents)."
         },
         "invoke": {
           "method": "POST",
@@ -3668,12 +4011,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"app\",\"eventType\":\"LOCATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"REQUEST\",\"extendSession\":false}]}"
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"app\",\"eventType\":\"LOCATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"REQUEST\",\"extendSession\":false}]}",
+          "description": "POST to start or refresh a real-time location-tracking (RTT) session for the target device."
         }
       }
     },
     "restricted_usage": {
-      "summary": "Restricted usage operations.",
+      "summary": "Call/text usage limits: create or update a limit, list all configured limits, and reset an existing limit for a child's line.",
       "id_field": "",
       "operations": {
         "addLimit": {
@@ -3684,7 +4028,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"alertLimit\":true,\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"noLimitSet\":false,\"profileId\":\"1234567\",\"thresholdLimit\":120.0}"
+          "body_example": "{\"alertLimit\":true,\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"noLimitSet\":false,\"profileId\":\"1234567\",\"thresholdLimit\":120.0}",
+          "description": "PUT to create or update a call/text usage limit for the target profile's line."
         },
         "getAllTheLimits": {
           "method": "GET",
@@ -3697,7 +4042,8 @@
             "profileId",
             "deviceId",
             "limitType"
-          ]
+          ],
+          "description": "GET the list of all configured call/text usage limits for the profile."
         },
         "resetLimit": {
           "method": "DELETE",
@@ -3707,12 +4053,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"profileId\":\"1234567\"}"
+          "body_example": "{\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"profileId\":\"1234567\"}",
+          "description": "DELETE (with body) to reset/clear a configured call/text usage limit identified in the payload."
         }
       }
     },
     "reviews": {
-      "summary": "Reviews operations.",
+      "summary": "In-app Gizmo review prompts: check whether the user should be shown a review prompt, submit their review, and update the prompt's action state.",
       "id_field": "",
       "operations": {
         "getReviewEligibility": {
@@ -3722,7 +4069,8 @@
           "headers": [
             "x-fp-identifier-profileid",
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET whether the user is currently eligible to be shown a Gizmo review prompt."
         },
         "submitReview": {
           "method": "POST",
@@ -3732,7 +4080,8 @@
             "x-fp-identifier-profileid",
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "POST the user's Gizmo review/rating content."
         },
         "updateReviewAction": {
           "method": "PATCH",
@@ -3743,13 +4092,14 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"action\":\"approve\"}"
+          "body_example": "{\"action\":\"approve\"}",
+          "description": "PATCH the review-prompt state to record an action such as dismissed, deferred, or completed."
         }
       },
       "tier": "p2"
     },
     "roadside_assistance": {
-      "summary": "Roadside assistance operations.",
+      "summary": "Roadside Assistance (RSA): manage saved vehicles, look up car makes/models, submit/cancel/track rescue requests, find and validate tow destinations, and control member access.",
       "id_field": "vehicle-id",
       "operations": {
         "addVehicle": {
@@ -3760,7 +4110,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"nickname\":\"My Car\",\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"fuelType\":\"GAS\"}"
+          "body_example": "{\"nickname\":\"My Car\",\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"fuelType\":\"GAS\"}",
+          "description": "POST to add a vehicle to the roadside-assistance profile."
         },
         "cancelRequest": {
           "method": "PUT",
@@ -3770,7 +4121,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"rescueId\":\"rescue-123\"}"
+          "body_example": "{\"rescueId\":\"rescue-123\"}",
+          "description": "PUT to cancel an in-progress roadside rescue request."
         },
         "deleteExistVehicle": {
           "method": "DELETE",
@@ -3781,7 +4133,8 @@
           ],
           "placeholders": [
             "vehicle-id"
-          ]
+          ],
+          "description": "DELETE a saved vehicle by {vehicle-id}, removing it from the RSA profile."
         },
         "dismissRsaNotificationBanner": {
           "method": "PATCH",
@@ -3791,7 +4144,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"DISMISS\"}"
+          "body_example": "{\"operation\":\"DISMISS\"}",
+          "description": "PATCH the rescue setup state to dismiss the RSA notification banner."
         },
         "dismissWhatsNew": {
           "method": "PATCH",
@@ -3801,7 +4155,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"DISMISS\"}"
+          "body_example": "{\"operation\":\"DISMISS\"}",
+          "description": "PATCH (v6) to dismiss the RSA 'What's New' callout for the user."
         },
         "getCarMakes": {
           "method": "GET",
@@ -3812,7 +4167,8 @@
           ],
           "placeholders": [
             "year"
-          ]
+          ],
+          "description": "GET the list of vehicle makes available for a given model {year}."
         },
         "getCarModels": {
           "method": "POST",
@@ -3822,7 +4178,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"year\":2020,\"makes\":\"Toyota\"}"
+          "body_example": "{\"year\":2020,\"makes\":\"Toyota\"}",
+          "description": "POST make/year criteria to list matching vehicle models."
         },
         "getRescueHistory": {
           "method": "GET",
@@ -3830,7 +4187,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET the history of past roadside rescue requests."
         },
         "getRescueInfo": {
           "method": "GET",
@@ -3838,7 +4196,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET details of the current/active roadside rescue request."
         },
         "getRsaMemberAccess": {
           "method": "GET",
@@ -3846,7 +4205,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET which family members/dependents have roadside-assistance access."
         },
         "getTowLocations": {
           "method": "POST",
@@ -3855,7 +4215,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "POST location criteria to find nearby tow/service destinations for a rescue."
         },
         "setUpRsaIntroBottomSheet": {
           "method": "POST",
@@ -3864,7 +4225,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "POST to mark the RSA intro bottom-sheet as shown/set up for the user."
         },
         "submitRescue": {
           "method": "POST",
@@ -3873,7 +4235,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "POST to submit a new roadside rescue request."
         },
         "updateExistingUserVehicleDetails": {
           "method": "PUT",
@@ -3886,7 +4249,8 @@
             "vehicle-id"
           ],
           "takes_body": true,
-          "body_example": "{\"make\":\"Toyota\",\"model\":\"Camry\",\"year\":2020,\"color\":\"Blue\",\"fuelType\":\"GAS\",\"nickname\":\"My Car\"}"
+          "body_example": "{\"make\":\"Toyota\",\"model\":\"Camry\",\"year\":2020,\"color\":\"Blue\",\"fuelType\":\"GAS\",\"nickname\":\"My Car\"}",
+          "description": "PUT to update details of an existing saved vehicle by {vehicle-id}."
         },
         "updateRsaMemberAccess": {
           "method": "PATCH",
@@ -3896,7 +4260,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"consentFlag\":true,\"enableRSAFlag\":true}"
+          "body_example": "{\"consentFlag\":true,\"enableRSAFlag\":true}",
+          "description": "PATCH to grant or revoke roadside-assistance access for family members/dependents."
         },
         "validateTowLocation": {
           "method": "POST",
@@ -3906,13 +4271,14 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"model\":\"Camry\",\"make\":\"Toyota\",\"zipcode\":\"07001\",\"longitude\":-74.006,\"latitude\":40.7128}"
+          "body_example": "{\"model\":\"Camry\",\"make\":\"Toyota\",\"zipcode\":\"07001\",\"longitude\":-74.006,\"latitude\":40.7128}",
+          "description": "POST a chosen tow destination to validate it before submitting the rescue."
         }
       },
       "tier": "p2"
     },
     "safety_alerts": {
-      "summary": "Safety alerts operations.",
+      "summary": "Safety alerts feed (wm-sos): retrieve the active safety/SOS alerts surfaced for the family.",
       "id_field": "",
       "operations": {
         "getSafetyAlerts": {
@@ -3921,12 +4287,13 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET the list of active safety/SOS alerts for the family from the wm-sos service."
         }
       }
     },
     "schedule_alert": {
-      "summary": "Schedule alert operations.",
+      "summary": "Scheduled location alerts: recurring \"notify me when they arrive at / leave a place at a set time\" rules you can create, list, update, and delete.",
       "id_field": "",
       "operations": {
         "deleteScheduledAlert": {
@@ -3937,7 +4304,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "DELETE /vsf/location/v5/scheduled/alert/settings — permanently removes a scheduled location-alert rule (rule sent in body)"
         },
         "getScheduledAlerts": {
           "method": "GET",
@@ -3950,7 +4318,8 @@
             "eventType",
             "profileRole",
             "profileId"
-          ]
+          ],
+          "description": "GET /vsf/location/v5/scheduled/alert/settings — list scheduled location alerts, filterable by eventType/profileRole/profileId"
         },
         "postScheduleAlert": {
           "method": "POST",
@@ -3960,7 +4329,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location-alert rule"
         },
         "updateScheduledAlert": {
           "method": "PUT",
@@ -3970,12 +4340,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location-alert rule"
         }
       }
     },
     "schedules": {
-      "summary": "Bedtime/school/downtime schedules.",
+      "summary": "Time-management controls: bedtime/school/downtime schedules, per-app time limits, daily screen-time limits, and the child's ask-for-more-time request/approval flow.",
       "id_field": "",
       "operations": {
         "putAppUsageStats": {
@@ -3986,7 +4357,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"events\":[{\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"events\":[{\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}",
+          "description": "POST /frisco/parental-control/v5/web-app-activity — child device reports its web/app usage stats"
         },
         "updateSchedulerRunStatus": {
           "method": "POST",
@@ -3996,7 +4368,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"profileName\":\"Johnny\",\"featureId\":12}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"profileName\":\"Johnny\",\"featureId\":12}",
+          "description": "POST /vsf/tamper/v5/screenTimeScheduler — child device reports the screen-time scheduler's run status"
         },
         "getScreenTime": {
           "method": "GET",
@@ -4004,7 +4377,8 @@
           "confirmed": false,
           "query": [
             "<@QueryMap HashMap<String,String> — dynamic query keys>"
-          ]
+          ],
+          "description": "GET /frisco/parental-control/v1/app-usage — get child app-usage/screen-time data (dynamic query map)"
         },
         "acceptDeclineAskTimeRequest": {
           "method": "PUT",
@@ -4017,7 +4391,8 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":1,\"name\":\"Homework\",\"additionalTimeAction\":\"APPROVE\",\"timeZone\":\"America/Denver\",\"limits\":{}}"
+          "body_example": "{\"id\":1,\"name\":\"Homework\",\"additionalTimeAction\":\"APPROVE\",\"timeZone\":\"America/Denver\",\"limits\":{}}",
+          "description": "PUT /parental-control/frisco/v7/app-limits — parent approves or declines a child's request for more app time"
         },
         "getAppTimeLimits": {
           "method": "GET",
@@ -4030,7 +4405,8 @@
             "resolution",
             "sz",
             "timezone"
-          ]
+          ],
+          "description": "GET /parental-control/frisco/v7/app-limits — list configured per-app time limits"
         },
         "getAskTimeRequests": {
           "method": "GET",
@@ -4045,7 +4421,8 @@
             "packageName",
             "timezone",
             "additionalTimeId"
-          ]
+          ],
+          "description": "GET /parental-control/frisco/v8/app-limits/askTime — list the child's pending ask-for-more-time requests"
         },
         "postAppTimeLimit": {
           "method": "POST",
@@ -4055,7 +4432,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"appLimitsId\":\"1234567\",\"id\":42,\"name\":\"Games\",\"timeRequested\":30,\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"appLimitsId\":\"1234567\",\"id\":42,\"name\":\"Games\",\"timeRequested\":30,\"timeZone\":\"America/New_York\"}",
+          "description": "POST /parental-control/frisco/v7/app-limits/askTime — submit an ask-for-more-time request against an app limit"
         },
         "getSchedules": {
           "method": "GET",
@@ -4063,7 +4441,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET /parental-control/frisco/v6/schedules — list bedtime/school/downtime schedules"
         },
         "postSchedule": {
           "method": "POST",
@@ -4073,7 +4452,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}"
+          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
+          "description": "POST /parental-control/frisco/v6/schedules — create a new bedtime/school/downtime schedule"
         },
         "putSchedule": {
           "method": "PUT",
@@ -4083,7 +4463,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}"
+          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
+          "description": "PUT /parental-control/frisco/v6/schedules — update an existing bedtime/school/downtime schedule"
         },
         "deleteSchedule": {
           "method": "DELETE",
@@ -4094,7 +4475,8 @@
           ],
           "query": [
             "schedule-id"
-          ]
+          ],
+          "description": "DELETE /parental-control/frisco/v6/schedules — permanently removes a bedtime/school/downtime schedule (by schedule-id)"
         },
         "getScreenTimeData": {
           "method": "GET",
@@ -4105,7 +4487,8 @@
           ],
           "query": [
             "timezone"
-          ]
+          ],
+          "description": "GET /parental-control/frisco/v7/screen-time-limits — get configured daily screen-time limits"
         },
         "postScreenTimeData": {
           "method": "POST",
@@ -4115,7 +4498,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}",
+          "description": "POST /parental-control/frisco/v7/screen-time-limits — create daily screen-time limits"
         },
         "putScreenTimeData": {
           "method": "PUT",
@@ -4128,7 +4512,8 @@
             "requestType"
           ],
           "takes_body": true,
-          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}",
+          "description": "PUT /parental-control/frisco/v7/screen-time-limits — update daily screen-time limits"
         },
         "actionOnScreenTimeData": {
           "method": "PUT",
@@ -4141,7 +4526,8 @@
             "requestType"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}",
+          "description": "PUT /parental-control/frisco/v7/screen-time-limits — act on a screen-time request (approve/deny extra time; requestId query)"
         },
         "deleteScreenTimeData": {
           "method": "DELETE",
@@ -4152,7 +4538,8 @@
           ],
           "query": [
             "screenTimeLimitId"
-          ]
+          ],
+          "description": "DELETE /parental-control/frisco/v7/screen-time-limits — permanently removes a screen-time limit (by screenTimeLimitId)"
         },
         "askForMoreScreenTime": {
           "method": "POST",
@@ -4162,7 +4549,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"reason\":\"More homework time\",\"timeZone\":\"America/New_York\"}"
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"reason\":\"More homework time\",\"timeZone\":\"America/New_York\"}",
+          "description": "POST /parental-control/frisco/v7/screen-time-limits/askTime — child requests additional screen time"
         },
         "getCategories": {
           "method": "GET",
@@ -4174,7 +4562,8 @@
           "query": [
             "<QueryMap: HashMap<String,String>>",
             "<@QueryMap HashMap<String,String> — dynamic query keys>"
-          ]
+          ],
+          "description": "GET /frisco/parental-control/v6/web-app-activity/categories — list web/app activity categories for screen-time reporting"
         },
         "getInsights": {
           "method": "GET",
@@ -4187,7 +4576,8 @@
             "timezone",
             "usageType",
             "categorySupported"
-          ]
+          ],
+          "description": "GET /frisco/parental-control/v6/web-app-activity/insights — retrieve web/app usage insights and analytics"
         },
         "createAppLimit": {
           "method": "POST",
@@ -4197,7 +4587,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "description": "POST /parental-control/frisco/v7/app-limits — create a per-app daily time limit"
         },
         "updateAppLimit": {
           "method": "PUT",
@@ -4210,7 +4601,8 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}"
+          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
+          "description": "PUT /parental-control/frisco/v7/app-limits — update an existing per-app time limit (by appLimitsId)"
         },
         "deleteAppLimit": {
           "method": "DELETE",
@@ -4221,7 +4613,8 @@
           ],
           "query": [
             "appLimitsId"
-          ]
+          ],
+          "description": "DELETE /parental-control/frisco/v7/app-limits — permanently removes an app time limit (by appLimitsId)"
         },
         "getScheduledAlerts": {
           "method": "GET",
@@ -4234,7 +4627,8 @@
             "eventType",
             "profileRole",
             "profileId"
-          ]
+          ],
+          "description": "GET /vsf/location/v5/scheduled/alert/settings — list scheduled location alerts"
         },
         "postScheduleAlert": {
           "method": "POST",
@@ -4244,7 +4638,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location alert"
         },
         "updateScheduledAlert": {
           "method": "PUT",
@@ -4254,7 +4649,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location alert"
         },
         "deleteScheduledAlert": {
           "method": "DELETE",
@@ -4264,12 +4660,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}"
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "description": "DELETE /vsf/location/v5/scheduled/alert/settings — permanently removes a scheduled location alert (rule sent in body)"
         }
       }
     },
     "security_threat": {
-      "summary": "Security-threat (malware/phishing) blocking.",
+      "summary": "Security-threat protection: list the malware/phishing threats detected and blocked on the child's device.",
       "id_field": "",
       "operations": {
         "getThreats": {
@@ -4281,12 +4678,13 @@
           ],
           "query": [
             "(dynamic @QueryMap HashMap<String,String>)"
-          ]
+          ],
+          "description": "GET /frisco/parental-control/v5/security-threats — list detected malware/phishing threats (filters via dynamic query map)"
         }
       }
     },
     "services_hub": {
-      "summary": "Services hub operations.",
+      "summary": "Services Hub catalog: discover which add-on services a line is eligible for, check each service tile's setup status, and fetch tile artwork.",
       "id_field": "",
       "operations": {
         "getEligibleServices": {
@@ -4296,7 +4694,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-app-uuid"
-          ]
+          ],
+          "description": "GET /servicecatalog/fam/servicescatalog/v6/eligibleservices — list add-on services the account/line is eligible for"
         },
         "getSetupStatus": {
           "method": "GET",
@@ -4309,7 +4708,8 @@
           ],
           "query": [
             "tile-id"
-          ]
+          ],
+          "description": "GET /servicecatalog/fam/servicescatalog/v5/setupstatus — get onboarding/setup status for service tiles (optional tile-id)"
         },
         "getTileImages": {
           "method": "GET",
@@ -4317,12 +4717,13 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET /servicecatalog/fam/servicescatalog/v1/images — fetch service-tile images/artwork"
         }
       }
     },
     "setup_wizard": {
-      "summary": "Setup wizard operations.",
+      "summary": "Onboarding setup-wizard tasks: read a profile's list of setup/onboarding tasks and update their status as they're completed.",
       "id_field": "",
       "operations": {
         "getUserTasks": {
@@ -4332,7 +4733,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-profileid"
-          ]
+          ],
+          "description": "GET /account/fam/task-management/v5/userprofiles/tasks — list a user profile's setup/onboarding tasks"
         },
         "updateUserTask": {
           "method": "PATCH",
@@ -4343,12 +4745,13 @@
             "x-fp-identifier-profileid"
           ],
           "takes_body": true,
-          "body_example": "{\"taskId\":\"task-123\",\"state\":\"COMPLETED\"}"
+          "body_example": "{\"taskId\":\"task-123\",\"state\":\"COMPLETED\"}",
+          "description": "PATCH /account/fam/task-management/v5/userprofiles/tasks — update a setup task's status (e.g. mark complete)"
         }
       }
     },
     "sos": {
-      "summary": "Sos operations.",
+      "summary": "WatchMe SOS / SafeWalk: timed safety check-in sessions with location sharing — start, extend, escalate, or mark-safe a session, manage the safety PIN and profile, and review session history and insights.",
       "id_field": "session-id",
       "operations": {
         "manageWmsPin": {
@@ -4358,7 +4761,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "PATCH /fam/wm-sos/v5/profiles — set or update the WatchMe/SafeWalk safety PIN"
         },
         "postWmsOnboardProfile": {
           "method": "POST",
@@ -4368,7 +4772,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"enable\":true,\"pin\":\"1234\"}"
+          "body_example": "{\"enable\":true,\"pin\":\"1234\"}",
+          "description": "POST /fam/wm-sos/v5/profiles — onboard/enroll a profile into WatchMe SOS (SafeWalk)"
         },
         "updateSafeWalkProfile": {
           "method": "PATCH",
@@ -4378,7 +4783,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"onboardedFlag\":true}"
+          "body_example": "{\"onboardedFlag\":true}",
+          "description": "PATCH /fam/wm-sos/v5/profiles — update SafeWalk/WatchMe profile settings"
         },
         "escalateToSoSRequest": {
           "method": "PATCH",
@@ -4387,7 +4793,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "PATCH /fam/wm-sos/v5/sessions — escalate an active WatchMe check-in session to a full SOS emergency"
         },
         "extendSoSSession": {
           "method": "PATCH",
@@ -4397,7 +4804,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"sessionId\":\"sess-abc123\"}"
+          "body_example": "{\"sessionId\":\"sess-abc123\"}",
+          "description": "PATCH /fam/wm-sos/v5/sessions/extend — extend the duration of an active WatchMe/SOS session"
         },
         "getWatchMeSoSSessionInfo": {
           "method": "GET",
@@ -4405,7 +4813,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET /fam/wm-sos/v5/sessions — get status/info of current WatchMe SOS session(s)"
         },
         "markSafeWatchMeSoSRequest": {
           "method": "PATCH",
@@ -4415,7 +4824,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}",
+          "description": "PATCH /fam/wm-sos/v5/sessions — mark yourself safe, resolving/ending the WatchMe session"
         },
         "submitWatchMeRequest": {
           "method": "POST",
@@ -4425,7 +4835,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"requestType\":\"SOS\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"mdn\":\"5551234567\",\"profileName\":\"Mom\"}],\"senderProfileName\":\"Alex\",\"lat\":40.7128,\"lon\":-74.006,\"timezone\":\"America/New_York\"}"
+          "body_example": "{\"requestType\":\"SOS\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"mdn\":\"5551234567\",\"profileName\":\"Mom\"}],\"senderProfileName\":\"Alex\",\"lat\":40.7128,\"lon\":-74.006,\"timezone\":\"America/New_York\"}",
+          "description": "POST /fam/wm-sos/v5/sessions — start a new WatchMe timed safety check-in session"
         },
         "watchMeSosAlerts": {
           "method": "GET",
@@ -4433,7 +4844,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET /safety/fam/wm-sos/v6/sessions/insights/summary — get a summary of WatchMe SOS session insights"
         },
         "watchMeSosInsightSummaryList": {
           "method": "GET",
@@ -4441,7 +4853,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "GET /fam/wm-sos/v5/sessions/insights/list — list WatchMe SOS session insight summaries"
         },
         "getWatchMeSoSHistory": {
           "method": "GET",
@@ -4452,12 +4865,13 @@
           ],
           "placeholders": [
             "session-id"
-          ]
+          ],
+          "description": "GET /fam/wm-sos/v5/sessions/{session-id}/location/history — retrieve the location breadcrumb history for a session"
         }
       }
     },
     "step_counter": {
-      "summary": "Step counter operations.",
+      "summary": "Kid-device step counter (pedometer): read step-count history charted by schedule period and set the daily step goal.",
       "id_field": "",
       "operations": {
         "getChartStepsTracking": {
@@ -4469,7 +4883,8 @@
             "x-fp-identifier-target-serviceid",
             "timezone",
             "schedule-type"
-          ]
+          ],
+          "description": "Read the device's step-count history for a schedule period, formatted for the step-tracker chart."
         },
         "setStepGoals": {
           "method": "POST",
@@ -4479,12 +4894,13 @@
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Set the device's daily step goal (written through the device-settings endpoint)."
         }
       }
     },
     "subscription": {
-      "summary": "Subscription operations.",
+      "summary": "Manage the account's paid plan subscription -- currently only canceling it.",
       "id_field": "",
       "operations": {
         "cancelSubscription": {
@@ -4494,12 +4910,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "destructive": true
+          "destructive": true,
+          "description": "Cancel the account's paid subscription, ending the plan (irreversibly removes the subscription)."
         }
       }
     },
     "tamper": {
-      "summary": "Tamper operations.",
+      "summary": "Anti-tamper reporting: the child device posts the health of each protection (accessibility service, device admin, battery/power saving, VPN, notifications, call-only mode, screen-time) and the parent sets tamper-recovery instructions.",
       "id_field": "",
       "operations": {
         "postAccessibilityStatus": {
@@ -4510,7 +4927,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"accessibilityRemoved\":true,\"stopCode\":0}}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"accessibilityRemoved\":true,\"stopCode\":0}}",
+          "description": "Report whether the Android accessibility service (needed to block apps) is enabled/disabled on the child device."
         },
         "postAdminStatus": {
           "method": "POST",
@@ -4519,7 +4937,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the device-admin privilege status (granted or revoked) on the child device."
         },
         "postBannerStatus": {
           "method": "POST",
@@ -4528,7 +4947,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the state of the on-device tamper-warning banner."
         },
         "postCallOnlyModeStatus": {
           "method": "POST",
@@ -4537,7 +4957,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the call-only-mode tamper status on the child device."
         },
         "postHibernationStatus": {
           "method": "POST",
@@ -4546,7 +4967,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report whether the OS has hibernated (auto-suspended) the app on the child device."
         },
         "postParentalControlsRemoved": {
           "method": "POST",
@@ -4554,7 +4976,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Signal that parental controls were removed/disabled on the child device (no body)."
         },
         "postScreenTimeCallOnlyModeStatus": {
           "method": "POST",
@@ -4563,7 +4986,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the screen-time call-only-mode status on the child device."
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -4572,7 +4996,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the parent-facing tamper remediation instructions for the device."
         },
         "postBatteryUsage": {
           "method": "POST",
@@ -4581,7 +5006,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report whether battery optimization is exempting/throttling the app on the child device."
         },
         "postBluetoothScan": {
           "method": "POST",
@@ -4590,7 +5016,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the Bluetooth-scan permission status on the child device."
         },
         "postNotificationStatus": {
           "method": "POST",
@@ -4599,7 +5026,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the app's notification-permission status on the child device."
         },
         "postPhysicalActivityStatus": {
           "method": "POST",
@@ -4608,7 +5036,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the physical-activity (motion) permission status on the child device."
         },
         "postPowerSaving": {
           "method": "POST",
@@ -4617,7 +5046,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report whether power-saving mode is active on the child device."
         },
         "updateScreenTimeTamperStatus": {
           "method": "POST",
@@ -4626,7 +5056,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the screen-time enforcement tamper status on the child device."
         },
         "updateVpnTamperStatus": {
           "method": "POST",
@@ -4635,12 +5066,13 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Report the VPN status (the VPN carries web filtering) on the child device."
         }
       }
     },
     "todo": {
-      "summary": "Todo operations.",
+      "summary": "Kid's chore/task to-do list: create, list, update, and delete to-do items.",
       "id_field": "",
       "operations": {
         "createTodo": {
@@ -4652,7 +5084,8 @@
             "x-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}"
+          "body_example": "{\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}",
+          "description": "Create a new to-do/task item on the child's list."
         },
         "deleteTodo": {
           "method": "DELETE",
@@ -4663,7 +5096,8 @@
           ],
           "query": [
             "todoId"
-          ]
+          ],
+          "description": "Permanently delete the to-do item identified by todoId."
         },
         "invoke (getTodos)": {
           "method": "GET",
@@ -4672,7 +5106,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid",
             "timezone"
-          ]
+          ],
+          "description": "List the child's to-do items (method name is literally 'invoke')."
         },
         "updateTodo": {
           "method": "PUT",
@@ -4683,24 +5118,26 @@
             "x-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"todoId\":123456,\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}"
+          "body_example": "{\"todoId\":123456,\"message\":\"Clean your room\",\"startTime\":\"18:00\",\"duration\":\"30\",\"scheduleType\":\"WEEKLY\",\"rewardText\":\"30 min extra\",\"playAlarmUntilDismissed\":false,\"active\":true,\"weeklyScheduledDays\":[1,2,3,4,5]}",
+          "description": "Update an existing to-do item (mark done, edit text, reschedule, etc.)."
         }
       }
     },
     "user_setting": {
-      "summary": "User setting operations.",
+      "summary": "Update the signed-in user's account/auth-level settings via the IAM device-auth service.",
       "id_field": "",
       "operations": {
         "updateUserSettings": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/setting",
           "confirmed": false,
-          "takes_body": true
+          "takes_body": true,
+          "description": "Update the signed-in user's account/auth settings (raw key-value map body)."
         }
       }
     },
     "video_calling": {
-      "summary": "Video calling operations.",
+      "summary": "WebRTC video calling between family members: place a call, answer an incoming call, and manage an active call.",
       "id_field": "",
       "operations": {
         "callManage": {
@@ -4711,7 +5148,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}"
+          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
+          "description": "Manage an active WebRTC video call (signaling/control such as hang-up or state change)."
         },
         "initCall": {
           "method": "POST",
@@ -4719,7 +5157,8 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Start (place) a WebRTC video call to a family member (empty POST)."
         },
         "initCallAnswer": {
           "method": "POST",
@@ -4729,12 +5168,13 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}"
+          "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
+          "description": "Answer an incoming WebRTC video call."
         }
       }
     },
     "vpn_status": {
-      "summary": "Vpn status operations.",
+      "summary": "Reports whether the on-device VPN that powers web/app activity monitoring is up and visible on a child's device.",
       "id_field": "",
       "operations": {
         "getWebAppVisibility": {
@@ -4746,12 +5186,13 @@
           ],
           "query": [
             "vpn-retry-type"
-          ]
+          ],
+          "description": "Check whether the monitoring VPN is active so web/app activity is visible; takes a vpn-retry-type query"
         }
       }
     },
     "wearable": {
-      "summary": "Wearable operations.",
+      "summary": "Pair, onboard and authenticate a child's wearable watch (e.g. Gizmo) and relay location alerts from it to a guardian.",
       "id_field": "",
       "operations": {
         "confirmWatchPairing": {
@@ -4763,7 +5204,8 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"grantType\":\"authorization_code\",\"code\":\"123456\",\"clientId\":\"abc123\",\"pairingDeviceType\":\"watch\"}"
+          "body_example": "{\"grantType\":\"authorization_code\",\"code\":\"123456\",\"clientId\":\"abc123\",\"pairingDeviceType\":\"watch\"}",
+          "description": "Verify and confirm a watch pairing via the wearable-auth service (POST watch/auth/verify)"
         },
         "notifyGuardianFromDependantWatch": {
           "method": "POST",
@@ -4774,7 +5216,8 @@
             "x-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"notificationType\":\"LOW_BATTERY\",\"profileName\":\"Alex\"}"
+          "body_example": "{\"notificationType\":\"LOW_BATTERY\",\"profileName\":\"Alex\"}",
+          "description": "Send a location alert/notification from the child's watch to the guardian"
         },
         "onboardWearableWatch": {
           "method": "POST",
@@ -4784,7 +5227,8 @@
             "x-fp-identifier-target-serviceid",
             "x-trace-transaction-id"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Create the child user profile to onboard a new wearable watch onto the account"
         },
         "resendInvite": {
           "method": "PATCH",
@@ -4793,7 +5237,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Resend the family-service invite for the watch profile (PATCH invites)"
         },
         "watchAuth": {
           "method": "POST",
@@ -4803,12 +5248,13 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"pairingDeviceAppUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}"
+          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"pairingDeviceAppUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}",
+          "description": "Acquire the watch device's auth/access token (bootstrap token acquisition, no service-id header)"
         }
       }
     },
     "web_and_apps": {
-      "summary": "Web and apps operations.",
+      "summary": "Read-only reporting of a child's web and app activity: visited websites, app usage, category breakdowns and screen-time insights.",
       "id_field": "",
       "operations": {
         "getAppUsageDetails": {
@@ -4820,7 +5266,8 @@
           ],
           "query": [
             "<QueryMap: HashMap<String,String>>"
-          ]
+          ],
+          "description": "List per-app usage details from web/app activity (v7 apps endpoint, dynamic query map)"
         },
         "getCategories": {
           "method": "GET",
@@ -4832,7 +5279,8 @@
           "query": [
             "<QueryMap: HashMap<String,String>>",
             "<@QueryMap HashMap<String,String> — dynamic query keys>"
-          ]
+          ],
+          "description": "List web/app activity grouped by content category (v6)"
         },
         "getInsights": {
           "method": "GET",
@@ -4845,7 +5293,8 @@
             "timezone",
             "usageType",
             "categorySupported"
-          ]
+          ],
+          "description": "Get screen-time insights for web/app activity by usageType, timezone and category support (v6)"
         },
         "getWebsite": {
           "method": "GET",
@@ -4856,7 +5305,8 @@
           ],
           "query": [
             "<QueryMap: HashMap<String,String> (nullable)>"
-          ]
+          ],
+          "description": "List visited websites from web/app activity (v6)"
         },
         "getWebsiteDetails": {
           "method": "GET",
@@ -4867,7 +5317,8 @@
           ],
           "query": [
             "<QueryMap: Map<String,String>>"
-          ]
+          ],
+          "description": "Get activity detail for a single visited website (v6 details/website)"
         },
         "getWebsites": {
           "method": "GET",
@@ -4878,7 +5329,8 @@
           ],
           "query": [
             "<QueryMap: HashMap<String,String>>"
-          ]
+          ],
+          "description": "List visited websites from web/app activity (v5 overload)"
         },
         "getWebsites2": {
           "method": "GET",
@@ -4886,12 +5338,13 @@
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "List visited websites via the v5 /website endpoint"
         }
       }
     },
     "website": {
-      "summary": "Website allow/block lists.",
+      "summary": "Manage a child's website allow/block list and toggle enforced safe search.",
       "id_field": "",
       "operations": {
         "deleteWebsite": {
@@ -4903,7 +5356,8 @@
           ],
           "query": [
             "profileDomainId"
-          ]
+          ],
+          "description": "Remove a website entry from the allow/block list, keyed by profileDomainId"
         },
         "disableSafeSearch": {
           "method": "DELETE",
@@ -4911,7 +5365,8 @@
           "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Turn off enforced safe search for the child's browsing (DELETE safesearch)"
         },
         "enableSafeSearch": {
           "method": "POST",
@@ -4919,7 +5374,8 @@
           "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
-          ]
+          ],
+          "description": "Turn on enforced safe search for the child's browsing (POST safesearch, no body)"
         },
         "postWebsite": {
           "method": "POST",
@@ -4928,7 +5384,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "takes_body": true
+          "takes_body": true,
+          "description": "Add a single website to the allow/block list"
         },
         "postWebsites": {
           "method": "POST",
@@ -4938,18 +5395,20 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}"
+          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}",
+          "description": "Batch-add multiple websites to the allow/block list in one call"
         }
       }
     },
     "whats_new": {
-      "summary": "Whats new operations.",
+      "summary": "Fetch the app's What's New release-notes/announcements feed for the account.",
       "id_field": "",
       "operations": {
         "getWhatsNew": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v1/releases",
-          "confirmed": false
+          "confirmed": false,
+          "description": "Fetch the What's New release notes/announcements list (v1 releases endpoint)"
         }
       },
       "tier": "p2"
