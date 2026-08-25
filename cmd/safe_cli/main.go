@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -102,7 +103,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 		if op.Destructive {
 			name = "⚠ " + name // catastrophic: requires --confirm
 		}
-		return []string{name, op.Method, opFlags(op), op.Description}
+		return []string{name, op.Method, opFlags(op, e.IDField), op.Description}
 	}
 	for _, k := range e.OperationNames() {
 		rows = append(rows, row(k, e.Operations[k]))
@@ -113,14 +114,32 @@ func (c *describeCmd) Run(rc *runContext) error {
 	if err := outfmt.Table(rc.Out, []string{"OP", "METHOD", "FLAGS", "WHAT IT DOES"}, rows); err != nil {
 		return err
 	}
-	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=needs --service-id (child)  body=needs --data  query=takes --query  "+
-		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. Full paths/headers: --json.")
+	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=--service-id (child)  body=--data  query=NAMES (--query name=value)  "+
+		"header=NAMES (--header name=value)  path=NAMES (--path name=value)  "+
+		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. Full paths: --json.")
 	return err
 }
 
-// opFlags summarizes, in a few tokens, what a caller must supply to invoke op — so an agent
-// can see at a glance which flags each verb needs.
-func opFlags(op descriptor.Operation) string {
+// placeholderRe matches {name} segments in a descriptor path.
+var placeholderRe = regexp.MustCompile(`\{([^}]+)\}`)
+
+// autoHeaders are the request headers the CLI fills itself (from --service-id and the other
+// identity flags, or a generated id) — so they are never listed as names the agent must pass.
+var autoHeaders = map[string]bool{
+	"x-fp-identifier-target-serviceid": true, // --service-id
+	"x-fp-identifier-profileid":        true, // --profile-id / id_token claim
+	"x-fp-identifier-deviceid":         true, // --device-id / id_token claim
+	"x-fp-identifier-app-uuid":         true, // resolved from the install
+	"x-trace-transaction-id":           true, // generated per call
+	"x-transaction-id":                 true, // generated per call
+}
+
+// opFlags summarizes, in a few space-separated tokens, exactly what a caller must supply to
+// invoke op — so an agent can construct the call straight from `describe` without dropping to
+// --json or the repo. Name-bearing args (query/header/path) list their exact declared names,
+// e.g. `query=newPin` or `header=If-None-Match`; idField is the entity's own id placeholder,
+// filled by the positional id argument rather than --path.
+func opFlags(op descriptor.Operation, idField string) string {
 	var f []string
 	for _, h := range op.Headers {
 		if strings.Contains(h, "serviceid") {
@@ -134,8 +153,14 @@ func opFlags(op descriptor.Operation) string {
 	case op.TakesBody:
 		f = append(f, "body")
 	}
+	if ph := extraPlaceholders(op.Path, idField); len(ph) > 0 {
+		f = append(f, "path="+strings.Join(ph, ","))
+	}
 	if len(op.Query) > 0 {
-		f = append(f, "query")
+		f = append(f, "query="+strings.Join(op.Query, ","))
+	}
+	if h := headerNames(op); len(h) > 0 {
+		f = append(f, "header="+strings.Join(h, ","))
 	}
 	if op.Destructive {
 		f = append(f, "confirm")
@@ -143,7 +168,37 @@ func opFlags(op descriptor.Operation) string {
 	if len(f) == 0 {
 		return "-"
 	}
-	return strings.Join(f, ",")
+	return strings.Join(f, " ")
+}
+
+// extraPlaceholders returns the {name} path segments other than the entity's own id field —
+// the ones an agent must fill with `--path name=value` (the id field is the positional id).
+func extraPlaceholders(path, idField string) []string {
+	var out []string
+	for _, m := range placeholderRe.FindAllStringSubmatch(path, -1) {
+		if m[1] != idField {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+// headerNames returns the header NAMES an agent must pass via `--header name=value`: every
+// header the op declares except the identity/trace headers the CLI fills itself (autoHeaders,
+// and any serviceid header shown as svc) and the decompiler's dynamic-@HeaderMap artifacts,
+// which are not real header names.
+func headerNames(op descriptor.Operation) []string {
+	var out []string
+	for _, h := range op.Headers {
+		if autoHeaders[h] || strings.Contains(h, "serviceid") {
+			continue
+		}
+		if strings.HasPrefix(h, "(") || strings.Contains(h, "@HeaderMap") || strings.Contains(h, "dynamic") {
+			continue // decompiler placeholder for an arbitrary header map, not a name
+		}
+		out = append(out, h)
+	}
+	return out
 }
 
 func main() {
