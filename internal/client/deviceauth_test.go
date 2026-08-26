@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -181,5 +182,45 @@ func TestExchangeCodeRequiresOfflineRefreshToken(t *testing.T) {
 	c.BaseURL = srv.URL
 	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V", Token: "R"}); err == nil {
 		t.Error("want error when the response has no OFFLINE refresh_token, even if an online one exists")
+	}
+}
+
+// The device-OTP request returns 2xx for both success and failure and distinguishes them
+// by "state"; only OTP_SENT actually dispatched a code. A non-sent state (e.g.
+// OTP_DISPATCH_FAILED / OTP_ATTEMPTS_EXCEEDED) must be surfaced as an error rather than
+// reported as "SMS sent". This fails against the old code, which returned no error for a
+// 200 regardless of state.
+func TestRequestDeviceOTPFailsWhenNotSent(t *testing.T) {
+	for _, state := range []string{"OTP_DISPATCH_FAILED", "OTP_ATTEMPTS_EXCEEDED", "OTP_NOT_FOUND", ""} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"state":"` + state + `","statusCode":200}`))
+		}))
+		c := New("")
+		c.BaseURL = srv.URL
+		_, err := c.RequestDeviceOTP(context.Background(), otpPath, "5551234567", daKey, daAppUUID)
+		if err == nil {
+			t.Errorf("state=%q: want an error (no code was sent), got nil", state)
+		} else if !strings.Contains(err.Error(), state) && state != "" {
+			t.Errorf("state=%q: error %q should name the state", state, err)
+		}
+		srv.Close()
+	}
+}
+
+// A 200 with an empty token array (or an error envelope) must not be returned as a
+// successful token set. postTokenRequest now rejects "no tokens" as a centralized
+// invariant; the callers (ExchangeCode/Refresh) also reject it downstream, so this is a
+// regression guard on that invariant rather than a fix for a caller-visible gap.
+func TestExchangeCodeRejectsEmptyTokens(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"tokens":[]}`))
+	}))
+	defer srv.Close()
+	c := New("")
+	c.BaseURL = srv.URL
+	if _, err := c.ExchangeCode(context.Background(), CodeExchange{Path: exchangePath, Code: "C", Verifier: "V", Token: "R"}); err == nil {
+		t.Error("want error when the token response contains no tokens")
 	}
 }

@@ -106,6 +106,39 @@ func TestRunLoginHappyPath(t *testing.T) {
 	}
 }
 
+// A supplied OTP (--otp) resumes a login with an already-delivered code: it must NOT hit
+// the otp_request endpoint (no new SMS) but must still validate the code and exchange. This
+// lets a retry reuse a code the backend already sent instead of forcing a fresh one.
+func TestRunLoginWithSuppliedOTPSkipsRequest(t *testing.T) {
+	d, _ := descriptor.Default()
+	ep := d.Auth.Endpoints
+	hits := map[string]bool{}
+	srv := mockBackend(t, ep, hits)
+	defer srv.Close()
+
+	settings := oauth.FromDescriptor(d.Auth)
+	paste := settings.RedirectURI + "?code=AUTHCODE&state=x"
+	var opened string
+	// stdin carries ONLY the pasted redirect — no OTP line, since deps.OTP supplies it.
+	deps := testLoginDeps(t, srv.URL, paste+"\n", &opened)
+	deps.MDN = "5551234567"
+	deps.OTP = "071480"
+
+	ts, err := runLogin(context.Background(), deps)
+	if err != nil {
+		t.Fatalf("runLogin: %v", err)
+	}
+	if hits[ep["otp_request"]] {
+		t.Error("otp_request must NOT be hit when --otp supplies an already-sent code")
+	}
+	if !hits[ep["otp_validate"]] {
+		t.Error("otp_validate must still be hit to validate the supplied code")
+	}
+	if off, ok := ts.Offline(); !ok || off.RefreshToken != "RToff" {
+		t.Errorf("offline refresh_token = %q ok=%v, want RToff", off.RefreshToken, ok)
+	}
+}
+
 // A redirect to the wrong target (not our registered vsfapp:// URI) must abort before any
 // code is exchanged — even though the state check itself is lenient.
 func TestRunLoginRejectsBadRedirectTarget(t *testing.T) {

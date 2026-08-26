@@ -26,6 +26,7 @@ import (
 // the token exchange. The durable offline refresh_token is persisted.
 type authLoginCmd struct {
 	MDN       string `name:"mdn" help:"The 10-digit line to verify (prompted if omitted)."`
+	OTP       string `name:"otp" help:"An already-sent device OTP code. When set, skips the OTP request (does not send a new SMS) and validates this code directly — for resuming a login when a code was already delivered."`
 	APK       string `name:"apk" type:"existingfile" help:"Extract the signing key from this APK instead of SAFE_CLI_SIGNING_KEY[_FILE]."`
 	Redirect  string `name:"redirect" help:"Override the OAuth redirect_uri (advanced; e.g. an RFC 8252 loopback)."`
 	NoBrowser bool   `name:"no-browser" help:"Do not try to open a browser; just print the URL."`
@@ -55,6 +56,7 @@ func (c *authLoginCmd) Run(rc *runContext) error {
 		Key:      key,
 		AppUUID:  appUUID,
 		MDN:      c.MDN,
+		OTP:      c.OTP,
 		Redirect: c.Redirect,
 		In:       bufio.NewReader(os.Stdin),
 		Out:      os.Stderr, // interactive prompts/messages go to stderr; stdout stays the API
@@ -123,6 +125,7 @@ type loginDeps struct {
 	Key      string
 	AppUUID  string
 	MDN      string
+	OTP      string
 	Redirect string
 	In       *bufio.Reader
 	Out      io.Writer
@@ -155,17 +158,20 @@ func runLogin(ctx context.Context, d loginDeps) (*tokenstore.TokenSet, error) {
 			return nil, err
 		}
 	}
-	resp, err := d.Client.RequestDeviceOTP(ctx, ep["otp_request"], mdn, d.Key, d.AppUUID)
-	if err != nil {
-		return nil, fmt.Errorf("request device OTP: %w", err)
-	}
-	if resp.Status != 200 {
-		return nil, fmt.Errorf("request device OTP: status %d: %s", resp.Status, resp.Body)
-	}
-	_, _ = fmt.Fprintf(d.Out, "An SMS code was sent to %s.\n", mdn)
-	otp, err := promptLine(d.In, d.Out, "Device OTP code: ")
-	if err != nil {
-		return nil, err
+	// A pre-supplied --otp resumes a login with a code already delivered: skip the request
+	// (no new SMS) and validate it directly. Otherwise request a fresh code and prompt.
+	otp := strings.TrimSpace(d.OTP)
+	if otp == "" {
+		// RequestDeviceOTP verifies the backend's state=="OTP_SENT"; it errors on any status
+		// or state that did not actually dispatch a code, so a success here means it was sent.
+		if _, err := d.Client.RequestDeviceOTP(ctx, ep["otp_request"], mdn, d.Key, d.AppUUID); err != nil {
+			return nil, fmt.Errorf("request device OTP: %w", err)
+		}
+		_, _ = fmt.Fprintf(d.Out, "An SMS code was sent to %s.\n", mdn)
+		var err error
+		if otp, err = promptLine(d.In, d.Out, "Device OTP code: "); err != nil {
+			return nil, err
+		}
 	}
 	dev, err := d.Client.ValidateDeviceOTP(ctx, ep["otp_validate"], mdn, otp, d.Key, d.AppUUID)
 	if err != nil {
