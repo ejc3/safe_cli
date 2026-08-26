@@ -11,12 +11,12 @@ user-invocable: true
 
 | Task | Command |
 |------|---------|
-| Check threads (this gate) | `.claude/skills/pr-review-gate/check-review-threads.sh <N>` |
+| Check threads (this gate) | `.claude/skills/pr-review-gate/check-review-threads.sh <N>` (or `make gate PR=<N>`) |
 | Read inline findings (Codex) | `gh api repos/$REPO/pulls/<N>/comments --jq '.[] \| "---\nfile: \(.path):\(.line // .original_line)\n\(.body)"'` |
 | Read PR-level review bodies | `gh api repos/$REPO/pulls/<N>/reviews --jq '.[] \| "---\n\(.user.login) \(.state)\n\(.body)"'` |
 | Trigger a Codex review | `gh pr comment <N> --body "@codex review"` |
 | Prove checks exist, not just pass | see "Prove the checks EXIST" below |
-| Merge | `gh pr merge <N> --squash` (branch auto-deletes) |
+| Merge | `gh pr merge <N> --squash --delete-branch` |
 
 **Setup** — once per session:
 ```bash
@@ -113,8 +113,8 @@ gh api repos/$REPO/commits/$SHA/check-runs \
   --jq '.check_runs[] | select(.conclusion != "skipped") | "\(.name)\t\(.conclusion)"' | sort -u
 ```
 
-Expect both `go (build, vet, test, lint)` and `golangci-lint`. **A job missing from
-that list is a failure to verify, not a pass.**
+Expect all three: `go (build, vet, test, lint)`, `golangci-lint`, and `govulncheck`.
+**A job missing from that list is a failure to verify, not a pass.**
 
 In `ejc3/fcvm` a PR merged on a "no failures" reading whose head sha had **zero** runs of
 the real jobs: a `pull_request: branches: [main]` filter silently skipped the workflow
@@ -139,9 +139,11 @@ report a verdict you did not earn.
 
 1. Every thread resolved **and disposed** (`RED-VERIFIED:` / `NOT-A-DEFECT:` / `DISAGREE:`).
 2. Every PR-level review body acknowledged (`REVIEW-ACK:`).
-3. Both required checks present **and** passing.
+3. All three required checks (`go (build, vet, test, lint)`, `golangci-lint`,
+   `govulncheck`) present **and** passing.
 4. Branch up to date with `main` (the ruleset enforces this).
-5. Squash-merge; the branch deletes itself.
+5. Squash-merge with `gh pr merge <N> --squash --delete-branch` — the branch is *not*
+   auto-deleted (`delete_branch_on_merge` is off), so pass `--delete-branch` explicitly.
 
 Run `check-review-threads.sh <N>` to confirm 1 and 2 rather than eyeballing them.
 
