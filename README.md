@@ -13,39 +13,49 @@ machine-readable `--json` output.
 
 ## Status
 
-Early. The command surface and data model are generated from a protocol descriptor
-(see `docs/FINDINGS.md`). A full dynamic capture confirmed the backend has **no
-per-request device attestation**, that authenticated API calls use a bearer-style
-`id_token`, and that login is a hybrid, multi-stage flow — so a durable scripted
-client is viable.
+Working end-to-end against the production backend. The command surface and data
+model are generated from a protocol descriptor (`internal/descriptor`,
+`docs/FINDINGS.md`). A full dynamic capture confirmed the backend has **no
+per-request device attestation** and that authenticated API calls use a
+bearer-style `id_token` (not SigV4/Cognito — a debunked red herring). `auth login`
+authenticates live, `auth refresh` renews without a browser, and the descriptor's
+59 entities / 459 operations are all invokable through `call`. Reads and reversible
+mutations have been verified against production, and mutation request bodies checked
+byte-for-byte against the app's own captured traffic.
 
-Working today (no credentials needed):
+### Quick start (built for agents)
+
+The surface is designed to be assembled from introspection — no memorization:
 
 ```console
-$ safe_cli entities
-ENTITY             OPS  SUMMARY
-account            2    The Verizon Family account (subscriber) and its lines.
-web_filter         6    Website content filtering: category filters, allow/block lists, safe search.
-screen_time        4    Daily screen-time limits and schedules (bedtime/offtime/downtime).
-location           1    Real-time location of a profile's device.
-...
-
-$ safe_cli describe web_filter
-web_filter — Website content filtering: category filters, allow/block lists, safe search.
-  id: profileId
-OP                    METHOD  PATH                                            CONFIRMED
-block_site (action)   POST    /frisco/parental-control/v5/website             no (static)
-...
+$ safe_cli entities                     # the whole data model
+$ safe_cli describe web_filter          # one entity's ops: names, method, flags, what each does
+$ safe_cli members                      # the family, with the ids you target
+NAME    ROLE       SERVICE-ID  PROFILE-ID  DEVICE-ID  PAIRING
+Parent  GUARDIAN   1000001     2000001     3000001
+Kid     DEPENDENT  1000002     2000002     3000002    UNPAIRED
 ```
 
-Confirmed live end-to-end: `auth login` (the hybrid device-OTP + assisted My Verizon
-web login + token exchange) authenticates against the production backend, and
-authenticated calls succeed with the returned `id_token`. See **[Logging in](#logging-in)**.
+(Example rows — synthetic names and ids.)
 
-Coming next: the generated `print/info/create/update/delete` + action commands
-(`pause`, `block-site`, `locate`, …), the SigV4/Cognito client for the
-parental-control endpoints, `analyze` (static APK triage), and `capture` (mitmproxy
-addon).
+`members` is the intended first call once logged in: it tells you which
+`--service-id` to pass (a **DEPENDENT** is a managed child — pass the child's service
+id, e.g. `1000002` above, not your own).
+
+`describe` names, per op, exactly what to supply — `svc` (needs `--service-id`),
+`body` (needs `--data`), `query=<names>` / `header=<names>` / `path=<names>` (the
+exact `--query`/`--header`/`--path name=value` args), and `⚠ …confirm` for a
+catastrophic op that refuses without `--confirm`. Then `call` runs it:
+
+```console
+$ safe_cli call schedules getSchedules --service-id 1000002 --json
+$ safe_cli call app_block blockApp --service-id 1000002 \
+    --data '{"subcategory":{"name":"Social","id":101,"enabled":true,"categoryId":5,"categoryShortName":"SOC"}}'
+```
+
+With `--data` omitted, an op that needs a body prints a worked example; every error
+says exactly which flag to add. `--dry-run` prints the exact request without sending
+it. Everything speaks `--json` for stdout-as-API.
 
 ## Logging in
 
@@ -74,8 +84,17 @@ Step 2 is the only part that can't run headless from a datacenter: Akamai Bot Ma
 fingerprints the TLS/JA3 + sensor JS + IP reputation and blocks datacenter automation.
 Two ways through:
 
+If the OTP request fails, the CLI now says why (the backend returns 2xx with a
+`state` even on failure — `OTP_ATTEMPTS_EXCEEDED`, `OTP_DISPATCH_FAILED`, … — and
+only `OTP_SENT` actually texts a code). Because each `auth login` sends a *new* OTP
+that supersedes the last, a retry should reuse the code already delivered:
+`auth login --otp <code>` skips the request and validates that code directly.
+
 - **Local browser (normal use).** Open the `authorize` URL in any real browser on a
-  residential connection and sign in.
+  residential connection and sign in. "Any real browser" includes an **Android
+  emulator's** browser — load the `authorize` URL there, complete the login + 2FA,
+  and the `vsfapp://…?code=` redirect surfaces in the app-chooser intent
+  (`adb shell dumpsys activity activities | grep -o 'vsfapp://[^ }]*'`) to paste back.
   - **macOS:** `safe_cli auth login` registers a tiny `vsfapp://` handler app with Launch
     Services (`safe_cli auth register-scheme` does it standalone), so the browser's
     `vsfapp://…?code=` redirect is delivered straight back to the waiting CLI — no paste.
