@@ -289,6 +289,11 @@ func (c *Client) postTokenRequest(ctx context.Context, path string, pr parentTok
 	if err := json.Unmarshal(resp.Body, &ts); err != nil {
 		return nil, fmt.Errorf("parse token response: %w", err)
 	}
+	// A 200 can still carry an error envelope or an empty token array; treat "no tokens"
+	// as a failure so ExchangeCode/Refresh never return an empty set as success.
+	if len(ts.Tokens) == 0 {
+		return nil, fmt.Errorf("token response contained no tokens: %s", resp.Body)
+	}
 	return &ts, nil
 }
 
