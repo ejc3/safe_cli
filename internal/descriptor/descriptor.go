@@ -21,10 +21,10 @@ var embedded []byte
 // Operation is one HTTP call: a CRUD verb on an entity or a named action. Headers and
 // Query list the request-identity headers (e.g. x-fp-identifier-target-serviceid) and
 // query-parameter names the decompiled Retrofit interface declares for this call; the
-// CLI fills them from flags/token claims. Placeholders are {name} path segments.
-// Headers drives runCall today; Query and Placeholders are carried from the Retrofit
-// interfaces but not yet consumed (fillPath handles only the single {id_field} segment,
-// so multi-placeholder paths are not yet callable — a documented follow-up).
+// CLI fills them from flags/token claims. Placeholders are {name} path segments. `call`
+// consumes all of these: Headers/Query/Placeholders map to --header/--query/--path, and
+// fillPath substitutes both the entity {id_field} (from the positional id) and every other
+// {name} segment (from --path name=value), so multi-placeholder paths are callable.
 type Operation struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`

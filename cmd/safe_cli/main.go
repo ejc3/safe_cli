@@ -39,6 +39,7 @@ type CLI struct {
 	Version  versionCmd  `cmd:"" help:"Print the CLI version and the descriptor it targets."`
 	Entities entitiesCmd `cmd:"" help:"List the entities in the SafePath data model."`
 	Describe describeCmd `cmd:"" help:"Show the operations and actions for one entity."`
+	Members  membersCmd  `cmd:"" help:"List family members with their service/profile/device ids (the targets for --service-id). Start here."`
 	Auth     authCmd     `cmd:"" help:"Manage authentication (import/status/logout)."`
 	Raw      rawCmd      `cmd:"" help:"Call any backend path with the stored id_token."`
 	Call     callCmd     `cmd:"" help:"Invoke a descriptor operation/action on an entity (verb entity id)."`
