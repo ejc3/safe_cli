@@ -7,15 +7,41 @@ import (
 	"net/http"
 )
 
+// otpStateSent is the only device-OTP request state that means the SMS actually went
+// out. The backend also answers 2xx with failure states — OTP_DISPATCH_FAILED,
+// OTP_ATTEMPTS_EXCEEDED, OTP_NOT_FOUND, OTP_NOT_SUPPORTED_DEVICE, SMS_OTP_SEND_ERROR,
+// etc. (constants seen in the app) — none of which sent a code.
+const otpStateSent = "OTP_SENT"
+
 // RequestDeviceOTP triggers the SafePath line-verification SMS to mdn (factor 1,
 // signed frisco call — docs/PROCESS.md §9 step 1). path is the descriptor's
-// auth.endpoints.otp_request. A 200 with {"state":"OTP_SENT"} means the code was sent.
+// auth.endpoints.otp_request. The backend answers 2xx for both success and failure and
+// distinguishes them by the "state" field: only state=="OTP_SENT" means a code was sent,
+// so this returns an error for any other state rather than letting the caller tell the
+// user to wait for a code that never arrives. resp is returned alongside the error so the
+// caller can inspect the raw response.
 func (c *Client) RequestDeviceOTP(ctx context.Context, path, mdn, key, appUUID string) (*Response, error) {
 	body, err := json.Marshal(map[string]string{"mdn": mdn})
 	if err != nil {
 		return nil, err
 	}
-	return c.SignedDo(ctx, "POST", path, body, key, appUUID)
+	resp, err := c.SignedDo(ctx, "POST", path, body, key, appUUID)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Status != http.StatusOK && resp.Status != http.StatusMultiStatus {
+		return resp, fmt.Errorf("request otp: status %d: %s", resp.Status, resp.Body)
+	}
+	var env struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal(resp.Body, &env); err != nil {
+		return resp, fmt.Errorf("request otp: parse response: %w (body: %s)", err, resp.Body)
+	}
+	if env.State != otpStateSent {
+		return resp, fmt.Errorf("request otp: backend did not send a code (state=%q): %s", env.State, resp.Body)
+	}
+	return resp, nil
 }
 
 // DeviceOTPResult is the parsed validate response.
