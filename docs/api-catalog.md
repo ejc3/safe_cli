@@ -1,8 +1,8 @@
 # Verizon Family / SafePath — API catalog
 
-Harvested by static analysis of the signed APK (decompiled Retrofit interfaces). Machine-readable source: [`vsf-endpoints.json`](vsf-endpoints.json); the CLI's embedded descriptor is [`internal/descriptor/verizon_family.json`](../internal/descriptor/verizon_family.json).
+Harvested by static analysis of the signed APK **v8.101.30** (build 810100030; decompiled Retrofit interfaces). Machine-readable source: [`vsf-endpoints.json`](vsf-endpoints.json); the CLI's embedded descriptor is [`internal/descriptor/verizon_family.json`](../internal/descriptor/verizon_family.json).
 
-**489 operations** across **110 Retrofit interfaces**, grouped below by feature. HTTP method + path are confirmed present as string constants; request/response bodies are best-inferred and flip to `confirmed` on a dynamic capture (see [FINDINGS.md](FINDINGS.md)).
+**489 operations** across **110 Retrofit interfaces**, grouped below by feature — this is the raw Retrofit-method harvest (methods repeat across interfaces/features); the CLI's curated descriptor de-dupes it to **459 operations / 59 entities**. HTTP method + path are confirmed present as string constants; request/response bodies were statically inferred from the decompiled model classes, and a subset has since been confirmed live by an **eCapture** (eBPF) capture — request bodies byte-diffed against real app traffic and accepted by production (method: [`PROCESS.md`](PROCESS.md) §5–§7).
 
 
 ## accessibilityProtection (7)
