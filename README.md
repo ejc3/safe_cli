@@ -31,14 +31,16 @@ The surface is designed to be assembled from introspection — no memorization:
 $ safe_cli entities                     # the whole data model
 $ safe_cli describe web_filter          # one entity's ops: names, method, flags, what each does
 $ safe_cli members                      # the family, with the ids you target
-NAME           ROLE       SERVICE-ID  PROFILE-ID  DEVICE-ID  PAIRING
-EJ             GUARDIAN   9236178     10321597    11682544
-Colin's Phone  DEPENDENT  4833687     5430944     6430944    UNPAIRED
+NAME    ROLE       SERVICE-ID  PROFILE-ID  DEVICE-ID  PAIRING
+Parent  GUARDIAN   1000001     2000001     3000001
+Kid     DEPENDENT  1000002     2000002     3000002    UNPAIRED
 ```
 
+(Example rows — synthetic names and ids.)
+
 `members` is the intended first call once logged in: it tells you which
-`--service-id` to pass. A **DEPENDENT** is a managed child; parental-control ops act
-on the child, so you pass the *child's* service id, not your own.
+`--service-id` to pass (a **DEPENDENT** is a managed child — pass the child's service
+id, e.g. `1000002` above, not your own).
 
 `describe` names, per op, exactly what to supply — `svc` (needs `--service-id`),
 `body` (needs `--data`), `query=<names>` / `header=<names>` / `path=<names>` (the
@@ -46,9 +48,9 @@ exact `--query`/`--header`/`--path name=value` args), and `⚠ …confirm` for a
 catastrophic op that refuses without `--confirm`. Then `call` runs it:
 
 ```console
-$ safe_cli call schedules getSchedules --service-id 4833687 --json
-$ safe_cli call app_block blockApp --service-id 4833687 \
-    --data '{"subcategory":{"name":"Diply","id":10029,"enabled":true,"categoryId":1005,"categoryShortName":"SOC"}}'
+$ safe_cli call schedules getSchedules --service-id 1000002 --json
+$ safe_cli call app_block blockApp --service-id 1000002 \
+    --data '{"subcategory":{"name":"Social","id":101,"enabled":true,"categoryId":5,"categoryShortName":"SOC"}}'
 ```
 
 With `--data` omitted, an op that needs a body prints a worked example; every error
