@@ -186,3 +186,46 @@ func TestBodyExampleAccuracy(t *testing.T) {
 		t.Errorf("sendGroupMediaMessage must be multipart with no JSON example: multipart=%v ex=%q", o.Multipart, o.BodyExample)
 	}
 }
+
+// TestLiveVerifiedMutations locks in the mutation bodies verified against the live app via
+// eCapture (2026-08-26): the app-block/subcategory POST and the schedules PUT. These assertions
+// fail against the pre-verification descriptor (blockApp/updateSubcategory were not confirmed;
+// putSchedule carried the incomplete {"id":"12345"} stub) — RED without the capture work.
+func TestLiveVerifiedMutations(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := func(en, name string) Operation {
+		e, _ := d.Entity(en)
+		if o, ok := e.Operations[name]; ok {
+			return o
+		}
+		return e.Actions[name]
+	}
+	// app-block / content subcategory: POST /v8/subcategory, body {"subcategory":{...}}.
+	if o := op("app_block", "blockApp"); !o.Confirmed ||
+		!strings.Contains(o.BodyExample, `"subcategory"`) || !strings.Contains(o.BodyExample, `"categoryShortName"`) {
+		t.Errorf("app_block.blockApp must be confirmed with the subcategory body: confirmed=%v ex=%q", o.Confirmed, o.BodyExample)
+	}
+	if o := op("content_filter", "updateSubcategory"); !o.Confirmed || !strings.Contains(o.BodyExample, `"subcategory"`) {
+		t.Errorf("content_filter.updateSubcategory must be confirmed with a subcategory body: confirmed=%v ex=%q", o.Confirmed, o.BodyExample)
+	}
+	// schedules PUT: the verified body is a schedules[] array of real fields, not the {"id"} stub.
+	put := op("schedules", "putSchedule")
+	if !put.Confirmed {
+		t.Error("schedules.putSchedule must be confirmed (verified live)")
+	}
+	for _, want := range []string{`"schedules"`, "scheduleType", "alertOn", "blockContent", "startTime"} {
+		if !strings.Contains(put.BodyExample, want) {
+			t.Errorf("schedules.putSchedule body_example missing %q: %q", want, put.BodyExample)
+		}
+	}
+	if strings.Contains(put.BodyExample, `"id":"12345"`) {
+		t.Errorf("schedules.putSchedule still carries the incomplete stub: %q", put.BodyExample)
+	}
+	// postSchedule shares the enriched schedules[] schema (create omits scheduleId).
+	if ex := op("schedules", "postSchedule").BodyExample; !strings.Contains(ex, "scheduleType") || strings.Contains(ex, `"id":"12345"`) {
+		t.Errorf("schedules.postSchedule body_example not enriched: %q", ex)
+	}
+}

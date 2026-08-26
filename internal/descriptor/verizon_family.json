@@ -385,13 +385,13 @@
         "blockApp": {
           "method": "POST",
           "path": "/parental-control/frisco/v8/subcategory",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}",
-          "description": "Block (or change the block state of) an app by posting a content-filter subcategory entry."
+          "description": "Block (or change the block state of) an app by posting a content-filter subcategory entry. Verified live (2026-08-26 eCapture): the request body byte-matches this shape (enabled=true blocks, false unblocks) and the CLI --dry-run reproduces the app's request exactly."
         },
         "getBlockedApps": {
           "method": "GET",
@@ -1185,12 +1185,13 @@
         "updateSubcategory": {
           "method": "POST",
           "path": "/parental-control/frisco/v8/subcategory",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Block or allow a specific content subcategory"
+          "body_example": "{\"subcategory\":{\"name\":\"Drugs, alcohol, gambling\",\"id\":10003,\"enabled\":true,\"categoryId\":1001,\"categoryShortName\":\"OBJ\"}}",
+          "description": "Block or allow a specific content subcategory (objectionable category or search engine). Same v8/subcategory route as app_block.blockApp, verified live (2026-08-26 eCapture): enabled=true blocks the subcategory, false allows it."
         },
         "getCategories": {
           "method": "GET",
@@ -4452,19 +4453,19 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
-          "description": "POST /parental-control/frisco/v6/schedules — create a new bedtime/school/downtime schedule"
+          "body_example": "{\"schedules\":[{\"scheduleType\":\"nhr\",\"name\":\"Night hours\",\"days\":[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\"startTime\":\"22:00\",\"endTime\":\"06:00\",\"timezone\":\"EST\",\"alertOn\":true,\"blockContent\":false}]}",
+          "description": "POST /parental-control/frisco/v6/schedules — create a new bedtime/school/downtime schedule. Body schema shares the schedules[] shape captured live for putSchedule (create omits scheduleId); confirmed=false since only the update (PUT) flow was exercised on the device."
         },
         "putSchedule": {
           "method": "PUT",
           "path": "/parental-control/frisco/v6/schedules",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"id\":\"12345\"}]}",
-          "description": "PUT /parental-control/frisco/v6/schedules — update an existing bedtime/school/downtime schedule"
+          "body_example": "{\"schedules\":[{\"scheduleId\":\"<schedule-uuid>\",\"scheduleType\":\"nhr\",\"name\":\"Night hours\",\"days\":[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\"startTime\":\"22:00\",\"endTime\":\"06:00\",\"timezone\":\"EST\",\"alertOn\":true,\"blockContent\":false}]}",
+          "description": "PUT /parental-control/frisco/v6/schedules — update an existing bedtime/school/downtime schedule. Verified live (2026-08-26 eCapture): the request body wraps a schedules[] array of {scheduleId,scheduleType,name,days[],startTime,endTime,timezone,alertOn,blockContent}; alertOn/blockContent select the mode (both false = Off, alertOn=true = alert-only, blockContent=true = block). The earlier {id} stub was incomplete."
         },
         "deleteSchedule": {
           "method": "DELETE",
