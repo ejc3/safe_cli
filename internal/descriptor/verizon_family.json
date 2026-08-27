@@ -1981,13 +1981,13 @@
         "updateFlightDetectionSetting": {
           "method": "PUT",
           "path": "/location/vsf/location/v5/flight/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"settingsStatus\":true}",
-          "description": "Update the flight-detection configuration for a line (PUT flight/settings, sends config body)."
+          "description": "Update the flight-detection configuration for a line (PUT flight/settings, sends config body). Verified live (2026-08-27): the decompile-derived body is accepted by prod (set true 200 + read-back true + revert 200)."
         },
         "updateFlightDetectionStatus": {
           "method": "POST",
@@ -2009,13 +2009,13 @@
         "createDeviceGeofenceSettings": {
           "method": "POST",
           "path": "/vsf/location/v6/geofence/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"isLocationChanged\":true,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.422,\"longitude\":-122.084,\"altitude\":0.0},\"address\":{\"street1\":\"1600 Amphitheatre Pkwy\",\"street2\":\"Apt 2\",\"city\":\"Mountain View\",\"state\":\"CA\",\"zip\":\"94043\",\"country\":\"US\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"deviceId\":101,\"deviceType\":\"PHONE\",\"eligibleForGeofence\":true,\"geofenceId\":\"gf-xyz789\",\"geofenceType\":\"arrival_departure\",\"operation\":\"CREATE\",\"precision\":{\"type\":\"meters\",\"value\":150.0},\"profileId\":202,\"schedule\":{\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\"],\"startTime\":\"09:00\",\"endTime\":\"17:00\"}}]}],\"accountId\":12345,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Google Pixel 7\",\"MAPPVersion\":\"8.101.30\"}",
-          "description": "Create a geofence / saved-place boundary for a device (POST location v6 geofence/settings)."
+          "description": "Create a geofence / saved-place boundary for a device (POST location v6 geofence/settings). Verified live (2026-08-27): the decompile-derived body is accepted by prod (create 201 + read-back + delete 200 (real account))."
         },
         "getGeofenceSettings": {
           "method": "GET",
