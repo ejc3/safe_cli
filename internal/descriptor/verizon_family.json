@@ -3091,7 +3091,7 @@
           ],
           "takes_body": true,
           "description": "Create a new family member profile under the account.",
-          "body_example": "{\"profileName\":\"Alex\",\"devices\":[{\"deviceType\":\"WIFI_ONLY\",\"deviceNickName\":\"Kids iPad\"}],\"profileImage\":\"https://cdn.example.com/avatar.png\",\"dateOfBirth\":\"2012-05-01\",\"profileRole\":\"DEPENDANT\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Grandma\",\"userProfileId\":42}]}"
+          "body_example": "{\"profileName\":\"Alex\",\"devices\":[{\"deviceType\":\"WIFI_ONLY\",\"deviceNickName\":\"Kids iPad\"}],\"profileImage\":\"https://cdn.example.com/avatar.png\",\"dateOfBirth\":\"2012-05-01\",\"profileRole\":\"DEPENDENT\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Grandma\",\"userProfileId\":42}]}"
         },
         "getIdTokenUsingOtp": {
           "method": "POST",

@@ -35,10 +35,18 @@ func TestEveryBodyOpHasACompleteExample(t *testing.T) {
 			t.Errorf("%s body_example is not valid JSON: %v", name, err)
 			return
 		}
-		if ex == "{}" || emptyObjRe.MatchString(ex) {
+		// A real request body is a non-empty JSON object; null / [] / a scalar all parse as
+		// valid JSON but are not a DTO, so reject them explicitly (otherwise the checks below
+		// are skipped and the gate silently passes an empty/non-DTO body).
+		m, ok := v.(map[string]any)
+		if !ok {
+			t.Errorf("%s body_example must be a JSON object (a DTO), got %T: %s", name, v, ex)
+			return
+		}
+		if len(m) == 0 || emptyObjRe.MatchString(ex) {
 			t.Errorf("%s body_example has an empty {} object (unfilled): %s", name, ex)
 		}
-		if m, ok := v.(map[string]any); ok && len(m) == 1 {
+		if len(m) == 1 {
 			if _, idOnly := m["id"]; idOnly {
 				t.Errorf("%s body_example is the bare {\"id\":...} stub, not the real DTO: %s", name, ex)
 			}
