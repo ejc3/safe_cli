@@ -152,7 +152,8 @@
             "x-pairing-required"
           ],
           "takes_body": true,
-          "description": "Register a device during initial onboarding (POST with body)."
+          "description": "Register a device during initial onboarding (POST with body).",
+          "body_example": "{\"profileRole\":\"DEPENDENT\",\"profileSource\":\"ONBOARDING\",\"devices\":[{\"mdn\":\"5551234567\",\"deviceMake\":\"Samsung\",\"deviceModel\":\"Galaxy S23\",\"deviceType\":\"ANDROID\",\"imei\":\"359881234567890\",\"iccid\":\"89014103211118510720\"}]}"
         },
         "attestDob": {
           "method": "PATCH",
@@ -162,7 +163,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"AGE_ATTESTATION\"}",
           "description": "Attest (self-declare) a profile's date of birth (PATCH age/attestation)."
         },
         "choosePlan": {
@@ -275,7 +276,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"EDIT_PROFILE\"}",
           "description": "Update general user-profile fields (PATCH userprofiles with body)."
         },
         "updateProfileImage": {
@@ -286,7 +287,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"UPDATE_IMAGE\"}",
           "description": "Set or replace a profile's avatar image (PUT images with body)."
         },
         "updateProfileName": {
@@ -298,7 +299,7 @@
             "x-pending-activation"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"EDIT_PROFILE\"}",
           "description": "Rename a user profile (PATCH accounts/userprofiles with body)."
         }
       }
@@ -553,7 +554,8 @@
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "takes_body": true,
-          "description": "Exchange for a parent IAM auth token used by the calendar-sync flow"
+          "description": "Exchange for a parent IAM auth token used by the calendar-sync flow",
+          "body_example": "{\"appUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"identityProvider\":\"GOOGLE\",\"grantType\":\"authorization_code\",\"code\":\"4/0AeanS0abcDEF\",\"codeVerifier\":\"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk\",\"fidoTokenKey\":\"fido-key-abc\",\"refreshToken\":\"1//0eXyZrefreshtoken\",\"friscoTokenType\":\"ONLINE\",\"redirectUri\":\"com.verizon.familybase:/oauth2redirect\",\"clientId\":\"abc123\",\"idToken\":\"eyJhbGciOiJSUzI1NiJ9.idtoken\",\"firstName\":\"Alex\",\"lastName\":\"Smith\",\"otpCode\":\"123456\",\"userPreference\":\"CALENDAR\",\"refreshTokenIdentityProvider\":\"GOOGLE\",\"token\":\"ya29.a0AfaccessToken\",\"interimTokenType\":\"INTERIM\",\"interimToken\":\"interim-abc\",\"interimFriscoTokenType\":\"OFFLINE\"}"
         },
         "getSchoolSelection": {
           "method": "GET",
@@ -829,7 +831,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}",
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"bannerId\":\"banner-001\",\"contact\":{\"contactInfo\":\"5551234567\",\"status\":\"ACCEPTED\"}}",
           "description": "Accept or decline a Gizmo calling-buddy invite"
         },
         "acceptDeclineFamilyInvite": {
@@ -851,7 +853,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\"}}",
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"role\":\"CONTACT\",\"relationship\":\"grandparent\",\"status\":\"ACTIVE\",\"contactAvatar\":\"https://example.com/avatar.png\"}}",
           "description": "Add a calling contact to a Gizmo device"
         },
         "bulkDeleteContacts": {
@@ -874,7 +876,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}]}",
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contacts\":[{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\",\"contactAvatar\":\"https://example.com/avatar.png\"}]}",
           "description": "Update multiple Gizmo contacts in one call"
         },
         "getFamilyMembersAndBuddies": {
@@ -965,7 +967,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"\",\"relationship\":\"child\"}",
+          "body_example": "{\"devices\":[{\"mdn\":\"5551234567\",\"deviceType\":\"PHONE\"}],\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileImage\":\"https://example.com/profile.png\",\"relationship\":\"child\"}",
           "description": "Send a family/profile invite"
         },
         "updateContact": {
@@ -976,7 +978,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\"}}",
+          "body_example": "{\"contactType\":\"GIZMO_CONTACT\",\"contact\":{\"contactInfo\":\"5551234567\",\"name\":\"Grandma\",\"relationship\":\"grandparent\",\"contactAvatar\":\"https://example.com/avatar.png\"}}",
           "description": "Update a Gizmo contact's details"
         },
         "updatePermissions": {
@@ -1130,7 +1132,8 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "description": "Update objectionable-content report settings (reportCategory=individual)"
+          "description": "Update objectionable-content report settings (reportCategory=individual)",
+          "body_example": "{\"settings\":{\"objectionableAlerts\":true}}"
         },
         "createAppLimit": {
           "method": "POST",
@@ -1233,7 +1236,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"categories\":[{\"id\":\"1\",\"categoryId\":5,\"name\":\"Social\",\"blocked\":1}]}",
+          "body_example": "{\"categories\":[{\"allEnabled\":false,\"blocked\":1,\"categoryId\":5,\"enabledCount\":3,\"hasAppLimits\":true,\"id\":\"1\",\"isLoading\":false,\"moreInfo\":\"Includes social media apps\",\"name\":\"Social Networking\",\"showAppLimit\":true,\"subCategories\":[{\"androidUrl\":\"com.instagram.android\",\"enabled\":true,\"hasAppLimit\":false,\"id\":501,\"imagePresignedUrl\":\"https://cdn.example.com/icons/501.png\",\"moreInfo\":\"Photo sharing\",\"name\":\"Instagram\",\"parentCategoriesName\":\"Social Networking\",\"url\":\"https://instagram.com\"}],\"totalCount\":8,\"trusted\":0}]}",
           "description": "Set which content-filter categories are blocked/allowed"
         }
       }
@@ -1329,14 +1332,15 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report delivery/acknowledgement status for a Luciq (Instabug) push notification"
+          "description": "Report delivery/acknowledgement status for a Luciq (Instabug) push notification",
+          "body_example": "{\"eventDate\":1700000000000,\"eventId\":\"evt-abc-123\",\"eventType\":\"PUSH_RECEIVED\",\"nid\":42,\"status\":\"ACKNOWLEDGED\"}"
         },
         "createProfile": {
           "method": "POST",
           "path": "/vsf/account-management/v1/profiles",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"devices\":[],\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"timeZone\":\"America/New_York\",\"age\":\"12\",\"requestedProfile\":false,\"isSelected\":false}",
+          "body_example": "{\"age\":\"12\",\"appConsent\":\"GRANTED\",\"batteryPercentage\":85,\"contacts\":[{\"name\":\"Grandma\",\"phone\":\"5559876543\",\"userProfileId\":222}],\"devices\":[{\"addressBookAccess\":1700000000000,\"adminStatus\":1,\"androidAccessibility\":1,\"batteryOptimization\":0,\"bluetoothScan\":1,\"deviceId\":9876543,\"deviceIdType\":\"IMEI\",\"deviceMake\":\"Apple\",\"deviceMakeModel\":\"Apple iPhone 14\",\"deviceModel\":\"iPhone 14\",\"deviceNickName\":\"Kid's Phone\",\"deviceOs\":\"iOS\",\"deviceType\":\"smartphone\",\"hibernation\":0,\"isSingleDevice\":false,\"locPermission\":\"ALWAYS\",\"locPrecise\":\"PRECISE\",\"locationEnabled\":1,\"loggedInDevice\":true,\"macAddress\":\"02:00:00:00:00:00\",\"mdmEnrolled\":0,\"mdmManagedApp\":0,\"mdn\":\"5551234567\",\"notificationStatus\":1,\"pairingStatus\":\"PAIRED\",\"physicalActivityStatus\":1,\"powerSaving\":0,\"primaryDevice\":\"true\",\"productId\":101,\"productName\":\"Smart Family Premium\",\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"screenTimeStatus\":1,\"status\":\"ACTIVE\",\"vpnStatus\":1}],\"isSelected\":false,\"localyticsUuid\":\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\"productId\":101,\"productName\":\"Smart Family Premium\",\"profileId\":1234567,\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileStatus\":\"ACTIVE\",\"profileUuid\":\"11111111-2222-3333-4444-555555555555\",\"requestedProfile\":false,\"termsAcceptedDate\":\"2026-01-15\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETE\"}",
           "description": "POST a new family-member profile onto the account"
         },
         "dashboardFlow": {
@@ -1425,7 +1429,8 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "description": "Update account-wide activity-report notification settings (reportCategory=all)"
+          "description": "Update account-wide activity-report notification settings (reportCategory=all)",
+          "body_example": "{\"settings\":{\"weeklySummaryEmail\":true}}"
         },
         "postReportSettings": {
           "method": "POST",
@@ -1438,7 +1443,7 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "body_example": "{\"settings\":{\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"newContactAlert\":true,\"911CallsAlert\":true,\"deviceActivityRestrictionAlert\":false,\"objectionableAlerts\":true,\"securityThreats\":true}}",
+          "body_example": "{\"settings\":{\"911CallsAlert\":true,\"dailySummaryAlert\":true,\"dailySummaryEmail\":false,\"deviceActivityRestrictionAlert\":false,\"newContactAlert\":true,\"objectionableAlerts\":true,\"securityThreats\":true}}",
           "description": "Update per-member activity-report notification settings (reportCategory=individual)"
         },
         "putRestrictionsBackOn": {
@@ -1460,7 +1465,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the tamper-remediation instructions shown when protection is disabled"
+          "description": "Update the tamper-remediation instructions shown when protection is disabled",
+          "body_example": "{\"deviceIds\":[9876543,9876544],\"templateType\":\"REMINDER\"}"
         },
         "queryEligibleLines": {
           "method": "GET",
@@ -1538,7 +1544,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update a device's settings (same endpoint as the GET, write path)"
+          "description": "Update a device's settings (same endpoint as the GET, write path)",
+          "body_example": "{\"cannedMessages\":[{\"cannedMessageId\":\"cm-1\",\"id\":\"1\",\"deviceId\":\"device-123\",\"message\":\"On my way\",\"emergencyMessage\":false}],\"autoAnswer\":false,\"videoCallingEnabled\":true,\"volume\":\"HIGH\",\"ringtoneSoundType\":\"CLASSIC\",\"ringtoneActive\":true,\"touchSound\":true,\"messageReadout\":false,\"buttonPowerEnabled\":true,\"theme\":\"DARK\",\"watchFace\":\"DIGITAL\",\"deviceMute\":false,\"videoPictureResolution\":\"HD\",\"mediaBackup\":true,\"quietMode\":false,\"loggingLevel\":\"INFO\"}"
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -1621,7 +1628,7 @@
             "driveId"
           ],
           "takes_body": true,
-          "body_example": "{\"transportation_mode\":\"DRIVING\"}",
+          "body_example": "{\"transportation_mode\":\"PASSENGER\"}",
           "description": "Reclassify a trip's transportation mode (e.g. driver vs passenger)"
         },
         "postSettings": {
@@ -1632,7 +1639,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"UPDATE\",\"role\":\"PARENT\",\"serviceId\":\"1234567\"}",
+          "body_example": "{\"operation\":\"ENABLE\",\"serviceId\":\"1234567\"}",
           "description": "Create driving-insights settings"
         },
         "putSettings": {
@@ -1643,7 +1650,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update driving-insights settings"
+          "description": "Update driving-insights settings",
+          "body_example": "{\"passenger\":false,\"tripEndNotification\":false,\"crashNotification\":true}"
         },
         "putSpeedAlertLimit": {
           "method": "PUT",
@@ -1653,7 +1661,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"speedAlertLimit\":75.0,\"speedAlertNotification\":true,\"crashNotification\":true,\"tripEndNotification\":false,\"passenger\":false}",
+          "body_example": "{\"passenger\":false,\"tripEndNotification\":false,\"crashNotification\":true,\"speedAlertNotification\":true,\"speedAlertLimit\":75.0}",
           "description": "Set the speed-alert threshold (same settings endpoint, speed-limit body)"
         },
         "getCrashDetail": {
@@ -1686,7 +1694,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update/acknowledge a crash notification (v6), e.g. mark handled or false alarm"
+          "description": "Update/acknowledge a crash notification (v6), e.g. mark handled or false alarm",
+          "body_example": "{\"crashId\":\"crash-abc123\",\"dismissFlag\":true,\"falseCrash\":false,\"falseCrashLat\":37.422,\"falseCrashLon\":-122.084}"
         },
         "updateCrashNotifications": {
           "method": "POST",
@@ -1806,7 +1815,8 @@
           "path": "/callandtext/frisco/familyline/v1/fl/token",
           "confirmed": false,
           "takes_body": true,
-          "description": "Obtain an SPC token for the Family Line SDK/session"
+          "description": "Obtain an SPC token for the Family Line SDK/session",
+          "body_example": "{\"tokenIssued\":1700000000000,\"grantType\":\"token\"}"
         },
         "logoutFamilyLine": {
           "method": "GET",
@@ -1832,7 +1842,7 @@
           "path": "/callandtext/frisco/familyline/v1/fl/address",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "body_example": "{\"address\":{\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"unit\":\"4B\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
           "description": "Save or update the Family Line address (E911)"
         },
         "sendCallLog": {
@@ -1874,21 +1884,23 @@
           "path": "/callandtext/frisco/familyline/v1/fl/line/updateAppUuid",
           "confirmed": false,
           "takes_body": true,
-          "description": "Update the app UUID (appUUID) associated with the Family Line"
+          "description": "Update the app UUID (appUUID) associated with the Family Line",
+          "body_example": "{\"oldAppUuid\":\"a1b2c3d4-0000-0000-0000-000000000000\"}"
         },
         "updateFamilyLineSettings": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/settings",
           "confirmed": false,
           "takes_body": true,
-          "description": "Update Family Line settings"
+          "description": "Update Family Line settings",
+          "body_example": "{\"callSettings\":{\"dnd\":true}}"
         },
         "validateAddress": {
           "method": "POST",
           "path": "/account/fam/userprofile-management/v5/userprofiles/address/validate",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"address\":{\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
+          "body_example": "{\"address\":{\"city\":\"Denver\",\"state\":\"CO\",\"postalCode\":\"80202\",\"streetNumber\":\"123\",\"streetName\":\"Main St\",\"unit\":\"4B\",\"countryCode\":\"US\",\"addressType\":\"HOME\"}}",
           "description": "Validate an address (E911) before saving it to the Family Line"
         }
       }
@@ -1969,13 +1981,13 @@
         "updateFlightDetectionSetting": {
           "method": "PUT",
           "path": "/location/vsf/location/v5/flight/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"settingsStatus\":true}",
-          "description": "Update the flight-detection configuration for a line (PUT flight/settings, sends config body)."
+          "description": "Update the flight-detection configuration for a line (PUT flight/settings, sends config body). Verified live (2026-08-27): the decompile-derived body is accepted by prod (set true 200 + read-back true + revert 200)."
         },
         "updateFlightDetectionStatus": {
           "method": "POST",
@@ -1985,7 +1997,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"FLIGHT_DETECTED\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"TAKEOFF\",\"locationDetails\":{\"latitude\":40.7,\"longitude\":-74.0}}]}",
+          "body_example": "{\"appType\":\"MAPP\",\"messageTrigger\":\"flightLanding\",\"events\":[{\"eventDateTime\":1700000000000,\"eventType\":\"takeoff\",\"locationDetails\":{\"locationType\":\"gps\",\"locationStatus\":\"located\",\"locationDateTime\":1700000000000,\"position\":{\"altitude\":100.0,\"bearing\":90.0,\"bearingAccuracy\":5.0,\"latitude\":40.7128,\"locationProvider\":\"fused\",\"longitude\":-74.006,\"speed\":250.0,\"speedAccuracy\":2.0,\"verticalAccuracy\":3.0},\"precision\":{\"type\":\"horizontal\",\"value\":5.0}}}]}",
           "description": "Post a location response to update/confirm flight-detection status (POST location v5 locationResponse)."
         }
       }
@@ -1997,13 +2009,13 @@
         "createDeviceGeofenceSettings": {
           "method": "POST",
           "path": "/vsf/location/v6/geofence/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}",
-          "description": "Create a geofence / saved-place boundary for a device (POST location v6 geofence/settings)."
+          "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"isLocationChanged\":true,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.422,\"longitude\":-122.084,\"altitude\":0.0},\"address\":{\"street1\":\"1600 Amphitheatre Pkwy\",\"street2\":\"Apt 2\",\"city\":\"Mountain View\",\"state\":\"CA\",\"zip\":\"94043\",\"country\":\"US\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"deviceId\":101,\"deviceType\":\"PHONE\",\"eligibleForGeofence\":true,\"geofenceId\":\"gf-xyz789\",\"geofenceType\":\"arrival_departure\",\"operation\":\"CREATE\",\"precision\":{\"type\":\"meters\",\"value\":150.0},\"profileId\":202,\"schedule\":{\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\"],\"startTime\":\"09:00\",\"endTime\":\"17:00\"}}]}],\"accountId\":12345,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Google Pixel 7\",\"MAPPVersion\":\"8.101.30\"}",
+          "description": "Create a geofence / saved-place boundary for a device (POST location v6 geofence/settings). Verified live (2026-08-27): the decompile-derived body is accepted by prod (create 201 + read-back + delete 200 (real account))."
         },
         "getGeofenceSettings": {
           "method": "GET",
@@ -2044,7 +2056,7 @@
             "operation=configGeoDevice"
           ],
           "takes_body": true,
-          "body_example": "{\"editSource\":\"app\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"geofenceEnabled\":true,\"locationDetails\":{}}],\"accountId\":1234567,\"deviceOS\":\"android\",\"deviceModel\":\"Pixel 8\",\"MAPPVersion\":\"8.101.30\"}",
+          "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"isLocationChanged\":true,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.422,\"longitude\":-122.084,\"altitude\":0.0},\"address\":{\"street1\":\"1600 Amphitheatre Pkwy\",\"street2\":\"Apt 2\",\"city\":\"Mountain View\",\"state\":\"CA\",\"zip\":\"94043\",\"country\":\"US\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"deviceId\":101,\"deviceType\":\"PHONE\",\"eligibleForGeofence\":true,\"geofenceId\":\"gf-xyz789\",\"geofenceType\":\"arrival_departure\",\"operation\":\"UPDATE\",\"precision\":{\"type\":\"meters\",\"value\":150.0},\"profileId\":202,\"schedule\":{\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\"],\"startTime\":\"09:00\",\"endTime\":\"17:00\"}}]}],\"accountId\":12345,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Google Pixel 7\",\"MAPPVersion\":\"8.101.30\"}",
           "description": "Update an existing device geofence / saved-place boundary (PUT location v6 geofence/settings)."
         }
       }
@@ -2075,7 +2087,8 @@
           "path": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
           "confirmed": false,
           "takes_body": true,
-          "description": "Refresh a child device's access token (POST device-auth v6 deviceauth/refreshtoken)."
+          "description": "Refresh a child device's access token (POST device-auth v6 deviceauth/refreshtoken).",
+          "body_example": "{\"app_uuid\":\"a1b2c3d4-uuid\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"REFRESHTOKEN123\",\"frisco_token_type\":\"online\",\"grant_type\":\"refresh_token\",\"otp_code\":\"123456\"}"
         },
         "refreshToken": {
           "method": "POST",
@@ -2085,7 +2098,8 @@
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "takes_body": true,
-          "description": "Acquire or refresh the parent OAuth access token (POST device-auth v7 user/auth/token)."
+          "description": "Acquire or refresh the parent OAuth access token (POST device-auth v7 user/auth/token).",
+          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"codeVerifier\":\"pkce_code_verifier\",\"fidoTokenKey\":\"fido-token-key\",\"firstName\":\"Jane\",\"friscoTokenType\":\"online\",\"grantType\":\"refresh_token\",\"idToken\":\"id-token-jwt\",\"identityProvider\":\"VZ\",\"interimFriscoTokenType\":\"online\",\"interimToken\":\"interim-token\",\"interimTokenType\":\"Bearer\",\"lastName\":\"Doe\",\"otpCode\":\"123456\",\"redirectUri\":\"https://example.com/callback\",\"refreshToken\":\"refresh-token-value\",\"refreshTokenIdentityProvider\":\"VZ\",\"token\":\"access-token-value\",\"userPreference\":\"userPref\"}"
         },
         "getAppLoginTokens": {
           "method": "POST",
@@ -2095,21 +2109,23 @@
             "authPath"
           ],
           "takes_body": true,
-          "description": "Acquire app login tokens from the parent-auth token URL (POST to dynamic {authPath})."
+          "description": "Acquire app login tokens from the parent-auth token URL (POST to dynamic {authPath}).",
+          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"codeVerifier\":\"pkce_code_verifier\",\"fidoTokenKey\":\"fido-token-key\",\"firstName\":\"Jane\",\"friscoTokenType\":\"online\",\"grantType\":\"identifier_code\",\"idToken\":\"id-token-jwt\",\"identityProvider\":\"VZ\",\"interimFriscoTokenType\":\"online\",\"interimToken\":\"interim-token\",\"interimTokenType\":\"Bearer\",\"lastName\":\"Doe\",\"otpCode\":\"123456\",\"redirectUri\":\"https://example.com/callback\",\"refreshToken\":\"refresh-token-value\",\"refreshTokenIdentityProvider\":\"VZ\",\"token\":\"access-token-value\",\"userPreference\":\"userPref\"}"
         },
         "getChildDeviceAccessToken": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/deviceauth/auth/token",
           "confirmed": false,
           "takes_body": true,
-          "description": "Acquire a child device access token (POST device-auth v5 deviceauth/auth/token)."
+          "description": "Acquire a child device access token (POST device-auth v5 deviceauth/auth/token).",
+          "body_example": "{\"app_uuid\":\"a1b2c3d4-uuid\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"frisco_token_type\":\"online\",\"grant_type\":\"identifier_code\",\"otp_code\":\"123456\"}"
         },
         "logOut": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/logout",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"code\":\"AUTHCODE123\",\"grant_type\":\"refresh_token\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"frisco_token_type\":\"online\",\"triggeredBy\":\"user\"}",
+          "body_example": "{\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"REFRESHTOKEN123\",\"frisco_token_type\":\"online\",\"grant_type\":\"refresh_token\",\"triggeredBy\":\"user\"}",
           "description": "Log the user out and invalidate the session (POST device-auth v5 user/auth/logout)."
         },
         "loginActivity": {
@@ -2117,7 +2133,7 @@
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/l1/login/activity",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"identityProvider\":\"VZ\",\"code\":\"AUTHCODE123\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\"}",
+          "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"identityProvider\":\"VZ\"}",
           "description": "Record a login-activity event (POST device-auth v7 user/auth/l1/login/activity)."
         },
         "auditLogin": {
@@ -2125,7 +2141,7 @@
           "path": "/auth/frisco/frisco-iam-device-auth/v5/user/login/audit",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"eventType\":\"LOGIN\",\"subEventType\":\"PASSWORD\",\"eventTime\":1690000000000,\"code\":\"200\",\"appUuid\":\"abc-123-uuid\",\"grantType\":\"identifier_code\",\"clientId\":\"your_oauth_client_id\"}",
+          "body_example": "{\"additionalDetails\":\"\",\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"200\",\"eventTime\":1690000000000,\"eventType\":\"LOGIN\",\"failureMessage\":\"\",\"grantType\":\"identifier_code\",\"subEventType\":\"PASSWORD\"}",
           "description": "Record a user login audit event (POST device-auth v5 user/login/audit)."
         },
         "postBiometricAudit": {
@@ -2133,7 +2149,7 @@
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/audit",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"events\":[{\"event_type\":\"BIOMETRIC_AUTH\",\"triggeredBy\":\"USER\",\"fidoGuid\":\"guid-123\",\"status_code\":200,\"status\":\"SUCCESS\",\"event_time\":1690000000000}]}",
+          "body_example": "{\"events\":[{\"details\":\"biometric enable\",\"event_time\":1690000000000,\"event_type\":\"BIOMETRIC_ENABLE\",\"fidoGuid\":\"guid-123\",\"status\":\"SUCCESS\",\"status_code\":200,\"subStatus\":\"n/a\",\"triggeredBy\":\"user\"}]}",
           "description": "Record a biometric-auth audit event (POST device-auth v5 user/auth/audit)."
         },
         "sendAuthOtp": {
@@ -2225,7 +2241,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceType\":\"smartphone\",\"deviceCarrier\":\"Verizon\",\"deviceOS\":\"iOS\",\"deviceNickName\":\"Kid's Phone\",\"mdn\":\"5551234567\",\"imei\":\"356789012345678\"}",
+          "body_example": "{\"deviceCarrier\":\"Verizon\",\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceNickName\":\"Kid's Phone\",\"deviceOS\":\"iOS\",\"deviceType\":\"smartphone\",\"iccid\":\"89014103211118510720\",\"imei\":\"356789012345678\",\"imsi\":\"310150123456789\",\"mdn\":\"5551234567\"}",
           "description": "Replace a paired Gizmo device with a new one (PATCH v5 gizmo/device/replace)."
         },
         "retryPairing": {
@@ -2236,7 +2252,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Retry pairing a Gizmo device (PUT v5 gizmo/device/pairing)."
+          "description": "Retry pairing a Gizmo device (PUT v5 gizmo/device/pairing).",
+          "body_example": "{\"dateOfBirth\":\"2012-05-01\",\"mdn\":\"5551234567\",\"profileName\":\"Alex\"}"
         },
         "sendInvite": {
           "method": "POST",
@@ -2247,7 +2264,8 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "description": "Create a userprofile and send a family invite (POST v6 accounts/userprofiles)."
+          "description": "Create a userprofile and send a family invite (POST v6 accounts/userprofiles).",
+          "body_example": "{\"breedId\":\"labrador-01\",\"contacts\":[{\"name\":\"Grandma\",\"phone\":\"5559876543\",\"userProfileId\":222}],\"dateOfBirth\":\"2012-05-01\",\"devices\":[{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceOs\":\"iOS\",\"deviceType\":\"smartphone\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"VZW\",\"serialnumber\":\"F2LMND0ABCDE\"}],\"userprofile_attributes\":{\"breed\":\"Labrador\",\"breedType\":\"Sporting\",\"petType\":\"DOG\",\"stepGoal\":\"10000\"},\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileSource\":\"SMS\",\"relationship\":\"CHILD\",\"sex\":\"M\",\"weight\":\"45\",\"wifiDetails\":{\"addressLabel\":\"Home\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"petProfileId\":111,\"position\":{\"latitude\":40.7128,\"longitude\":-74.006},\"ssid\":\"HomeWiFi\"}}"
         },
         "sendStandaloneInvite": {
           "method": "POST",
@@ -2258,7 +2276,8 @@
             "x-pairing-required"
           ],
           "takes_body": true,
-          "description": "Invite/onboard a standalone device; x-pairing-required header (POST v5 onboarding/device)."
+          "description": "Invite/onboard a standalone device; x-pairing-required header (POST v5 onboarding/device).",
+          "body_example": "{\"breedId\":\"labrador-01\",\"contacts\":[{\"name\":\"Grandma\",\"phone\":\"5559876543\",\"userProfileId\":222}],\"dateOfBirth\":\"2012-05-01\",\"devices\":[{\"deviceMake\":\"Apple\",\"deviceModel\":\"iPhone 14\",\"deviceOs\":\"iOS\",\"deviceType\":\"smartphone\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"VZW\",\"serialnumber\":\"F2LMND0ABCDE\"}],\"userprofile_attributes\":{\"breed\":\"Labrador\",\"breedType\":\"Sporting\",\"petType\":\"DOG\",\"stepGoal\":\"10000\"},\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileSource\":\"SMS\",\"relationship\":\"CHILD\",\"sex\":\"M\",\"weight\":\"45\",\"wifiDetails\":{\"addressLabel\":\"Home\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"petProfileId\":111,\"position\":{\"latitude\":40.7128,\"longitude\":-74.006},\"ssid\":\"HomeWiFi\"}}"
         },
         "updateFeaturePermissions": {
           "method": "POST",
@@ -2268,7 +2287,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"featurepermissions\":[{\"feature\":\"LOCATION\",\"enabled\":true}]}",
+          "body_example": "{\"featurepermissions\":[{\"featureKey\":\"LOCATION\",\"permissionLevel\":1}]}",
           "description": "Update feature permissions for account userprofiles (POST v5 accounts/userprofiles/featurepermissions)."
         },
         "createWifiDevice": {
@@ -2280,7 +2299,8 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "description": "Create a Wi-Fi-only (non-cellular) child device profile (POST v6 accounts/userprofiles)."
+          "description": "Create a Wi-Fi-only (non-cellular) child device profile (POST v6 accounts/userprofiles).",
+          "body_example": "{\"contacts\":[{\"name\":\"Grandma\",\"phone\":\"5559876543\",\"userProfileId\":222}],\"dateOfBirth\":\"2012-05-01\",\"devices\":[{\"deviceNickName\":\"Kid's Watch\",\"deviceType\":\"smartphone\",\"mdn\":\"5551234567\"}],\"emailAddress\":\"parent@example.com\",\"mdn\":\"5551234567\",\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"CHILD\",\"profileSource\":\"WIFI\"}"
         },
         "getAccountLines2": {
           "method": "GET",
@@ -2299,7 +2319,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Bulk-set Gizmo contact relationships (PUT vsf/callandtext v5 gizmo/managecontacts/bulkupdate)."
+          "description": "Bulk-set Gizmo contact relationships (PUT vsf/callandtext v5 gizmo/managecontacts/bulkupdate).",
+          "body_example": "{\"contactType\":\"FAMILY\",\"contacts\":[{\"contactInfo\":\"5559876543\",\"name\":\"Grandma\",\"relationship\":\"GRANDPARENT\"}]}"
         }
       }
     },
@@ -2324,7 +2345,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Request a privacy-data export: kick off generating the profile's downloadable personal-data file."
+          "description": "Request a privacy-data export: kick off generating the profile's downloadable personal-data file.",
+          "body_example": "{\"accountType\":\"familyapp\"}"
         }
       }
     },
@@ -2340,7 +2362,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"configSchedule\":false,\"events\":[{\"profileId\":42,\"eventType\":\"checkIn\",\"deviceId\":98765,\"eventId\":\"evt-abc-123\",\"messageType\":\"checkIn\",\"eventDateTime\":1735689600000,\"locationDetails\":{\"locationDateTime\":1735689600000,\"locationType\":\"gps\",\"position\":{\"latitude\":40.1234,\"longitude\":-74.5678},\"address\":{\"formattedAddress\":\"1 Main St\"},\"precision\":{\"value\":12.5}},\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Send a check-in sharing the profile's current location with the family."
         },
         "checkInSeen": {
@@ -2351,7 +2373,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"events\":[{\"profileId\":42,\"eventType\":\"checkIn\",\"eventId\":\"evt-abc-123\",\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Mark a received check-in as seen/acknowledged."
         },
         "deleteGeofenceSettings": {
@@ -2452,7 +2474,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"messageId\":\"msg-1\",\"serviceIds\":[111,222],\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"appStatus\":\"FOREGROUND\",\"appType\":\"VSF-Parent\",\"messageInitiatedFrom\":\"map\",\"messageTrigger\":\"<runtime: memberInfo.getTrigger()>\",\"configSchedule\":false,\"events\":[{\"profileId\":42,\"eventType\":\"location\",\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Start, stop, or manage a live real-time location-tracking session."
         },
         "pickMeUp": {
@@ -2463,7 +2485,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"configSchedule\":false,\"events\":[{\"profileId\":42,\"eventType\":\"pickMeUp\",\"deviceId\":98765,\"eventId\":\"evt-abc-123\",\"messageType\":\"pickMeUpRequest\",\"eventDateTime\":1735689600000,\"locationDetails\":{\"locationDateTime\":1735689600000,\"locationType\":\"gps\",\"position\":{\"latitude\":40.1234,\"longitude\":-74.5678},\"address\":{\"formattedAddress\":\"1 Main St\"},\"precision\":{\"value\":12.5}},\"recipientList\":[43,44],\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Send a Pick Me Up request (child asks an available parent for a ride)."
         },
         "postGeofenceViolationEvent": {
@@ -2474,7 +2496,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "body_example": "{\"services\":[{\"serviceId\":111,\"events\":[{\"geofenceName\":\"Home\",\"eventType\":\"location\",\"messageType\":\"onEnter\",\"eventDateTime\":1735689600000,\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}],\"hasDebugGeofenceConfigured\":false}",
           "description": "Report a geofence boundary crossing (enter/exit) event."
         },
         "postLocationTamper": {
@@ -2485,7 +2507,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"configSchedule\":false,\"locTamperTriggeredBy\":\"<runtime str>\",\"events\":[{\"profileId\":42,\"eventType\":\"locationTamper\",\"eventId\":\"evt-abc-123\",\"eventDateTime\":1735689600000,\"locationEnabled\":1,\"locPermission\":\"ALWAYS\",\"locPrecise\":\"precise\",\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Report a location-tamper event (location turned off or spoofed on the device)."
         },
         "putPickMeUp": {
@@ -2496,7 +2518,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"messageTrigger\":\"CHECK_IN\",\"messageId\":\"msg-123\"}",
+          "body_example": "{\"accountId\":1234567,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"samsung SM-G991U\",\"MAPPVersion\":\"8.101.30\",\"configSchedule\":false,\"events\":[{\"profileId\":42,\"eventType\":\"pickMeUp\",\"deviceId\":98765,\"eventId\":\"evt-abc-123\",\"messageType\":\"<runtime: PickMeUpStatus.getValue()>\",\"eventDateTime\":1735689600000,\"locationDetails\":{\"locationDateTime\":1735689600000,\"locationType\":\"gps\",\"position\":{\"latitude\":40.1234,\"longitude\":-74.5678}},\"eventStatus\":\"<runtime str>\",\"deviceType\":\"<runtime str>\",\"recipientList\":[43,44],\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}",
           "description": "Update or respond to an existing Pick Me Up request."
         },
         "sendGeoFenceConfirmation": {
@@ -2510,7 +2532,7 @@
             "operation=configGeoDevice"
           ],
           "takes_body": true,
-          "body_example": "{\"services\":[],\"source\":\"APP\",\"hasDebugGeofenceConfigured\":false}",
+          "body_example": "{\"services\":[{\"serviceId\":111,\"events\":[{\"geofenceName\":\"Home\",\"deviceGeofenceConfigList\":[{\"deviceId\":98765,\"deviceType\":\"phone\",\"geofenceId\":\"gf-1\",\"geofenceType\":\"enter\",\"operation\":\"add\",\"eligibleForGeofence\":true,\"profileId\":42}],\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}],\"source\":\"<runtime: ConfigSource.getValue()>\",\"hasDebugGeofenceConfigured\":false}",
           "description": "Confirm geofence device setup (operation=configGeoDevice, v6)."
         },
         "getLocationSharingConfigEvent": {
@@ -2560,7 +2582,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the profile's location-sharing settings (v5)."
+          "description": "Update the profile's location-sharing settings (v5).",
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"profileId\":42,\"eventType\":\"locationSharing\",\"settings\":{\"locationSharingSettings\":{\"sharingList\":[{\"profileId\":43,\"isLocationShared\":true}]}}}]}"
         },
         "updateLocationSharingSettingConfig": {
           "method": "PUT",
@@ -2574,7 +2597,7 @@
             "profileId"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"LOCATION_SHARING\",\"events\":[]}",
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"profileId\":42,\"settings\":{\"sharingList\":[{\"profileId\":43,\"isLocationShared\":true}]}}]}",
           "description": "Update location-sharing config for a specific event type/profile (v6)."
         }
       }
@@ -2591,7 +2614,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Create the emergency Medical ID card stored on the device."
+          "description": "Create the emergency Medical ID card stored on the device.",
+          "body_example": "{\"firstName\":\"Jamie\",\"lastName\":\"Rivera\",\"birthdate\":\"2012-04-15\",\"height\":{\"feet\":5,\"inches\":4},\"weight\":120,\"bloodType\":\"O+\",\"medicineDetail\":\"Ibuprofen as needed\",\"notes\":\"Peanut allergy\",\"displayBirthdate\":true,\"isDobChanged\":false}"
         },
         "putMedicalId": {
           "method": "PUT",
@@ -2601,7 +2625,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the emergency Medical ID card stored on the device."
+          "description": "Update the emergency Medical ID card stored on the device.",
+          "body_example": "{\"firstName\":\"Jamie\",\"lastName\":\"Rivera\",\"birthdate\":\"2012-04-15\",\"height\":{\"feet\":5,\"inches\":4},\"weight\":120,\"bloodType\":\"O+\",\"medicineDetail\":\"Ibuprofen as needed\",\"notes\":\"Peanut allergy\",\"displayBirthdate\":true,\"isDobChanged\":false}"
         }
       }
     },
@@ -3043,7 +3068,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Record/grant a child device's pairing consent."
+          "description": "Record/grant a child device's pairing consent.",
+          "body_example": "{\"deviceId\":12345,\"consent\":true,\"vpnStatus\":false,\"connectedDoh\":\"vz-doh-1\",\"screenTimeSource\":\"Android\"}"
         },
         "addDeviceToProfile": {
           "method": "POST",
@@ -3053,7 +3079,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Add a WiFi/companion device to a family member's profile."
+          "description": "Add a WiFi/companion device to a family member's profile.",
+          "body_example": "{\"devices\":[{\"deviceNickName\":\"Kids iPad\",\"deviceType\":\"WIFI_ONLY\"}]}"
         },
         "createProfile": {
           "method": "POST",
@@ -3063,14 +3090,16 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Create a new family member profile under the account."
+          "description": "Create a new family member profile under the account.",
+          "body_example": "{\"profileName\":\"Alex\",\"devices\":[{\"deviceType\":\"WIFI_ONLY\",\"deviceNickName\":\"Kids iPad\"}],\"profileImage\":\"https://cdn.example.com/avatar.png\",\"dateOfBirth\":\"2012-05-01\",\"profileRole\":\"DEPENDENT\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Grandma\",\"userProfileId\":42}]}"
         },
         "getIdTokenUsingOtp": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/wifi/token",
           "confirmed": false,
           "takes_body": true,
-          "description": "Exchange a WiFi OTP for a device id-token during pairing (token exchange)."
+          "description": "Exchange a WiFi OTP for a device id-token during pairing (token exchange).",
+          "body_example": "{\"grant_type\":\"wifi_otp\",\"code\":\"auth-code-abc\",\"app_uuid\":\"11111111-2222-3333-4444-555555555555\",\"frisco_token_type\":\"ONLINE\",\"otp_code\":\"123456\",\"client_id\":\"56ed9a2e-e3ba-4dbf-a8ac-fa5de431f743\"}"
         },
         "getOtpStatus": {
           "method": "GET",
@@ -3110,7 +3139,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Resend a pending family-member invite."
+          "description": "Resend a pending family-member invite.",
+          "body_example": "{\"inviteStatus\":\"PENDING\"}"
         },
         "getNotificationFeed": {
           "method": "GET",
@@ -3272,7 +3302,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Create a dependent (child) profile under the account."
+          "description": "Create a dependent (child) profile under the account.",
+          "body_example": "{\"profileImage\":\"https://cdn.example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"dateOfBirth\":\"2012-05-01\",\"gizmoUserId\":\"gizmo-user-123\",\"devices\":[{\"deviceMake\":\"Verizon\",\"deviceModel\":\"GizmoWatch3\",\"firmware\":\"1.2.3\",\"deviceType\":\"GIZMO\",\"mdn\":\"5551234567\",\"providerId\":\"provider-1\",\"deviceNickname\":\"Alex Watch\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}]}"
         },
         "deleteMediaBackupEntries": {
           "method": "DELETE",
@@ -3453,7 +3484,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"dateOfBirth\":\"2012-05-01\",\"sex\":\"M\",\"timeZone\":\"America/New_York\",\"userprofile_attributes\":{\"petType\":\"DOG\",\"breed\":\"Labrador\"}}",
+          "body_example": "{\"profileImage\":\"https://cdn.example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"yes\",\"termsAcceptedDate\":\"2026-01-15\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETE\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"PET\"}",
           "description": "Update/replace a profile's image."
         },
         "updatePairing": {
@@ -3464,7 +3495,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update a profile's device pairing."
+          "description": "Update a profile's device pairing.",
+          "body_example": "{\"mdn\":\"5551234567\",\"locationConsent\":\"yes\",\"parentalConsent\":\"yes\",\"pairingStatus\":\"PAIRED\"}"
         },
         "validateGizmoMdn": {
           "method": "POST",
@@ -3535,7 +3567,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update a device's settings."
+          "description": "Update a device's settings.",
+          "body_example": "{\"cannedMessages\":[{\"cannedMessageId\":\"1\",\"id\":\"10\",\"deviceId\":\"999\",\"message\":\"On my way\",\"emergencyMessage\":false}],\"autoAnswer\":true,\"videoCallingEnabled\":true,\"volume\":\"5\",\"ringtoneSoundType\":\"CHIME\",\"ringtoneActive\":true,\"touchSound\":false,\"messageReadout\":true,\"buttonPowerEnabled\":true,\"theme\":\"DARK\",\"watchFace\":\"ANALOG\",\"deviceMute\":false,\"videoPictureResolution\":\"HIGH\",\"mediaBackup\":true,\"quietMode\":false,\"loggingLevel\":\"INFO\"}"
         },
         "triggerLogUpload": {
           "method": "POST",
@@ -3570,7 +3603,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Pause internet access for a profile's device(s)."
+          "description": "Pause internet access for a profile's device(s).",
+          "body_example": "{\"timeZone\":\"America/New_York\",\"profiles\":[{\"profileId\":123,\"devices\":[{\"serviceId\":456,\"deviceId\":789,\"pauseSchedule\":\"30 Minutes\",\"untilIUnpause\":false,\"callOnlyMode\":false}]}]}"
         },
         "unPauseInternet": {
           "method": "DELETE",
@@ -3595,7 +3629,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "End a real-time-tracking (RTT) or lost-pet-mode (LPM) session."
+          "description": "End a real-time-tracking (RTT) or lost-pet-mode (LPM) session.",
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"RTT\",\"operation\":\"End\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}]}"
         },
         "escalateRttToLpm": {
           "method": "PATCH",
@@ -3605,7 +3640,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"ESCALATE\",\"ts\":1700000000000,\"userProfileName\":\"Alex\"}",
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"Escalate\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}]}",
           "description": "Escalate a real-time-tracking session to lost-pet mode."
         },
         "getAllAvailableEmergencyContacts": {
@@ -3658,7 +3693,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Start a pet live-tracking session."
+          "description": "Start a pet live-tracking session.",
+          "body_example": "{\"requestType\":\"LPM\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"petProfileName\":\"Rex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}],\"petLat\":40.7128,\"petLon\":-74.006,\"petAddress\":\"123 Main St, Denver, CO\",\"petLastLocationTime\":1700000000000}"
         },
         "deleteWifiDetails": {
           "method": "DELETE",
@@ -3773,7 +3809,7 @@
           "path": "/tracker/fam/v1/trace/logs",
           "confirmed": false,
           "takes_body": true,
-          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}",
+          "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"errorMessage\":\"\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}",
           "description": "Log a Fi-SDK interaction/trace event."
         },
         "saveWifiDetails": {
@@ -3806,7 +3842,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "File a help/SOS request to the professional-monitoring service."
+          "description": "File a help/SOS request to the professional-monitoring service.",
+          "body_example": "{\"phone\":\"5555550100\",\"alarmType\":\"SOS\",\"timeOfEmergency\":\"2026-01-15T10:30:00Z\",\"devices\":[{\"deviceType\":\"phone\",\"lat\":\"42.3601\",\"lon\":\"-71.0589\",\"alt\":\"10.0\",\"accuracy\":\"5.0\",\"locationTS\":\"2026-01-15T10:30:00Z\"}]}"
         },
         "createSubscribers": {
           "method": "POST",
@@ -3816,7 +3853,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Enroll a subscriber into professional monitoring."
+          "description": "Enroll a subscriber into professional monitoring.",
+          "body_example": "{\"id\":123456,\"language\":\"en\",\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"streetAddress\":\"123 Main St\",\"addressLine2\":\"Apt 4\",\"city\":\"Boston\",\"state\":\"MA\",\"zip\":\"02118\",\"country\":\"US\",\"primaryAddressValidation\":\"VALID\",\"role\":\"GUARDIAN\",\"emergencyContacts\":[{\"contactId\":1,\"mdn\":5555550100,\"firstName\":\"John\",\"lastName\":\"Doe\"}],\"operation\":null,\"addressId\":null,\"isForStandaloneWatch\":false}"
         },
         "deactivateProfile": {
           "method": "PATCH",
@@ -3830,7 +3868,8 @@
           ],
           "destructive": true,
           "takes_body": true,
-          "description": "Deactivate a subscriber's professional-monitoring profile by subscriber-id."
+          "description": "Deactivate a subscriber's professional-monitoring profile by subscriber-id.",
+          "body_example": "{\"operation\":\"Inactivate\"}"
         },
         "getRemoteProfessionalMonitoringAddress": {
           "method": "GET",
@@ -3863,7 +3902,8 @@
           ],
           "destructive": true,
           "takes_body": true,
-          "description": "Reactivate a previously deactivated subscriber's monitoring profile by subscriber-id."
+          "description": "Reactivate a previously deactivated subscriber's monitoring profile by subscriber-id.",
+          "body_example": "{\"id\":123456,\"language\":\"en\",\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"streetAddress\":\"123 Main St\",\"addressLine2\":\"Apt 4\",\"city\":\"Boston\",\"state\":\"MA\",\"zip\":\"02118\",\"country\":\"US\",\"primaryAddressValidation\":\"VALID\",\"role\":\"GUARDIAN\",\"emergencyContacts\":[{\"contactId\":1,\"mdn\":5555550100,\"firstName\":\"John\",\"lastName\":\"Doe\"}],\"operation\":\"ACTIVATE\",\"addressId\":\"78901\",\"isForStandaloneWatch\":false}"
         },
         "updateAddress": {
           "method": "PUT",
@@ -3876,7 +3916,7 @@
             "address-id"
           ],
           "takes_body": true,
-          "body_example": "{\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zipcode\":\"02118\",\"country\":\"US\"}",
+          "body_example": "{\"addressLine1\":\"123 Main St\",\"addressLine2\":\"Apt 4\",\"city\":\"Boston\",\"country\":\"US\",\"state\":\"MA\",\"zipcode\":\"02118\"}",
           "description": "Update a saved monitoring address by address-id."
         },
         "updateFirstAndLastName": {
@@ -3887,7 +3927,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the subscriber's first and last name."
+          "description": "Update the subscriber's first and last name.",
+          "body_example": "{\"appConsent\":\"GRANTED\",\"dateOfBirth\":\"1990-05-15\",\"firstName\":\"Jane\",\"isAdult\":true,\"lastName\":\"Doe\",\"termsAcceptedDate\":\"2026-01-15T10:30:00Z\",\"transitionStatus\":\"COMPLETED\"}"
         },
         "updateSubscribers": {
           "method": "PUT",
@@ -3897,7 +3938,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update a subscriber's professional-monitoring enrollment details."
+          "description": "Update a subscriber's professional-monitoring enrollment details.",
+          "body_example": "{\"id\":123456,\"language\":\"en\",\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"streetAddress\":\"123 Main St\",\"addressLine2\":\"Apt 4\",\"city\":\"Boston\",\"state\":\"MA\",\"zip\":\"02118\",\"country\":\"US\",\"primaryAddressValidation\":\"VALID\",\"role\":\"GUARDIAN\"}"
         },
         "validateAddress": {
           "method": "POST",
@@ -3907,7 +3949,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Validate a monitoring address before enrollment."
+          "description": "Validate a monitoring address before enrollment.",
+          "body_example": "{\"streetAddress\":\"123 Main St\",\"city\":\"Boston\",\"state\":\"MA\",\"zip\":\"02118\"}"
         }
       }
     },
@@ -3923,7 +3966,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Resend a pending family-member invite."
+          "description": "Resend a pending family-member invite.",
+          "body_example": "{\"inviteStatus\":\"PENDING\"}"
         },
         "getTopApps": {
           "method": "GET",
@@ -4012,7 +4056,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"app\",\"eventType\":\"LOCATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"REQUEST\",\"extendSession\":false}]}",
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"source\":\"Android\",\"eventType\":\"realTimeTracking\",\"eventDateTime\":1700000000000,\"eventId\":\"\",\"profileId\":222,\"deviceId\":333,\"deviceType\":\"PHONE\",\"serviceId\":444,\"messageType\":\"start\",\"extendSession\":true}]}",
           "description": "POST to start or refresh a real-time location-tracking (RTT) session for the target device."
         }
       }
@@ -4082,7 +4126,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "POST the user's Gizmo review/rating content."
+          "description": "POST the user's Gizmo review/rating content.",
+          "body_example": "{\"rating\":5,\"review_title\":\"Great watch\",\"review_body\":\"Works well for my kid\",\"is_recommended\":true}"
         },
         "updateReviewAction": {
           "method": "PATCH",
@@ -4145,7 +4190,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"DISMISS\"}",
+          "body_example": "{\"operation\":\"enroll\"}",
           "description": "PATCH the rescue setup state to dismiss the RSA notification banner."
         },
         "dismissWhatsNew": {
@@ -4156,7 +4201,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"operation\":\"DISMISS\"}",
+          "body_example": "{\"operation\":\"dismiss_banner_whatsnew\"}",
           "description": "PATCH (v6) to dismiss the RSA 'What's New' callout for the user."
         },
         "getCarMakes": {
@@ -4217,7 +4262,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "POST location criteria to find nearby tow/service destinations for a rescue."
+          "description": "POST location criteria to find nearby tow/service destinations for a rescue.",
+          "body_example": "{\"equipmentClass\":\"sedan\",\"longitude\":-74.006,\"latitude\":40.7128}"
         },
         "setUpRsaIntroBottomSheet": {
           "method": "POST",
@@ -4227,7 +4273,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "POST to mark the RSA intro bottom-sheet as shown/set up for the user."
+          "description": "POST to mark the RSA intro bottom-sheet as shown/set up for the user.",
+          "body_example": "{\"operation\":\"setup\"}"
         },
         "submitRescue": {
           "method": "POST",
@@ -4237,7 +4284,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "POST to submit a new roadside rescue request."
+          "description": "POST to submit a new roadside rescue request.",
+          "body_example": "{\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"email\":\"jane@example.com\",\"contactNumber\":\"5551234567\",\"smsOptIn\":\"N\",\"timezone\":\"America/New_York\",\"locale\":\"en_US\",\"additionalComments\":\"Stuck on the shoulder\",\"rescueType\":\"Tow\",\"disablementAddress\":{\"addressLine1\":\"123 Main St\",\"addressLine2\":\"Apt 4\",\"city\":\"Newark\",\"state\":\"NJ\",\"country\":\"US\",\"zipCode\":\"07001\",\"longitude\":-74.006,\"latitude\":40.7128},\"vehicle\":{\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"equipmentClass\":\"sedan\",\"nickname\":\"My Car\",\"vehicleId\":12345,\"fuelType\":\"GAS\"},\"gas\":{\"gasType\":\"Regular\"},\"tire\":{\"replacementTire\":\"frontLeft\",\"gotSpare\":true,\"vehicleType\":\"sedan\"},\"tow\":{\"destinationAddress\":{\"addressLine1\":\"456 Elm St\",\"addressLine2\":\"\",\"city\":\"Newark\",\"state\":\"NJ\",\"country\":\"US\",\"zipCode\":\"07002\",\"longitude\":-74.01,\"latitude\":40.72}},\"battery\":{\"vehicleStoppedWhileDriving\":false},\"lockout\":{\"lockoutType\":\"keysInVehicle\"}}"
         },
         "updateExistingUserVehicleDetails": {
           "method": "PUT",
@@ -4250,7 +4298,7 @@
             "vehicle-id"
           ],
           "takes_body": true,
-          "body_example": "{\"make\":\"Toyota\",\"model\":\"Camry\",\"year\":2020,\"color\":\"Blue\",\"fuelType\":\"GAS\",\"nickname\":\"My Car\"}",
+          "body_example": "{\"nickname\":\"My Car\",\"year\":2020,\"model\":\"Camry\",\"make\":\"Toyota\",\"color\":\"Blue\",\"fuelType\":\"GAS\"}",
           "description": "PUT to update details of an existing saved vehicle by {vehicle-id}."
         },
         "updateRsaMemberAccess": {
@@ -4305,7 +4353,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"recipientList\":[111,222]}]}",
           "description": "DELETE /vsf/location/v5/scheduled/alert/settings — permanently removes a scheduled location-alert rule (rule sent in body)"
         },
         "getScheduledAlerts": {
@@ -4330,7 +4378,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"eventDetails\":{\"alertTime\":\"08:00\",\"startTime\":\"08:00\",\"endTime\":\"09:00\",\"frequency\":30,\"days\":{\"everyDay\":false,\"weekDays\":[\"MONDAY\",\"WEDNESDAY\",\"FRIDAY\"]},\"isEnabled\":true},\"recipientList\":[111,222]}]}",
           "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location-alert rule"
         },
         "updateScheduledAlert": {
@@ -4341,7 +4389,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"eventDetails\":{\"alertTime\":\"08:00\",\"startTime\":\"08:00\",\"endTime\":\"09:00\",\"frequency\":30,\"days\":{\"everyDay\":true,\"weekDays\":[]},\"isEnabled\":true},\"recipientList\":[111,222]}]}",
           "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location-alert rule"
         }
       }
@@ -4358,7 +4406,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"events\":[{\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}",
+          "body_example": "{\"events\":[{\"action\":\"APP_USAGE\",\"appName\":\"YouTube\",\"appPackageName\":\"com.google.android.youtube\",\"appStartTimestamp\":1690000000000,\"appEndTimestamp\":1690003600000,\"duration\":3600000,\"launchCount\":3,\"timeInForeground\":3600000}],\"lastRefreshTime\":1690003600000,\"timezone\":\"America/New_York\"}",
           "description": "POST /frisco/parental-control/v5/web-app-activity — child device reports its web/app usage stats"
         },
         "updateSchedulerRunStatus": {
@@ -4369,7 +4417,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"profileName\":\"Johnny\",\"featureId\":12}",
+          "body_example": "{\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnReason\":\"SCHEDULE\",\"vpnStopCode\":0},\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com\",\"eventTimeStamp\":1700000000000,\"featureId\":12,\"featureValue\":1,\"profileName\":\"Johnny\",\"screenTimeScheduler\":1}",
           "description": "POST /vsf/tamper/v5/screenTimeScheduler — child device reports the screen-time scheduler's run status"
         },
         "getScreenTime": {
@@ -4392,7 +4440,7 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":1,\"name\":\"Homework\",\"additionalTimeAction\":\"APPROVE\",\"timeZone\":\"America/Denver\",\"limits\":{}}",
+          "body_example": "{\"additionalTimeAction\":\"APPROVE\",\"id\":1,\"limits\":{\"additionalTimeApproved\":30,\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Homework\",\"timeZone\":\"America/Denver\"}",
           "description": "PUT /parental-control/frisco/v7/app-limits — parent approves or declines a child's request for more app time"
         },
         "getAppTimeLimits": {
@@ -4453,7 +4501,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"scheduleType\":\"nhr\",\"name\":\"Night hours\",\"days\":[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\"startTime\":\"22:00\",\"endTime\":\"06:00\",\"timezone\":\"EST\",\"alertOn\":true,\"blockContent\":false}]}",
+          "body_example": "{\"schedules\":[{\"alertOn\":true,\"blockContent\":false,\"createdAt\":\"2024-01-01T00:00:00Z\",\"days\":[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\"endTime\":\"06:00\",\"filterId\":\"filter-1\",\"name\":\"Night hours\",\"notifyMember\":1,\"profileId\":222,\"scheduleId\":\"\",\"scheduleType\":\"nhr\",\"startTime\":\"22:00\",\"subtitle\":\"Bedtime\",\"timezone\":\"EST\",\"updatedAt\":\"2024-01-02T00:00:00Z\"}]}",
           "description": "POST /parental-control/frisco/v6/schedules — create a new bedtime/school/downtime schedule. Body schema shares the schedules[] shape captured live for putSchedule (create omits scheduleId); confirmed=false since only the update (PUT) flow was exercised on the device."
         },
         "putSchedule": {
@@ -4499,7 +4547,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}",
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeZone\":\"America/New_York\",\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180}}",
           "description": "POST /parental-control/frisco/v7/screen-time-limits — create daily screen-time limits"
         },
         "putScreenTimeData": {
@@ -4513,7 +4561,7 @@
             "requestType"
           ],
           "takes_body": true,
-          "body_example": "{\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180},\"timeZone\":\"America/New_York\"}",
+          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeZone\":\"America/New_York\",\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180}}",
           "description": "PUT /parental-control/frisco/v7/screen-time-limits — update daily screen-time limits"
         },
         "actionOnScreenTimeData": {
@@ -4527,7 +4575,7 @@
             "requestType"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"timeZone\":\"America/New_York\"}",
+          "body_example": "{\"additionalTimeAction\":\"APPROVE\",\"additionalTimeApproved\":30,\"day\":\"MONDAY\",\"screenTimeLimitId\":\"1234567\",\"timeZone\":\"America/New_York\"}",
           "description": "PUT /parental-control/frisco/v7/screen-time-limits — act on a screen-time request (approve/deny extra time; requestId query)"
         },
         "deleteScreenTimeData": {
@@ -4550,7 +4598,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"reason\":\"More homework time\",\"timeZone\":\"America/New_York\"}",
+          "body_example": "{\"reason\":\"More homework time\",\"screenTimeLimitId\":\"1234567\",\"timeRequested\":30,\"timeZone\":\"America/New_York\"}",
           "description": "POST /parental-control/frisco/v7/screen-time-limits/askTime — child requests additional screen time"
         },
         "getCategories": {
@@ -4639,7 +4687,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"eventDateTime\":1700000000000,\"eventDetails\":{\"alertTime\":\"08:00\",\"days\":{\"everyDay\":false,\"weekDays\":[\"Mon\",\"Tue\",\"Wed\"]},\"endTime\":\"17:00\",\"frequency\":1,\"isEnabled\":true,\"startTime\":\"08:00\"},\"eventId\":\"evt-1\",\"eventType\":\"schedule_alert\",\"profileId\":222,\"recipientList\":[111,222]}],\"productType\":\"VSF\"}",
           "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location alert"
         },
         "updateScheduledAlert": {
@@ -4650,7 +4698,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
+          "body_example": "{\"accountId\":1234567,\"events\":[{\"eventDateTime\":1700000000000,\"eventDetails\":{\"alertTime\":\"08:00\",\"days\":{\"everyDay\":false,\"weekDays\":[\"Mon\",\"Tue\",\"Wed\"]},\"endTime\":\"17:00\",\"frequency\":1,\"isEnabled\":true,\"startTime\":\"08:00\"},\"eventId\":\"evt-1\",\"eventType\":\"schedule_alert\",\"profileId\":222,\"recipientList\":[111,222]}],\"productType\":\"VSF\"}",
           "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location alert"
         },
         "deleteScheduledAlert": {
@@ -4763,7 +4811,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "PATCH /fam/wm-sos/v5/profiles — set or update the WatchMe/SafeWalk safety PIN"
+          "description": "PATCH /fam/wm-sos/v5/profiles — set or update the WatchMe/SafeWalk safety PIN",
+          "body_example": "{\"pin\":\"1234\"}"
         },
         "postWmsOnboardProfile": {
           "method": "POST",
@@ -4795,7 +4844,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "PATCH /fam/wm-sos/v5/sessions — escalate an active WatchMe check-in session to a full SOS emergency"
+          "description": "PATCH /fam/wm-sos/v5/sessions — escalate an active WatchMe check-in session to a full SOS emergency",
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"WatchMe\",\"operation\":\"EscalateToSos\",\"timestamp\":\"\",\"lat\":40.7128,\"lon\":-74.006,\"address\":\"1 Main St 2F\",\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}"
         },
         "extendSoSSession": {
           "method": "PATCH",
@@ -4825,7 +4875,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"sessionId\":\"sess-123\",\"requestType\":\"SOS\",\"operation\":\"MARK_SAFE\",\"timestamp\":\"2026-08-24T12:00:00Z\",\"lat\":40.7128,\"lon\":-74.006,\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}",
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"WatchMe\",\"operation\":\"MarkSafe\",\"timestamp\":\"\",\"lat\":40.7128,\"lon\":-74.006,\"address\":\"1 Main St\",\"senderProfileName\":\"Alex\",\"timezone\":\"America/New_York\"}",
           "description": "PATCH /fam/wm-sos/v5/sessions — mark yourself safe, resolving/ending the WatchMe session"
         },
         "submitWatchMeRequest": {
@@ -4836,7 +4886,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"requestType\":\"SOS\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"mdn\":\"5551234567\",\"profileName\":\"Mom\"}],\"senderProfileName\":\"Alex\",\"lat\":40.7128,\"lon\":-74.006,\"timezone\":\"America/New_York\"}",
+          "body_example": "{\"requestType\":\"WatchMe\",\"emergencyContacts\":[{\"accountId\":123,\"profileId\":456,\"deviceId\":789,\"mdn\":\"5551234567\",\"profileName\":\"Mom\",\"deviceOs\":\"android\",\"profileImageUrl\":\"https://example/a.png\"}],\"lat\":40.7128,\"lon\":-74.006,\"wmStartTs\":\"\",\"senderProfileName\":\"Alex\",\"address\":\"\",\"timezone\":\"America/New_York\"}",
           "description": "POST /fam/wm-sos/v5/sessions — start a new WatchMe timed safety check-in session"
         },
         "watchMeSosAlerts": {
@@ -4896,7 +4946,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Set the device's daily step goal (written through the device-settings endpoint)."
+          "description": "Set the device's daily step goal (written through the device-settings endpoint).",
+          "body_example": "{\"activityTracking\":true,\"activityTrackingGoal\":10000,\"activityTrackingRewards\":\"\"}"
         }
       }
     },
@@ -4939,7 +4990,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the device-admin privilege status (granted or revoked) on the child device."
+          "description": "Report the device-admin privilege status (granted or revoked) on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"adminStatusRemoved\":true}}"
         },
         "postBannerStatus": {
           "method": "POST",
@@ -4949,7 +5001,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the state of the on-device tamper-warning banner."
+          "description": "Report the state of the on-device tamper-warning banner.",
+          "body_example": "{\"eventTimeStamp\":1700000000000,\"remindMeLater\":false,\"closeFlag\":true,\"featureId\":1}"
         },
         "postCallOnlyModeStatus": {
           "method": "POST",
@@ -4959,7 +5012,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the call-only-mode tamper status on the child device."
+          "description": "Report the call-only-mode tamper status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postHibernationStatus": {
           "method": "POST",
@@ -4969,7 +5023,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report whether the OS has hibernated (auto-suspended) the app on the child device."
+          "description": "Report whether the OS has hibernated (auto-suspended) the app on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postParentalControlsRemoved": {
           "method": "POST",
@@ -4988,7 +5043,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the screen-time call-only-mode status on the child device."
+          "description": "Report the screen-time call-only-mode status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -4998,7 +5054,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the parent-facing tamper remediation instructions for the device."
+          "description": "Update the parent-facing tamper remediation instructions for the device.",
+          "body_example": "{\"templateType\":\"DEFAULT\",\"deviceIds\":[12345]}"
         },
         "postBatteryUsage": {
           "method": "POST",
@@ -5008,7 +5065,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report whether battery optimization is exempting/throttling the app on the child device."
+          "description": "Report whether battery optimization is exempting/throttling the app on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postBluetoothScan": {
           "method": "POST",
@@ -5018,7 +5076,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the Bluetooth-scan permission status on the child device."
+          "description": "Report the Bluetooth-scan permission status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postNotificationStatus": {
           "method": "POST",
@@ -5028,7 +5087,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the app's notification-permission status on the child device."
+          "description": "Report the app's notification-permission status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postPhysicalActivityStatus": {
           "method": "POST",
@@ -5038,7 +5098,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the physical-activity (motion) permission status on the child device."
+          "description": "Report the physical-activity (motion) permission status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "postPowerSaving": {
           "method": "POST",
@@ -5048,7 +5109,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report whether power-saving mode is active on the child device."
+          "description": "Report whether power-saving mode is active on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
         },
         "updateScreenTimeTamperStatus": {
           "method": "POST",
@@ -5058,7 +5120,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the screen-time enforcement tamper status on the child device."
+          "description": "Report the screen-time enforcement tamper status on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"screenTimeScheduler\":0,\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}"
         },
         "updateVpnTamperStatus": {
           "method": "POST",
@@ -5068,7 +5131,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Report the VPN status (the VPN carries web filtering) on the child device."
+          "description": "Report the VPN status (the VPN carries web filtering) on the child device.",
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}"
         }
       }
     },
@@ -5133,7 +5197,8 @@
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/setting",
           "confirmed": false,
           "takes_body": true,
-          "description": "Update the signed-in user's account/auth settings (raw key-value map body)."
+          "description": "Update the signed-in user's account/auth settings (raw key-value map body).",
+          "body_example": "{\"kmsiEnabled\":true,\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}"
         }
       }
     },
@@ -5229,7 +5294,8 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "description": "Create the child user profile to onboard a new wearable watch onto the account"
+          "description": "Create the child user profile to onboard a new wearable watch onto the account",
+          "body_example": "{\"dateOfBirth\":\"2015-05-01\",\"devices\":[{\"deviceMake\":\"Samsung\",\"deviceModel\":\"Gizmo Watch 3\",\"deviceOs\":\"ANDROID\",\"deviceType\":\"watch\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"verizon\",\"serialnumber\":\"F2LXXXXXXXXX\"}],\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileSource\":\"WEARABLE\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Mom\",\"userProfileId\":42}],\"relationship\":\"CHILD\",\"weight\":\"45\",\"sex\":\"M\",\"breedId\":\"labrador\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"wifiDetails\":{\"petProfileId\":7,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"s3cr3tpass\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}}"
         },
         "resendInvite": {
           "method": "PATCH",
@@ -5239,7 +5305,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Resend the family-service invite for the watch profile (PATCH invites)"
+          "description": "Resend the family-service invite for the watch profile (PATCH invites)",
+          "body_example": "{\"inviteStatus\":\"PENDING\"}"
         },
         "watchAuth": {
           "method": "POST",
@@ -5249,7 +5316,7 @@
             "x-trace-transaction-id"
           ],
           "takes_body": true,
-          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"pairingDeviceAppUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}",
+          "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"friscoTokenType\":\"ONLINE\",\"refreshToken\":\"eyJhbGciOiJSUzI1NiJ9.refresh\",\"appUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceAppUuid\":\"660e8400-e29b-41d4-a716-446655440001\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}",
           "description": "Acquire the watch device's auth/access token (bootstrap token acquisition, no service-id header)"
         }
       }
@@ -5386,7 +5453,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Add a single website to the allow/block list"
+          "description": "Add a single website to the allow/block list",
+          "body_example": "{\"url\":\"example.com\",\"status\":\"BLOCKED\"}"
         },
         "postWebsites": {
           "method": "POST",
