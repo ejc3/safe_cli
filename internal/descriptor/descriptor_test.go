@@ -1,9 +1,59 @@
 package descriptor
 
 import (
+	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// emptyObjRe matches an empty JSON object as a value, e.g. `"locationDetails": {}` — the
+// classic "inferred but never filled in" hole.
+var emptyObjRe = regexp.MustCompile(`:\s*\{\s*\}`)
+
+// TestEveryBodyOpHasACompleteExample is the completeness gate: every op that declares a JSON
+// request body MUST carry a body_example that is real — non-empty, valid JSON, with no empty
+// {} object (bare or nested) and not the bare {"id":...} stub. A single-field body like
+// {"mdn":"5551234567"} is fine; length is not the test. This fails hard if any body-taking op
+// regresses to a stub/empty/missing body, so "comprehensive" is enforced by CI, not by claim.
+func TestEveryBodyOpHasACompleteExample(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(name string, op Operation) {
+		if !op.TakesBody || op.Multipart {
+			return
+		}
+		ex := strings.TrimSpace(op.BodyExample)
+		if ex == "" {
+			t.Errorf("%s takes a JSON body but has no body_example", name)
+			return
+		}
+		var v any
+		if err := json.Unmarshal([]byte(ex), &v); err != nil {
+			t.Errorf("%s body_example is not valid JSON: %v", name, err)
+			return
+		}
+		if ex == "{}" || emptyObjRe.MatchString(ex) {
+			t.Errorf("%s body_example has an empty {} object (unfilled): %s", name, ex)
+		}
+		if m, ok := v.(map[string]any); ok && len(m) == 1 {
+			if _, idOnly := m["id"]; idOnly {
+				t.Errorf("%s body_example is the bare {\"id\":...} stub, not the real DTO: %s", name, ex)
+			}
+		}
+	}
+	for _, en := range d.EntityNames() {
+		e, _ := d.Entity(en)
+		for _, n := range e.OperationNames() {
+			check(en+"."+n, e.Operations[n])
+		}
+		for _, n := range e.ActionNames() {
+			check(en+"."+n+" (action)", e.Actions[n])
+		}
+	}
+}
 
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
