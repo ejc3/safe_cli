@@ -4023,13 +4023,13 @@
         "addLimit": {
           "method": "PUT",
           "path": "/vsf/callandtext/v5/usagelimits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"alertLimit\":true,\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"noLimitSet\":false,\"profileId\":\"1234567\",\"thresholdLimit\":120.0}",
-          "description": "PUT to create or update a call/text usage limit for the target profile's line."
+          "body_example": "{\"alertLimit\":false,\"deviceId\":\"3000002\",\"limitType\":\"data\",\"noLimitSet\":false,\"profileId\":\"2000002\",\"thresholdLimit\":6.0}",
+          "description": "Create/update a call/text/data usage limit (verified live 2026-08-28). limitType = data | text | call. thresholdLimit is the numeric cap (GB for data, count for text/call). noLimitSet=false when a limit is set; alertLimit=true to alert-only instead of block. profileId/deviceId identify the member's line."
         },
         "getAllTheLimits": {
           "method": "GET",
@@ -4047,13 +4047,13 @@
         "resetLimit": {
           "method": "DELETE",
           "path": "/vsf/callandtext/v5/usagelimits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"deviceId\":\"dev-123456\",\"limitType\":\"SCREEN_TIME\",\"profileId\":\"1234567\"}",
-          "description": "DELETE (with body) to reset/clear a configured call/text usage limit identified in the payload."
+          "body_example": "{\"deviceId\":\"3000002\",\"limitType\":\"data\",\"profileId\":\"2000002\"}",
+          "description": "Clear a usage limit (verified live 2026-08-28). Body identifies the limit by profileId, deviceId and limitType (data|text|call)."
         }
       }
     },
@@ -4453,13 +4453,13 @@
         "postSchedule": {
           "method": "POST",
           "path": "/parental-control/frisco/v6/schedules",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"schedules\":[{\"alertOn\":true,\"blockContent\":false,\"createdAt\":\"2024-01-01T00:00:00Z\",\"days\":[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\"endTime\":\"06:00\",\"filterId\":\"filter-1\",\"name\":\"Night hours\",\"notifyMember\":1,\"profileId\":222,\"scheduleId\":\"\",\"scheduleType\":\"nhr\",\"startTime\":\"22:00\",\"subtitle\":\"Bedtime\",\"timezone\":\"EST\",\"updatedAt\":\"2024-01-02T00:00:00Z\"}]}",
-          "description": "POST /parental-control/frisco/v6/schedules — create a new bedtime/school/downtime schedule. Body schema shares the schedules[] shape captured live for putSchedule (create omits scheduleId); confirmed=false since only the update (PUT) flow was exercised on the device."
+          "body_example": "{\"schedules\":[{\"alertOn\":false,\"blockContent\":true,\"days\":[\"Mon\"],\"endTime\":\"22:52\",\"name\":\"Custom schedule 1\",\"profileId\":2000002,\"scheduleType\":\"cus\",\"startTime\":\"22:37\",\"timezone\":\"EST\",\"notifyMember\":2000001}]}",
+          "description": "Create a schedule (verified live 2026-08-28). schedules[] item: profileId=child, scheduleType=cus (custom) | nhr (night hours) | shr (school hours); startTime/endTime are 24h HH:MM; days are 3-letter (Sun..Sat); timezone is a short zone code (EST..); blockContent=true blocks internet, alertOn=true is alerts-only (mutually exclusive); notifyMember=the guardian profileId to notify. No scheduleId on create."
         },
         "putSchedule": {
           "method": "PUT",
@@ -4475,14 +4475,14 @@
         "deleteSchedule": {
           "method": "DELETE",
           "path": "/parental-control/frisco/v6/schedules",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "schedule-id"
           ],
-          "description": "DELETE /parental-control/frisco/v6/schedules — permanently removes a bedtime/school/downtime schedule (by schedule-id)"
+          "description": "Delete a schedule by schedule-id (verified live 2026-08-28). Query schedule-id=the scheduleId from getSchedules; no body."
         },
         "getScreenTimeData": {
           "method": "GET",
@@ -4669,8 +4669,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"eventType\":\"CREATE\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-1\",\"profileId\":222,\"recipientList\":[111,222]}]}",
-          "description": "DELETE /vsf/location/v5/scheduled/alert/settings — permanently removes a scheduled location alert (rule sent in body)"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"recipientList\":[2000002]}]}",
+          "description": "(Alias of schedule_alert.deleteScheduledAlert) Delete a scheduled location alert; identify by eventId (+ eventDateTime, recipientList). productType=vsf, eventType=locationAlert."
         }
       }
     },
