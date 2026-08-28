@@ -281,6 +281,29 @@ func TestLiveCapturedBodies2(t *testing.T) {
 	}
 }
 
+// TestScreenTimeCaptured locks in the screen-time mutations verified live via CLI round-trip
+// (2026-08-28): POST create (200) has NO screenTimeLimitId; PUT update (200) carries it; DELETE
+// (200) is by screenTimeLimitId query. timeZone is a short zone code (the pre-capture bodies had
+// screenTimeLimitId on the create and an IANA timezone). RED against the pre-capture descriptor.
+func TestScreenTimeCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, _ := d.Entity("schedules")
+	post := e.Operations["postScreenTimeData"]
+	if !post.Confirmed || strings.Contains(post.BodyExample, "screenTimeLimitId") || !strings.Contains(post.BodyExample, `"timeZone":"EST"`) {
+		t.Errorf("postScreenTimeData must be confirmed, no screenTimeLimitId, short-code timeZone: confirmed=%v ex=%s", post.Confirmed, post.BodyExample)
+	}
+	put := e.Operations["putScreenTimeData"]
+	if !put.Confirmed || !strings.Contains(put.BodyExample, "screenTimeLimitId") || strings.Contains(put.BodyExample, "America/") {
+		t.Errorf("putScreenTimeData must be confirmed, carry screenTimeLimitId, no IANA tz: confirmed=%v ex=%s", put.Confirmed, put.BodyExample)
+	}
+	if !e.Operations["deleteScreenTimeData"].Confirmed {
+		t.Error("deleteScreenTimeData must be confirmed (verified live)")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
