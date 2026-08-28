@@ -4499,18 +4499,18 @@
         "postScreenTimeData": {
           "method": "POST",
           "path": "/parental-control/frisco/v7/screen-time-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeZone\":\"America/New_York\",\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180}}",
-          "description": "POST /parental-control/frisco/v7/screen-time-limits — create daily screen-time limits"
+          "body_example": "{\"weeklyLimits\":{\"mon\":60,\"tue\":60,\"wed\":60,\"thu\":60,\"fri\":60,\"sat\":120,\"sun\":120},\"timeZone\":\"EST\"}",
+          "description": "Create a daily screen-time limit (verified live 2026-08-28, POST 200). weeklyLimits maps 3-letter day -> minutes (include only the days you cap); timeZone is a short zone code (EST..). No screenTimeLimitId on create."
         },
         "putScreenTimeData": {
           "method": "PUT",
           "path": "/parental-control/frisco/v7/screen-time-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4518,8 +4518,8 @@
             "requestType"
           ],
           "takes_body": true,
-          "body_example": "{\"screenTimeLimitId\":\"1234567\",\"timeZone\":\"America/New_York\",\"weeklyLimits\":{\"mon\":120,\"tue\":120,\"wed\":120,\"thu\":120,\"fri\":120,\"sat\":180,\"sun\":180}}",
-          "description": "PUT /parental-control/frisco/v7/screen-time-limits — update daily screen-time limits"
+          "body_example": "{\"screenTimeLimitId\":\"00000000-0000-0000-0000-000000000000\",\"weeklyLimits\":{\"mon\":90},\"timeZone\":\"EST\"}",
+          "description": "Update a daily screen-time limit (verified live 2026-08-28, PUT 200). Same as postScreenTimeData plus screenTimeLimitId (from getScreenTimeData / the create response)."
         },
         "actionOnScreenTimeData": {
           "method": "PUT",
@@ -4538,14 +4538,14 @@
         "deleteScreenTimeData": {
           "method": "DELETE",
           "path": "/parental-control/frisco/v7/screen-time-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "screenTimeLimitId"
           ],
-          "description": "DELETE /parental-control/frisco/v7/screen-time-limits — permanently removes a screen-time limit (by screenTimeLimitId)"
+          "description": "Delete a screen-time limit (verified live 2026-08-28, 200). Query screenTimeLimitId; no body."
         },
         "askForMoreScreenTime": {
           "method": "POST",
