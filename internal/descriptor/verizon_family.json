@@ -352,15 +352,13 @@
         },
         "getSdkLicenseKey": {
           "method": "GET",
-          "path": "/frisco/key-mgmt/v5/keys",
+          "path": "/frisco/key-mgmt/v5/keys?keys=MITEK_ANDROID_LICENSEKEY",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "keys"
-          ],
-          "description": "Fetch the license key for the on-device ID-scan (Mitek) SDK."
+          "query": [],
+          "description": "Fetch the age-verification SDK (Mitek) license key. keys=MITEK_ANDROID_LICENSEKEY is fixed (baked)."
         },
         "submitVerification": {
           "method": "POST",
@@ -795,15 +793,13 @@
         },
         "getServiceKeys": {
           "method": "GET",
-          "path": "/frisco/key-mgmt/v5/keys",
+          "path": "/frisco/key-mgmt/v5/keys?keys=HERE_MAP_ANDROID_PARENT_ACCESS_KEY_ID,HERE_MAP_ANDROID_CHILD_ACCESS_KEY_ID,HERE_MAP_ANDROID_PARENT_ACCESS_KEY_SECRET,HERE_MAP_ANDROID_CHILD_ACCESS_KEY_SECRET,VSF_HERE_MAPBOX_ACCESS_TOKEN,MB_ANDROID_PARENT,MB_ANDROID_CHILD",
           "confirmed": false,
-          "query": [
-            "keys"
-          ],
+          "query": [],
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Fetch service/API keys from key management"
+          "description": "Fetch the map/service keys the app uses (HERE + Mapbox parent/child). The fixed key-NAME list is baked into the path; the response returns their values."
         }
       }
     },
@@ -1388,7 +1384,7 @@
             "profiles",
             "hasParentalCtrlPermissions"
           ],
-          "description": "Fetch the full details behind the tamper status banner"
+          "description": "Get tamper/health banner detail. Query: feature=tamper|locNotResponding|dnsNotResponding, profiles=JSON object string mapping profileId to its device-id array (e.g. {\"<pid>\":[<did>]}), hasParentalCtrlPermissions=true|false."
         },
         "postReportSetting": {
           "method": "POST",
@@ -1563,7 +1559,7 @@
           "query": [
             "driveId"
           ],
-          "description": "Fetch detailed data (route/events) for a specific driving trip"
+          "description": "Fetch detailed data (route/events) for one driving trip. Query driveId=a trip id from getTrips."
         },
         "getTripSummary": {
           "method": "GET",
@@ -1883,15 +1879,13 @@
       "operations": {
         "getParentalControlFeaturePermissions": {
           "method": "GET",
-          "path": "/vsf/commsplatform/v5/view/featurePermissions",
+          "path": "/vsf/commsplatform/v5/view/featurePermissions?featureGroup=parentalcontrols",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "featureGroup"
-          ],
-          "description": "Read who-can-view feature permissions for a group (featureGroup defaults to parentalcontrols)"
+          "query": [],
+          "description": "List parental-control feature permissions for the target service's members. featureGroup=parentalcontrols is fixed (baked). Target a service that has members via --service-id."
         },
         "changeUserProfileRole": {
           "method": "PUT",
@@ -2019,14 +2013,12 @@
         },
         "updateDeviceGeofenceSettings": {
           "method": "PUT",
-          "path": "/vsf/location/v6/geofence/settings",
+          "path": "/vsf/location/v6/geofence/settings?operation=configGeoDevice",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "operation=configGeoDevice"
-          ],
+          "query": [],
           "takes_body": true,
           "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"isLocationChanged\":true,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.422,\"longitude\":-122.084,\"altitude\":0.0},\"address\":{\"street1\":\"1600 Amphitheatre Pkwy\",\"street2\":\"Apt 2\",\"city\":\"Mountain View\",\"state\":\"CA\",\"zip\":\"94043\",\"country\":\"US\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"deviceId\":101,\"deviceType\":\"PHONE\",\"eligibleForGeofence\":true,\"geofenceId\":\"gf-xyz789\",\"geofenceType\":\"arrival_departure\",\"operation\":\"UPDATE\",\"precision\":{\"type\":\"meters\",\"value\":150.0},\"profileId\":202,\"schedule\":{\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\"],\"startTime\":\"09:00\",\"endTime\":\"17:00\"}}]}],\"accountId\":12345,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Google Pixel 7\",\"MAPPVersion\":\"8.101.30\"}",
           "description": "Update an existing device geofence / saved-place boundary (PUT location v6 geofence/settings)."
@@ -2382,13 +2374,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType=pickMeUp",
-            "profileRole=CHILD",
-            "operation=getAvailableParents",
-            "profileId",
-            "eventType",
-            "eventStatus",
-            "profileRole"
+            "profileId"
           ],
           "description": "List parents currently available to answer a child's Pick Me Up ride request."
         },
@@ -2422,21 +2408,16 @@
         },
         "getPickMeUpStatus": {
           "method": "GET",
-          "path": "/vsf/location/v5/events/active",
+          "path": "/vsf/location/v5/events/active?eventType=pickMeUp&eventStatus=active",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType=pickMeUp",
-            "profileRole=CHILD",
-            "operation=getAvailableParents",
             "profileId",
-            "eventType",
-            "eventStatus",
             "profileRole"
           ],
-          "description": "Get the status of active location events (Pick Me Up, etc.) for a profile/role."
+          "description": "Get Pick-Me-Up event status. eventType=pickMeUp and eventStatus=active are fixed (baked). Query: profileId=the target profile id, profileRole=GUARDIAN|DEPENDENT|MEMBER|PET."
         },
         "manageLiveLocationRequest": {
           "method": "POST",
@@ -2500,51 +2481,46 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "operation=configGeoDevice"
-          ],
+          "query": [],
           "takes_body": true,
           "body_example": "{\"services\":[{\"serviceId\":111,\"events\":[{\"geofenceName\":\"Home\",\"deviceGeofenceConfigList\":[{\"deviceId\":98765,\"deviceType\":\"phone\",\"geofenceId\":\"gf-1\",\"geofenceType\":\"enter\",\"operation\":\"add\",\"eligibleForGeofence\":true,\"profileId\":42}],\"useLocationPush\":false,\"isLastKnownLoc\":false,\"geofenceViolationRetryCounter\":0}]}],\"source\":\"<runtime: ConfigSource.getValue()>\",\"hasDebugGeofenceConfigured\":false}",
           "description": "Confirm geofence device setup (operation=configGeoDevice, v6)."
         },
         "getLocationSharingConfigEvent": {
           "method": "GET",
-          "path": "/vsf/location/v6/settings",
+          "path": "/vsf/location/v6/settings?eventType=allProfiles",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType",
             "profileId"
           ],
-          "description": "Read location-sharing config for a given event type (v6 settings)."
+          "description": "Read the all-profiles location-sharing config. eventType=allProfiles is fixed (baked). Query: profileId=the target profile id."
         },
         "getLocationSharingSettings": {
           "method": "GET",
-          "path": "/vsf/location/v5/settings",
+          "path": "/vsf/location/v5/settings?eventType=locationSharing",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType",
             "profileId"
           ],
-          "description": "Read the profile's location-sharing settings (v5)."
+          "description": "Read a profile's location-sharing settings. eventType=locationSharing is fixed (baked). Query: profileId=the target profile id."
         },
         "getWithWhomIamSharingLocation": {
           "method": "GET",
-          "path": "/vsf/location/v6/settings",
+          "path": "/vsf/location/v6/settings?eventType=onlySharing",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType",
             "profileId"
           ],
-          "description": "List who you are currently sharing your location with (v6 settings)."
+          "description": "List whom the profile is sharing location with. eventType=onlySharing is fixed (baked). Query: profileId=the target profile id."
         },
         "updateLocationSharingSetting": {
           "method": "PUT",
@@ -3093,15 +3069,13 @@
         },
         "getWebAppVisibility": {
           "method": "GET",
-          "path": "/frisco/parental-control/v5/web-app-activity/visibility",
+          "path": "/frisco/parental-control/v5/web-app-activity/visibility?vpn-retry-type=BACKGROUND_REFRESH",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "vpn-retry-type"
-          ],
-          "description": "Get web/app-activity visibility (VPN status) for a profile."
+          "query": [],
+          "description": "Check whether web/app-activity is visible (VPN/DNS reporting reachable). vpn-retry-type=BACKGROUND_REFRESH is fixed (baked)."
         },
         "reSendInvite": {
           "method": "PATCH",
@@ -5224,15 +5198,13 @@
       "operations": {
         "getWebAppVisibility": {
           "method": "GET",
-          "path": "/frisco/parental-control/v5/web-app-activity/visibility",
+          "path": "/frisco/parental-control/v5/web-app-activity/visibility?vpn-retry-type=BACKGROUND_REFRESH",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "vpn-retry-type"
-          ],
-          "description": "Check whether the monitoring VPN is active so web/app activity is visible; takes a vpn-retry-type query"
+          "query": [],
+          "description": "Check whether web/app-activity is visible (VPN/DNS reporting reachable). vpn-retry-type=BACKGROUND_REFRESH is fixed (baked)."
         }
       }
     },
