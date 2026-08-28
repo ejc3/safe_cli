@@ -178,6 +178,46 @@ func TestBakedFixedQueryValues(t *testing.T) {
 	}
 }
 
+// TestLiveCapturedBodies locks in the mutation bodies corrected from live eCapture ground
+// truth (emulator, 2026-08-28) where the decompile gave the right shape but wrong values:
+// scheduled-alert eventType is "locationAlert" (not "schedule_alert"), productType is lowercase
+// "vsf", and updateLocationSharingSetting carries locationSharingConfig with no eventType. Each
+// was round-tripped through the CLI against prod (post 201 / delete 200 / sharing PUT 200). RED
+// against the pre-capture descriptor.
+func TestLiveCapturedBodies(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := func(en, name string) Operation {
+		e, _ := d.Entity(en)
+		if o, ok := e.Operations[name]; ok {
+			return o
+		}
+		return e.Actions[name]
+	}
+	post := op("schedule_alert", "postScheduleAlert")
+	if !post.Confirmed {
+		t.Error("schedule_alert.postScheduleAlert must be confirmed (verified live)")
+	}
+	for _, want := range []string{`"eventType":"locationAlert"`, `"productType":"vsf"`, `"alertTime"`, `"everyDay"`} {
+		if !strings.Contains(post.BodyExample, want) {
+			t.Errorf("postScheduleAlert body missing %q: %s", want, post.BodyExample)
+		}
+	}
+	if strings.Contains(post.BodyExample, "schedule_alert") || strings.Contains(post.BodyExample, `"VSF"`) {
+		t.Errorf("postScheduleAlert still carries the wrong pre-capture values: %s", post.BodyExample)
+	}
+	del := op("schedule_alert", "deleteScheduledAlert")
+	if !del.Confirmed || !strings.Contains(del.BodyExample, `"eventType":"locationAlert"`) || strings.Contains(del.BodyExample, "eventDetails") {
+		t.Errorf("deleteScheduledAlert must be confirmed with an eventId body and no eventDetails: confirmed=%v ex=%s", del.Confirmed, del.BodyExample)
+	}
+	share := op("location", "updateLocationSharingSetting")
+	if !share.Confirmed || !strings.Contains(share.BodyExample, "locationSharingConfig") || strings.Contains(share.BodyExample, "eventType") {
+		t.Errorf("updateLocationSharingSetting must be confirmed with locationSharingConfig and no eventType: confirmed=%v ex=%s", share.Confirmed, share.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
