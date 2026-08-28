@@ -1098,7 +1098,7 @@
         "postObjectionableSettings": {
           "method": "POST",
           "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1398,7 +1398,7 @@
         "postReportSetting": {
           "method": "POST",
           "path": "/vsf/commsplatform/v5/report-settings?reportCategory=all",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1412,7 +1412,7 @@
         "postReportSettings": {
           "method": "POST",
           "path": "/vsf/commsplatform/v5/report-settings?reportCategory=individual",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
