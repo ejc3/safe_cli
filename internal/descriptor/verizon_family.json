@@ -869,13 +869,13 @@
         },
         "getFamilyMembersAndBuddies": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/gizmo/managecontacts?contactType=gizmoContact&filterAvailableMdns=True&filterPermissions=",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts?contactType=gizmoContact&filterAvailableMdns=True",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [],
-          "description": "List family members + buddies available as Gizmo contacts. Fixed (baked): contactType=gizmoContact, filterAvailableMdns=True, filterPermissions (empty)."
+          "description": "List family members + buddies available as Gizmo contacts. Fixed (baked): contactType=gizmoContact, filterAvailableMdns=True. (Per ContactManagementApi.java:215 this op declares only contactType + filterAvailableMdns.)"
         },
         "getGizmoContactImage": {
           "method": "GET",

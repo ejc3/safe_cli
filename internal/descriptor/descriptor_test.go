@@ -129,6 +129,19 @@ func TestBakedFixedQueryValues(t *testing.T) {
 			t.Errorf("%s.%s path must bake %q (was 400 without it); path=%q", w.en, w.name, w.frag, p)
 		}
 	}
+	// The two gizmo-contacts ops share a route but declare DIFFERENT params
+	// (ContactManagementApi.java:215/223): getFamilyMembersAndBuddies takes contactType +
+	// filterAvailableMdns; getGizmoContacts takes contactType + filterPermissions. Neither may
+	// carry the other's param (Codex #35 — an empty filterPermissions= leaked onto the former).
+	fam := op("contacts", "getFamilyMembersAndBuddies").Path
+	if !strings.Contains(fam, "filterAvailableMdns=True") || strings.Contains(fam, "filterPermissions") {
+		t.Errorf("getFamilyMembersAndBuddies must bake filterAvailableMdns=True and NOT filterPermissions; path=%q", fam)
+	}
+	giz := op("contacts", "getGizmoContacts").Path
+	if !strings.Contains(giz, "filterPermissions=True") || strings.Contains(giz, "filterAvailableMdns") {
+		t.Errorf("getGizmoContacts must bake filterPermissions=True and NOT filterAvailableMdns; path=%q", giz)
+	}
+
 	// The baked keys must NOT also remain in the query name-list (that would double-send them).
 	baked := map[string][]string{
 		"content_filter.getCategories":                     {"categorySupported", "include-description", "r", "group-name"},
