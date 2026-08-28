@@ -4664,7 +4664,7 @@
         "deleteScheduledAlert": {
           "method": "DELETE",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],

@@ -269,9 +269,15 @@ func TestLiveCapturedBodies2(t *testing.T) {
 			t.Errorf("%s.%s must be confirmed (verified live)", w[0], w[1])
 		}
 	}
-	// the spurious schedules.deleteScheduledAlert duplicate must no longer carry the bogus body
-	if ex := op("schedules", "deleteScheduledAlert").BodyExample; strings.Contains(ex, `"CREATE"`) || strings.Contains(ex, `"VSF"`) {
-		t.Errorf("schedules.deleteScheduledAlert still has the bogus pre-capture body: %s", ex)
+	// the schedules.deleteScheduledAlert alias shares the canonical (confirmed) op's route+body,
+	// so it must carry the real body AND be confirmed (Codex #40 — describe --json must not
+	// misclassify a verified op just because it is the aliased copy).
+	alias := op("schedules", "deleteScheduledAlert")
+	if strings.Contains(alias.BodyExample, `"CREATE"`) || strings.Contains(alias.BodyExample, `"VSF"`) {
+		t.Errorf("schedules.deleteScheduledAlert still has the bogus pre-capture body: %s", alias.BodyExample)
+	}
+	if !alias.Confirmed {
+		t.Error("schedules.deleteScheduledAlert alias must be confirmed (same verified route+body as the canonical)")
 	}
 }
 
