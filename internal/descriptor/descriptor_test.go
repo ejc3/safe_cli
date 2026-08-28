@@ -125,6 +125,22 @@ func TestBakedFixedQueryValues(t *testing.T) {
 		{"contacts", "getGizmoContacts", "filterPermissions=True"},
 		{"contacts", "getAllContactsRequest", "contactType=all"},
 		{"restricted_usage", "getAllTheLimits", "limitType=all"},
+		// location / permissions / keys ops (PR #36) — each fixed value live-verified.
+		{"location", "getLocationSharingSettings", "eventType=locationSharing"},
+		{"location", "getWithWhomIamSharingLocation", "eventType=onlySharing"},
+		{"location", "getLocationSharingConfigEvent", "eventType=allProfiles"},
+		{"location", "getPickMeUpStatus", "eventType=pickMeUp"},
+		{"location", "getPickMeUpStatus", "eventStatus=active"},
+		{"location", "getAvailableParentForPickMeUp", "eventType=pickMeUp"},
+		{"location", "getAvailableParentForPickMeUp", "operation=getAvailableParents"},
+		{"location", "sendGeoFenceConfirmation", "operation=configGeoDevice"},
+		{"geofence", "updateDeviceGeofenceSettings", "operation=configGeoDevice"},
+		{"feature_permissions", "getParentalControlFeaturePermissions", "featureGroup=parentalcontrols"},
+		{"pairing", "getWebAppVisibility", "vpn-retry-type=BACKGROUND_REFRESH"},
+		{"vpn_status", "getWebAppVisibility", "vpn-retry-type=BACKGROUND_REFRESH"},
+		{"age_verification", "getSdkLicenseKey", "keys=MITEK_ANDROID_LICENSEKEY"},
+		{"config", "getServiceKeys", "keys=HERE_MAP_ANDROID_PARENT_ACCESS_KEY_ID"},
+		{"config", "getServiceKeys", "MB_ANDROID_CHILD"},
 	}
 	for _, w := range wantInPath {
 		if p := op(w.en, w.name).Path; !strings.Contains(p, w.frag) {
