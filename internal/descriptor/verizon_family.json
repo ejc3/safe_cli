@@ -2534,13 +2534,13 @@
         "updateLocationSharingSetting": {
           "method": "PUT",
           "path": "/vsf/location/v5/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update the profile's location-sharing settings (v5).",
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"profileId\":42,\"eventType\":\"locationSharing\",\"settings\":{\"locationSharingSettings\":{\"sharingList\":[{\"profileId\":43,\"isLocationShared\":true}]}}}]}"
+          "description": "Update per-member location sharing (verified live 2026-08-28 via eCapture). No productType, no eventType. events[].profileId = the logged-in GUARDIAN. locationSharingConfig.defaultLocationSharing = dontShareAutomatically | shareAutomatically (the 'share with new family members' default). settings.locationSharingSettings.sharingList = [{profileId, isLocationShared}] — one entry per member whose sharing you toggle.",
+          "body_example": "{\"accountId\":1000001,\"events\":[{\"profileId\":2000001,\"locationSharingConfig\":{\"defaultLocationSharing\":\"dontShareAutomatically\"},\"settings\":{\"locationSharingSettings\":{\"sharingList\":[{\"profileId\":2000002,\"isLocationShared\":true}]}}}]}"
         },
         "updateLocationSharingSettingConfig": {
           "method": "PUT",
@@ -4302,13 +4302,13 @@
         "deleteScheduledAlert": {
           "method": "DELETE",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"recipientList\":[111,222]}]}",
-          "description": "DELETE /vsf/location/v5/scheduled/alert/settings — permanently removes a scheduled location-alert rule (rule sent in body)"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"recipientList\":[2000002]}]}",
+          "description": "Delete a scheduled location alert (verified live 2026-08-28). Identifies the alert by eventId (+ eventDateTime, recipientList=[tracked member]); no eventDetails/profileId. productType=vsf."
         },
         "getScheduledAlerts": {
           "method": "GET",
@@ -4327,13 +4327,13 @@
         "postScheduleAlert": {
           "method": "POST",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"eventDetails\":{\"alertTime\":\"08:00\",\"startTime\":\"08:00\",\"endTime\":\"09:00\",\"frequency\":30,\"days\":{\"everyDay\":false,\"weekDays\":[\"MONDAY\",\"WEDNESDAY\",\"FRIDAY\"]},\"isEnabled\":true},\"recipientList\":[111,222]}]}",
-          "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location-alert rule"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"profileId\":2000001,\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"eventDetails\":{\"alertTime\":\"9:00 PM\",\"days\":{\"everyDay\":true,\"weekDays\":[]}},\"recipientList\":[2000002]}]}",
+          "description": "Create a scheduled location alert (verified live 2026-08-28 via eCapture). productType=vsf (lowercase). events[].profileId = the requesting GUARDIAN who receives the alert; recipientList = [the TRACKED member's profileId]. eventType=locationAlert. eventDetails.alertTime is 'h:mm AM/PM'; for daily use days.everyDay=true with weekDays:[], for specific days everyDay=false with weekDays (e.g. [\"MONDAY\",\"FRIDAY\"]). eventId is a client-generated UUID."
         },
         "updateScheduledAlert": {
           "method": "PUT",
@@ -4343,8 +4343,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"productType\":\"VSF\",\"events\":[{\"profileId\":222,\"eventType\":\"schedule_alert\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"eventDetails\":{\"alertTime\":\"08:00\",\"startTime\":\"08:00\",\"endTime\":\"09:00\",\"frequency\":30,\"days\":{\"everyDay\":true,\"weekDays\":[]},\"isEnabled\":true},\"recipientList\":[111,222]}]}",
-          "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location-alert rule"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"profileId\":2000001,\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"eventDetails\":{\"alertTime\":\"9:00 PM\",\"days\":{\"everyDay\":true,\"weekDays\":[]}},\"recipientList\":[2000002]}]}",
+          "description": "Update a scheduled location alert. Same body as postScheduleAlert (shared ScheduleAlertRequest DTO, PUT to the same route), with eventId set to the existing alert's id."
         }
       }
     },
