@@ -218,6 +218,27 @@ func TestLiveCapturedBodies(t *testing.T) {
 	}
 }
 
+// TestReportSettingsConfirmed locks in the report/alert-settings mutations verified live
+// (2026-08-28) against /vsf/commsplatform/v5/report-settings: postObjectionableSettings was
+// flipped false->200->read False->restored, and postReportSetting/postReportSettings were
+// no-op re-posts of the read state (200). All share the endpoint + {"settings":{...}} body.
+func TestReportSettingsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range [][2]string{{"content_filter", "postObjectionableSettings"}, {"dashboard", "postReportSetting"}, {"dashboard", "postReportSettings"}} {
+		e, _ := d.Entity(w[0])
+		o := e.Operations[w[1]]
+		if !o.Confirmed {
+			t.Errorf("%s.%s must be confirmed (verified live)", w[0], w[1])
+		}
+		if !strings.Contains(o.BodyExample, `"settings"`) {
+			t.Errorf("%s.%s body must wrap settings: %s", w[0], w[1], o.BodyExample)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
