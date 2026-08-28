@@ -616,13 +616,13 @@
         "addContactToTheList": {
           "method": "POST",
           "path": "/vsf/callandtext/v5/managecontacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
-          "description": "Add a contact to the trust/block/watch list"
+          "body_example": "{\"contactType\":\"blocked\",\"contact\":{\"contactInfo\":\"5551230000\",\"name\":\"Example\"},\"profileId\":\"2000002\",\"deviceId\":\"3000002\"}",
+          "description": "Add a contact to the child's trusted/blocked/watchlist (verified live 2026-08-28 for blocked, 200). contactType=blocked|trusted|watchlist (lowercase); contact={contactInfo:phone, name}. profileId/deviceId identify the member."
         },
         "addCustomNameToAddressBook": {
           "method": "PUT",
@@ -992,13 +992,13 @@
         "addContactToTheList": {
           "method": "POST",
           "path": "/vsf/callandtext/v5/managecontacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contactType\":\"TRUSTED\",\"contact\":{\"contactInfo\":\"+15551234567\",\"name\":\"Grandma\"},\"profileId\":\"profile-456\",\"deviceId\":\"device-123\"}",
-          "description": "Add a contact to the managed contact list"
+          "body_example": "{\"contactType\":\"blocked\",\"contact\":{\"contactInfo\":\"5551230000\",\"name\":\"Example\"},\"profileId\":\"2000002\",\"deviceId\":\"3000002\"}",
+          "description": "Add a contact to the child's trusted/blocked/watchlist (verified live 2026-08-28 for blocked, 200). contactType=blocked|trusted|watchlist (lowercase); contact={contactInfo:phone, name}. profileId/deviceId identify the member."
         },
         "deleteContactFromTheList": {
           "method": "DELETE",
@@ -1031,13 +1031,13 @@
         "putPrivateRestrictedCall": {
           "method": "PUT",
           "path": "/vsf/callandtext/v5/managecontacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"PRIVATE\",\"deviceId\":\"device-123\",\"profileId\":\"profile-456\"}",
-          "description": "Set a contact's private/restricted calling flag"
+          "body_example": "{\"blockPrivateRestricted\":true,\"contactType\":\"blockPrivateRestricted\",\"deviceId\":\"3000002\",\"profileId\":\"2000002\"}",
+          "description": "Toggle blocking of private/restricted (unlisted) numbers for the child (verified live 2026-08-28, 200). contactType=blockPrivateRestricted; blockPrivateRestricted true=block. profileId/deviceId identify the member."
         }
       }
     },

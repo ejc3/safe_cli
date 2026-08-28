@@ -319,6 +319,27 @@ func TestCreateGroupPolicyCaptured(t *testing.T) {
 	}
 }
 
+// TestContactsCaptured locks in the contacts mutations captured live via eCapture (2026-08-28):
+// putPrivateRestrictedCall contactType is "blockPrivateRestricted" (not "PRIVATE"), and
+// addContactToTheList contactType is a lowercase enum (blocked|trusted|watchlist), not "TRUSTED".
+// RED against the pre-capture descriptor.
+func TestContactsCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pr := d.Entities["contacts"].Operations["putPrivateRestrictedCall"]
+	if !pr.Confirmed || !strings.Contains(pr.BodyExample, `"contactType":"blockPrivateRestricted"`) {
+		t.Errorf("putPrivateRestrictedCall must be confirmed with contactType blockPrivateRestricted: confirmed=%v ex=%s", pr.Confirmed, pr.BodyExample)
+	}
+	for _, en := range []string{"contacts", "calls_and_texts"} {
+		a := d.Entities[en].Operations["addContactToTheList"]
+		if !a.Confirmed || strings.Contains(a.BodyExample, `"TRUSTED"`) || !strings.Contains(a.BodyExample, `"contact"`) {
+			t.Errorf("%s.addContactToTheList must be confirmed with a lowercase contactType (not TRUSTED): confirmed=%v ex=%s", en, a.Confirmed, a.BodyExample)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
