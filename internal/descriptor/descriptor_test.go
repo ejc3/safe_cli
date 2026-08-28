@@ -95,6 +95,58 @@ func TestNoDynamicQueryLiterals(t *testing.T) {
 	}
 }
 
+// TestBakedFixedQueryValues locks in the decompile-mined fixed query values (workflow
+// wf_f3f1d709) that were baked into op paths so agents don't have to guess them, and asserts
+// the corresponding keys left the `query` name-list. RED against the pre-fix descriptor (the
+// paths carried none of these and the keys were still bare names). Live-verified: each op was
+// 400 without these values and 200 with them.
+func TestBakedFixedQueryValues(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := func(en, name string) Operation {
+		e, _ := d.Entity(en)
+		if o, ok := e.Operations[name]; ok {
+			return o
+		}
+		return e.Actions[name]
+	}
+	wantInPath := []struct{ en, name, frag string }{
+		{"content_filter", "getCategories", "categorySupported=v7"},
+		{"content_filter", "getCategories", "include-description=false"},
+		{"content_filter", "getFilterContent", "include-description=true"},
+		{"calls_and_texts", "getCallAndTextActivityListV7", "activityType=call,text"},
+		{"calls_and_texts", "getCallAndTextActivityListV7", "timezone=preferred"},
+		{"calls_and_texts", "getCallAndTextProfileSummaryListV7", "summaryOnly=true"},
+		{"contacts", "getGizmoContacts", "contactType=gizmoContact"},
+		{"contacts", "getGizmoContacts", "filterPermissions=True"},
+		{"contacts", "getAllContactsRequest", "contactType=all"},
+		{"restricted_usage", "getAllTheLimits", "limitType=all"},
+	}
+	for _, w := range wantInPath {
+		if p := op(w.en, w.name).Path; !strings.Contains(p, w.frag) {
+			t.Errorf("%s.%s path must bake %q (was 400 without it); path=%q", w.en, w.name, w.frag, p)
+		}
+	}
+	// The baked keys must NOT also remain in the query name-list (that would double-send them).
+	baked := map[string][]string{
+		"content_filter.getCategories":                     {"categorySupported", "include-description", "r", "group-name"},
+		"calls_and_texts.getAllTrustBlockWatchContactList": {"contactType"},
+		"restricted_usage.getAllTheLimits":                 {"limitType"},
+	}
+	for key, keys := range baked {
+		parts := strings.SplitN(key, ".", 2)
+		for _, q := range op(parts[0], parts[1]).Query {
+			for _, k := range keys {
+				if q == k {
+					t.Errorf("%s still lists baked key %q in query (should ride in the path only)", key, k)
+				}
+			}
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

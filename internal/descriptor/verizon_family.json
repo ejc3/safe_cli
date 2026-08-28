@@ -667,38 +667,35 @@
         },
         "getAllTrustBlockWatchContactList": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/managecontacts",
+          "path": "/vsf/callandtext/v5/managecontacts?contactType=all",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "profileId",
-            "deviceId",
-            "contactType"
+            "deviceId"
           ],
-          "description": "List all trusted, blocked, and watched contacts"
+          "description": "List all trusted/blocked/watched contacts. contactType=all is fixed (baked). Query: profileId, deviceId (the member's ids)."
         },
         "getCallAndTextActivityListV7": {
           "method": "GET",
-          "path": "/callandtext/frisco/callandtext/v7/activity",
+          "path": "/callandtext/frisco/callandtext/v7/activity?activityType=call,text&timezone=preferred",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "summaryOnly",
             "startDate",
             "endDate",
-            "activityType",
-            "timezone",
+            "summaryOnly",
             "betaProviders"
           ],
-          "description": "List call and text activity-log entries"
+          "description": "List call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', summaryOnly=true|false, betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getCallAndTextProfileSummaryListV7": {
           "method": "GET",
-          "path": "/callandtext/frisco/callandtext/v7/activity/summary",
+          "path": "/callandtext/frisco/callandtext/v7/activity/summary?summaryOnly=true&activityType=call,text&timezone=preferred",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
@@ -706,16 +703,13 @@
           "query": [
             "startDate",
             "endDate",
-            "summaryOnly",
-            "activityType",
-            "timezone",
             "betaProviders"
           ],
-          "description": "Get the per-profile call/text activity summary"
+          "description": "Per-profile call/text summary (v7). Fixed (baked): summaryOnly=true, activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getCallAndTextSpecificContactActivityListV7": {
           "method": "GET",
-          "path": "/callandtext/frisco/callandtext/v7/activity/contact",
+          "path": "/callandtext/frisco/callandtext/v7/activity/contact?activityType=call,text&timezone=preferred",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
@@ -724,11 +718,9 @@
             "otherPartyMdn",
             "startDate",
             "endDate",
-            "activityType",
-            "timezone",
             "betaProviders"
           ],
-          "description": "List call/text activity for one specific contact"
+          "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's MDN, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getSchedulesRequest": {
           "method": "GET",
@@ -741,7 +733,7 @@
         },
         "getTopContactListByActivityV7": {
           "method": "GET",
-          "path": "/callandtext/frisco/callandtext/v7/activity/top",
+          "path": "/callandtext/frisco/callandtext/v7/activity/top?activityType=call,text&timezone=preferred",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
@@ -751,11 +743,9 @@
             "deviceId",
             "startDate",
             "endDate",
-            "activityType",
-            "timezone",
             "betaProviders"
           ],
-          "description": "List the top contacts ranked by call/text activity"
+          "description": "Top contacts by call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: profileId, deviceId (member's ids), startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
         }
       }
     },
@@ -879,46 +869,37 @@
         },
         "getFamilyMembersAndBuddies": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts?contactType=gizmoContact&filterAvailableMdns=True&filterPermissions=",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "contactType",
-            "filterAvailableMdns",
-            "filterPermissions"
-          ],
-          "description": "List family members and calling buddies for a Gizmo"
+          "query": [],
+          "description": "List family members + buddies available as Gizmo contacts. Fixed (baked): contactType=gizmoContact, filterAvailableMdns=True, filterPermissions (empty)."
         },
         "getGizmoContactImage": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/gizmo/managecontacts/image",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts/image?contactType=gizmoContact",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid",
             "If-None-Match"
           ],
           "query": [
-            "contactType",
             "contactInfo",
             "contactId"
           ],
-          "description": "Fetch a Gizmo contact's image (ETag-cached)"
+          "description": "Fetch a Gizmo contact's image (ETag-cached). contactType=gizmoContact is fixed (baked). Query: contactInfo, contactId (from a getGizmoContacts row)."
         },
         "getGizmoContacts": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/gizmo/managecontacts",
+          "path": "/vsf/callandtext/v5/gizmo/managecontacts?contactType=gizmoContact&filterPermissions=True",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "contactType",
-            "filterAvailableMdns",
-            "filterPermissions"
-          ],
-          "description": "List Gizmo contacts, filtered by permissions"
+          "query": [],
+          "description": "List the Gizmo device's contacts. Fixed (baked): contactType=gizmoContact, filterPermissions=True."
         },
         "getInAppBanner": {
           "method": "GET",
@@ -930,7 +911,7 @@
           "query": [
             "pageId"
           ],
-          "description": "Fetch in-app banner content for a given page"
+          "description": "Fetch in-app banner content for a page. Query pageId=managecontact|dashboard|profile."
         },
         "getTrustedContacts": {
           "method": "GET",
@@ -1040,17 +1021,16 @@
         },
         "getAllContactsRequest": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/managecontacts",
+          "path": "/vsf/callandtext/v5/managecontacts?contactType=all",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "profileId",
-            "deviceId",
-            "contactType"
+            "deviceId"
           ],
-          "description": "List all managed contacts"
+          "description": "List all managed contacts. contactType=all is fixed (baked). Query: profileId, deviceId (the member's ids)."
         },
         "putPrivateRestrictedCall": {
           "method": "PUT",
@@ -1172,16 +1152,14 @@
         },
         "getFilterContent": {
           "method": "GET",
-          "path": "/parental-control/frisco/v7/filterContent",
+          "path": "/parental-control/frisco/v7/filterContent?include-description=true",
           "confirmed": false,
           "headers": [
             "app-name",
             "x-fp-identifier-target-serviceid"
           ],
-          "query": [
-            "include-description"
-          ],
-          "description": "Read current content-filter settings"
+          "query": [],
+          "description": "Read current content-filter settings (v7). include-description=true is fixed (baked into the path). Send the fixed header app-name: VSF."
         },
         "updateSubcategory": {
           "method": "POST",
@@ -1196,22 +1174,18 @@
         },
         "getCategories": {
           "method": "GET",
-          "path": "/parental-control/vsf/v7/categories",
+          "path": "/parental-control/vsf/v7/categories?group-name=&include-description=false&categorySupported=v7&r=0",
           "confirmed": false,
           "headers": [
             "app-name",
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "group-name",
-            "include-description",
             "include-safesearch",
-            "categorySupported",
             "resolution",
-            "sz",
-            "r"
+            "sz"
           ],
-          "description": "List content-filter categories"
+          "description": "List content-filter categories (v7). Fixed (baked into the path): group-name (empty), include-description=false, categorySupported=v7, r=0. Send the fixed header app-name: VSF. Query: include-safesearch=true|false (default false), resolution=1x|2x|3x (use 1x), sz=icon size e.g. 40x40 (40*device-density)."
         },
         "getSubCategoriesDetail": {
           "method": "GET",
@@ -1224,7 +1198,7 @@
           "query": [
             "subcategory-id"
           ],
-          "description": "Get details for a content subcategory"
+          "description": "Get details for a content subcategory (v7). Query subcategory-id=integer (from a category / subcategory listing). Send the fixed header app-name: VSF."
         },
         "setCFCategories": {
           "method": "POST",
@@ -4076,17 +4050,16 @@
         },
         "getAllTheLimits": {
           "method": "GET",
-          "path": "/vsf/callandtext/v5/usagelimits",
+          "path": "/vsf/callandtext/v5/usagelimits?limitType=all",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "profileId",
-            "deviceId",
-            "limitType"
+            "deviceId"
           ],
-          "description": "GET the list of all configured call/text usage limits for the profile."
+          "description": "List all configured call/text usage limits. limitType=all is fixed (baked). Query: profileId, deviceId (the member's ids)."
         },
         "resetLimit": {
           "method": "DELETE",
