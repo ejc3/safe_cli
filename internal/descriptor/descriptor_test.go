@@ -63,15 +63,17 @@ func TestEveryBodyOpHasACompleteExample(t *testing.T) {
 	}
 }
 
-// dynQueryLiteral matches a Java reflection type string that leaked into a query-param
-// name (e.g. "<QueryMap: HashMap<String,String>>", "(@QueryMap dynamic)") — the harvester
-// wrote the @QueryMap parameter TYPE instead of the real wire keys, leaving those ops
-// uncallable. The real keys were mined from the decompiled callers (workflow wf_173e5408).
-var dynQueryLiteral = regexp.MustCompile(`[<>]|QueryMap|HashMap|Map<|dynamic`)
+// dynQueryLiteral matches anything that is not a bare wire query key: a Java reflection type
+// string ("<QueryMap: HashMap<String,String>>", "(@QueryMap dynamic)"), or a "key=value"
+// string / whitespace jammed into the NAME list (the harvester wrote the @QueryMap parameter
+// TYPE, or baked constants, instead of the real key). A real query key is a bare identifier
+// (letters/digits/-/_), so '=', '<', '>', and whitespace never belong in one; fixed values
+// ride in the path, not the query name-list. Real keys were mined from the decompiled callers.
+var dynQueryLiteral = regexp.MustCompile(`[<>=\s]|QueryMap|HashMap|Map<|dynamic`)
 
-// TestNoDynamicQueryLiterals fails if any op's declared query params still carry a
-// reflection literal instead of a real wire key. RED against the pre-fix descriptor (12
-// ops carried "<QueryMap: HashMap<String,String>>"-style placeholders).
+// TestNoDynamicQueryLiterals fails if any op's declared query params carry anything but a bare
+// wire key. RED against the pre-fix descriptor (12 ops carried "<QueryMap: …>" placeholders;
+// several others jammed "eventType=pickMeUp"/"operation=configGeoDevice" into the name-list).
 func TestNoDynamicQueryLiterals(t *testing.T) {
 	d, err := Default()
 	if err != nil {
@@ -80,7 +82,7 @@ func TestNoDynamicQueryLiterals(t *testing.T) {
 	check := func(name string, op Operation) {
 		for _, q := range op.Query {
 			if dynQueryLiteral.MatchString(q) {
-				t.Errorf("%s has a reflection literal as a query-param name (must be the real wire key): %q", name, q)
+				t.Errorf("%s query entry is not a bare wire key (no '='/'<'/'>'/space; fixed values ride in the path): %q", name, q)
 			}
 		}
 	}
