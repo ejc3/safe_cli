@@ -239,6 +239,48 @@ func TestReportSettingsConfirmed(t *testing.T) {
 	}
 }
 
+// TestLiveCapturedBodies2 locks in the schedules/usage-limit mutations captured live via
+// eCapture (2026-08-28) and round-tripped through the CLI (postSchedule 201 -> deleteSchedule
+// 200; addLimit 200 -> resetLimit 200): postSchedule create is a minimal schedules[] with no
+// read-only fields, and the usage limitType is data|text|call (the pre-capture descriptor had
+// SCREEN_TIME). RED against the pre-capture descriptor.
+func TestLiveCapturedBodies2(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	op := func(en, name string) Operation {
+		e, _ := d.Entity(en)
+		if o, ok := e.Operations[name]; ok {
+			return o
+		}
+		return e.Actions[name]
+	}
+	ps := op("schedules", "postSchedule")
+	if !ps.Confirmed || !strings.Contains(ps.BodyExample, `"scheduleType":"cus"`) || !strings.Contains(ps.BodyExample, `"notifyMember"`) || strings.Contains(ps.BodyExample, "createdAt") {
+		t.Errorf("postSchedule must be confirmed, a minimal create body (cus + notifyMember, no createdAt): confirmed=%v ex=%s", ps.Confirmed, ps.BodyExample)
+	}
+	al := op("restricted_usage", "addLimit")
+	if !al.Confirmed || !strings.Contains(al.BodyExample, `"limitType":"data"`) || strings.Contains(al.BodyExample, "SCREEN_TIME") {
+		t.Errorf("addLimit must be confirmed with limitType data (not SCREEN_TIME): confirmed=%v ex=%s", al.Confirmed, al.BodyExample)
+	}
+	for _, w := range [][2]string{{"restricted_usage", "resetLimit"}, {"schedules", "deleteSchedule"}} {
+		if !op(w[0], w[1]).Confirmed {
+			t.Errorf("%s.%s must be confirmed (verified live)", w[0], w[1])
+		}
+	}
+	// the schedules.deleteScheduledAlert alias shares the canonical (confirmed) op's route+body,
+	// so it must carry the real body AND be confirmed (Codex #40 — describe --json must not
+	// misclassify a verified op just because it is the aliased copy).
+	alias := op("schedules", "deleteScheduledAlert")
+	if strings.Contains(alias.BodyExample, `"CREATE"`) || strings.Contains(alias.BodyExample, `"VSF"`) {
+		t.Errorf("schedules.deleteScheduledAlert still has the bogus pre-capture body: %s", alias.BodyExample)
+	}
+	if !alias.Confirmed {
+		t.Error("schedules.deleteScheduledAlert alias must be confirmed (same verified route+body as the canonical)")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
