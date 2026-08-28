@@ -63,6 +63,38 @@ func TestEveryBodyOpHasACompleteExample(t *testing.T) {
 	}
 }
 
+// dynQueryLiteral matches a Java reflection type string that leaked into a query-param
+// name (e.g. "<QueryMap: HashMap<String,String>>", "(@QueryMap dynamic)") — the harvester
+// wrote the @QueryMap parameter TYPE instead of the real wire keys, leaving those ops
+// uncallable. The real keys were mined from the decompiled callers (workflow wf_173e5408).
+var dynQueryLiteral = regexp.MustCompile(`[<>]|QueryMap|HashMap|Map<|dynamic`)
+
+// TestNoDynamicQueryLiterals fails if any op's declared query params still carry a
+// reflection literal instead of a real wire key. RED against the pre-fix descriptor (12
+// ops carried "<QueryMap: HashMap<String,String>>"-style placeholders).
+func TestNoDynamicQueryLiterals(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(name string, op Operation) {
+		for _, q := range op.Query {
+			if dynQueryLiteral.MatchString(q) {
+				t.Errorf("%s has a reflection literal as a query-param name (must be the real wire key): %q", name, q)
+			}
+		}
+	}
+	for _, en := range d.EntityNames() {
+		e, _ := d.Entity(en)
+		for _, n := range e.OperationNames() {
+			check(en+"."+n, e.Operations[n])
+		}
+		for _, n := range e.ActionNames() {
+			check(en+"."+n+" (action)", e.Actions[n])
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
