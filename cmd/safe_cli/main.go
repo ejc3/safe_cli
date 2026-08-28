@@ -194,6 +194,9 @@ func headerNames(op descriptor.Operation) []string {
 		if autoHeaders[h] || strings.Contains(h, "serviceid") {
 			continue
 		}
+		if _, auto := op.HeaderValues[h]; auto {
+			continue // fixed value the CLI auto-sends (e.g. app-name=VSF) — not a must-pass header
+		}
 		if strings.HasPrefix(h, "(") || strings.Contains(h, "@HeaderMap") || strings.Contains(h, "dynamic") {
 			continue // decompiler placeholder for an arbitrary header map, not a name
 		}

@@ -195,6 +195,10 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			headers[h] = a.idHeaders[h]
 		case a.userHeaders[h] != "":
 			headers[h] = a.userHeaders[h]
+		case o.HeaderValues[h] != "":
+			// A fixed header value the app always sends (e.g. app-name=VSF); auto-filled so an
+			// agent needn't know it. An explicit --header (handled above) still overrides.
+			headers[h] = o.HeaderValues[h]
 		case h == "x-trace-transaction-id":
 			// The app supplies a fresh UUID here; newAppRequest only adds x-transaction-id.
 			tid, terr := client.TraceID()
