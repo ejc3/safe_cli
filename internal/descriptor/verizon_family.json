@@ -1060,7 +1060,7 @@
         "createGroupPolicy": {
           "method": "POST",
           "path": "/parental-control/frisco/v8/create-group-policies",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1068,8 +1068,8 @@
             "categorySupported"
           ],
           "takes_body": true,
-          "body_example": "{\"groupId\":123}",
-          "description": "Create an age-group content-filter policy (defaults to category schema v6)"
+          "body_example": "{\"groupId\":2}",
+          "description": "Apply an age-group content-filter preset (verified live 2026-08-28, 200). body {\"groupId\":N}: 1=No Content filters, 2=Young child (5-7), 3=Child (8-12), 4=Teen (13-17). categorySupported=v6. Switching presets replaces the current subcategory filters."
         },
         "getAgeGroupMetaData": {
           "method": "GET",
