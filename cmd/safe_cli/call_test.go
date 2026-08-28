@@ -270,6 +270,15 @@ func TestRunCallSendsFixedHeaderValue(t *testing.T) {
 	if gotAppName != "OVERRIDE" {
 		t.Errorf("--header did not override fixed value: got %q, want OVERRIDE", gotAppName)
 	}
+	// A differently-cased --header (HTTP names are case-insensitive) must still override —
+	// otherwise both app-name=VSF and App-Name=CASED land in the map and the winner is
+	// nondeterministic (Codex #37).
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh, userHeaders: map[string]string{"App-Name": "CASED"}}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotAppName != "CASED" {
+		t.Errorf("case-insensitive --header did not override fixed value: got %q, want CASED", gotAppName)
+	}
 }
 
 // runCall refuses an op whose path is a runtime-resolved @Url placeholder rather than

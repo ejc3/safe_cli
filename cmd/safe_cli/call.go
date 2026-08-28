@@ -151,6 +151,18 @@ func parseKV(flag string, pairs []string) (map[string]string, error) {
 // 401 (authedRequest); tests inject a direct client.
 type doFunc func(ctx context.Context, method, path string, body []byte, headers map[string]string) (*client.Response, error)
 
+// hasHeaderCI reports whether headers contains a key equal to name ignoring case — HTTP
+// header names are case-insensitive, so a --header App-Name=X must count as overriding a
+// declared fixed value for app-name.
+func hasHeaderCI(headers map[string]string, name string) bool {
+	for k := range headers {
+		if strings.EqualFold(k, name) {
+			return true
+		}
+	}
+	return false
+}
+
 // runCall resolves the operation, fills the path and query, attaches the headers the
 // descriptor declares for it (identity values, a generated trace id, or user-supplied
 // ones), sends via do, and writes the response. Parental-control endpoints are plain
@@ -195,9 +207,11 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			headers[h] = a.idHeaders[h]
 		case a.userHeaders[h] != "":
 			headers[h] = a.userHeaders[h]
-		case o.HeaderValues[h] != "":
+		case o.HeaderValues[h] != "" && !hasHeaderCI(a.userHeaders, h):
 			// A fixed header value the app always sends (e.g. app-name=VSF); auto-filled so an
-			// agent needn't know it. An explicit --header (handled above) still overrides.
+			// agent needn't know it. An explicit --header overrides — matched case-insensitively
+			// (HTTP header names are case-insensitive), so --header App-Name=X wins over the
+			// lowercase default rather than both landing in the map with a nondeterministic winner.
 			headers[h] = o.HeaderValues[h]
 		case h == "x-trace-transaction-id":
 			// The app supplies a fresh UUID here; newAppRequest only adds x-transaction-id.
