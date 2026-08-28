@@ -768,12 +768,12 @@
           "path": "/auth/frisco/mappcontent/v6/configs",
           "confirmed": false,
           "query": [
-            "(@QueryMap dynamic)"
+            "domain"
           ],
           "headers": [
             "(@HeaderMap dynamic)"
           ],
-          "description": "Fetch secure remote app config (dynamic query/header params)"
+          "description": "Fetch secure remote app config. Query: domain=friscoParentalControl (parental-control config) or frisco-iam (IAM config). Sends an optional If-None-Match ETag header for caching."
         },
         "getConfigData (Call variant)": {
           "method": "GET",
@@ -795,15 +795,13 @@
         },
         "getNonSecureConfigData": {
           "method": "GET",
-          "path": "/nsauth/frisco/mappcontent/v6/configs/nonSecure",
+          "path": "/nsauth/frisco/mappcontent/v6/configs/nonSecure?domain=frisco-iam",
           "confirmed": false,
-          "query": [
-            "(@QueryMap dynamic)"
-          ],
+          "query": [],
           "headers": [
             "(@HeaderMap dynamic)"
           ],
-          "description": "Fetch non-secure (unauthenticated) remote config"
+          "description": "Fetch non-secure (unauthenticated) remote config. domain=frisco-iam is fixed (baked into the path)."
         },
         "getServiceKeys": {
           "method": "GET",
@@ -1603,7 +1601,7 @@
           "query": [
             "timezone"
           ],
-          "description": "Fetch a summary of driving trips (timezone optional)"
+          "description": "Fetch a summary of driving trips. Query key is lowercase 'timezone', value is the same short US zone code as getTrips (EST|CST|MST|MST_NODST|PST|AKST|HST); the app defaults to EST when unset."
         },
         "getTrips": {
           "method": "GET",
@@ -1615,7 +1613,7 @@
           "query": [
             "timeZone"
           ],
-          "description": "List driving trips (timeZone query, camel-case Z)"
+          "description": "List driving trips. Query timeZone (capital Z) is a SHORT US zone code, NOT an IANA id — one of EST | CST | MST | MST_NODST (Arizona) | PST | AKST | HST. (Live-verified: an IANA id 400s 'Invalid timezone value'; PST is accepted.)"
         },
         "patchTransportationMode": {
           "method": "PATCH",
@@ -4425,9 +4423,12 @@
           "path": "/frisco/parental-control/v1/app-usage",
           "confirmed": false,
           "query": [
-            "<@QueryMap HashMap<String,String> — dynamic query keys>"
+            "profile-id",
+            "product-id",
+            "device-id",
+            "requested-date"
           ],
-          "description": "GET /frisco/parental-control/v1/app-usage — get child app-usage/screen-time data (dynamic query map)"
+          "description": "Get child app-usage / screen-time (v1 app-usage). Query: profile-id (child profileId), product-id, device-id (child deviceId), requested-date=yyyy-MM-dd."
         },
         "acceptDeclineAskTimeRequest": {
           "method": "PUT",
@@ -4603,16 +4604,19 @@
         },
         "getCategories": {
           "method": "GET",
-          "path": "/frisco/parental-control/v6/web-app-activity/categories",
+          "path": "/frisco/parental-control/v6/web-app-activity/categories?categorySupported=v6&r=0",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String>>",
-            "<@QueryMap HashMap<String,String> — dynamic query keys>"
+            "timezone",
+            "date",
+            "usageType",
+            "resolution",
+            "sz"
           ],
-          "description": "GET /frisco/parental-control/v6/web-app-activity/categories — list web/app activity categories for screen-time reporting"
+          "description": "List web/app activity grouped by content category (v6). categorySupported=v6 and r=0 are fixed (baked into the path). Query: timezone=IANA tz id, date=yyyy-MM-dd, usageType=profile|device (default profile), resolution=1x|2x|3x (use 1x), sz=icon size (e.g. 36x)."
         },
         "getInsights": {
           "method": "GET",
@@ -4726,9 +4730,11 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "(dynamic @QueryMap HashMap<String,String>)"
+            "eventId",
+            "page",
+            "per-page"
           ],
-          "description": "GET /frisco/parental-control/v5/security-threats — list detected malware/phishing threats (filters via dynamic query map)"
+          "description": "List detected security threats (v5). Query: eventId (the security-threat event id being queried), page (default 1), per-page (default 100). serviceId travels as the x-fp-identifier-target-serviceid header."
         }
       }
     },
@@ -5327,28 +5333,34 @@
       "operations": {
         "getAppUsageDetails": {
           "method": "GET",
-          "path": "/parental-control/frisco/v7/web-app-activity/apps",
+          "path": "/parental-control/frisco/v7/web-app-activity/apps?usageType=profile&categorySupported=v6",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String>>"
+            "timezone",
+            "date",
+            "app-name",
+            "subcategory-id"
           ],
-          "description": "List per-app usage details from web/app activity (v7 apps endpoint, dynamic query map)"
+          "description": "List per-app usage detail from web/app activity (v7). usageType=profile and categorySupported=v6 are fixed (baked into the path). Query: timezone=IANA tz id, date=yyyy-MM-dd, app-name (the app being drilled into), subcategory-id (its content subcategory id)."
         },
         "getCategories": {
           "method": "GET",
-          "path": "/frisco/parental-control/v6/web-app-activity/categories",
+          "path": "/frisco/parental-control/v6/web-app-activity/categories?categorySupported=v6&r=0",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String>>",
-            "<@QueryMap HashMap<String,String> — dynamic query keys>"
+            "timezone",
+            "date",
+            "usageType",
+            "resolution",
+            "sz"
           ],
-          "description": "List web/app activity grouped by content category (v6)"
+          "description": "List web/app activity grouped by content category (v6). categorySupported=v6 and r=0 are fixed (baked into the path). Query: timezone=IANA tz id, date=yyyy-MM-dd, usageType=profile|device (default profile), resolution=1x|2x|3x (use 1x), sz=icon size (e.g. 36x)."
         },
         "getInsights": {
           "method": "GET",
@@ -5366,27 +5378,39 @@
         },
         "getWebsite": {
           "method": "GET",
-          "path": "/frisco/parental-control/v6/web-app-activity/websites",
+          "path": "/frisco/parental-control/v6/web-app-activity/websites?categorySupported=v6&r=0",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String> (nullable)>"
+            "date",
+            "timezone",
+            "usageType",
+            "page",
+            "per-page",
+            "resolution",
+            "sz",
+            "scheduleStartTime",
+            "scheduleEndTime"
           ],
-          "description": "List visited websites from web/app activity (v6)"
+          "description": "List visited websites from web/app activity (v6). categorySupported=v6 and r=0 are fixed (baked into the path). Query: date=yyyy-MM-dd, timezone=IANA tz id, usageType=profile|device (default profile), page (default 1), per-page (default 100), resolution=1x|2x|3x (use 1x), sz=icon size (e.g. 36x). scheduleStartTime/scheduleEndTime (HH:mm) are optional — sent only for the scheduled-view variant."
         },
         "getWebsiteDetails": {
           "method": "GET",
-          "path": "/frisco/parental-control/v6/web-app-activity/details/website",
+          "path": "/frisco/parental-control/v6/web-app-activity/details/website?categorySupported=v6",
           "confirmed": false,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: Map<String,String>>"
+            "date",
+            "app-id",
+            "name",
+            "usageType",
+            "location-name"
           ],
-          "description": "Get activity detail for a single visited website (v6 details/website)"
+          "description": "Get activity detail for a single visited website (v6). categorySupported=v6 is fixed (baked into the path). Query: date=yyyy-MM-dd, app-id + name identify the website (from a getWebsites row), usageType=profile|device (optional, default profile), location-name (optional place name)."
         },
         "getWebsites": {
           "method": "GET",
@@ -5396,9 +5420,12 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "<QueryMap: HashMap<String,String>>"
+            "date",
+            "timezone",
+            "page",
+            "per-page"
           ],
-          "description": "List visited websites from web/app activity (v5 overload)"
+          "description": "List visited websites from web/app activity (v5). Query: date=yyyy-MM-dd (day), timezone=IANA tz id (e.g. America/Los_Angeles), page (1-based, default 1), per-page (default 100)."
         },
         "getWebsites2": {
           "method": "GET",
