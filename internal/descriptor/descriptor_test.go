@@ -304,6 +304,21 @@ func TestScreenTimeCaptured(t *testing.T) {
 	}
 }
 
+// TestCreateGroupPolicyCaptured locks in the age-group preset op verified live via eCapture +
+// CLI (2026-08-28, groupId:1 -> 200): the body is a minimal {"groupId":N} (1=No filters,
+// 2=Young child, 3=Child, 4=Teen). The pre-capture body had a bogus groupId:123. RED against it.
+func TestCreateGroupPolicyCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, _ := d.Entity("content_filter")
+	o := e.Operations["createGroupPolicy"]
+	if !o.Confirmed || strings.Contains(o.BodyExample, "123") || !strings.Contains(o.BodyExample, `"groupId"`) {
+		t.Errorf("createGroupPolicy must be confirmed with a real {\"groupId\":N} body (no 123): confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
