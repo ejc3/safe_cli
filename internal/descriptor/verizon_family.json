@@ -1155,7 +1155,10 @@
             "x-fp-identifier-target-serviceid"
           ],
           "query": [],
-          "description": "Read current content-filter settings (v7). include-description=true is fixed (baked into the path). Send the fixed header app-name: VSF."
+          "description": "Read current content-filter settings (v7). include-description=true is fixed (baked into the path); the app-name: VSF header is sent automatically.",
+          "header_values": {
+            "app-name": "VSF"
+          }
         },
         "updateSubcategory": {
           "method": "POST",
@@ -1181,7 +1184,10 @@
             "resolution",
             "sz"
           ],
-          "description": "List content-filter categories (v7). Fixed (baked into the path): group-name (empty), include-description=false, categorySupported=v7, r=0. Send the fixed header app-name: VSF. Query: include-safesearch=true|false (default false), resolution=1x|2x|3x (use 1x), sz=icon size e.g. 40x40 (40*device-density)."
+          "description": "List content-filter categories (v7). Fixed (baked into the path): group-name (empty), include-description=false, categorySupported=v7, r=0; the app-name: VSF header is sent automatically. Query: include-safesearch=true|false (default false), resolution=1x|2x|3x (use 1x), sz=icon size e.g. 40x40 (40*device-density).",
+          "header_values": {
+            "app-name": "VSF"
+          }
         },
         "getSubCategoriesDetail": {
           "method": "GET",
@@ -1194,7 +1200,10 @@
           "query": [
             "subcategory-id"
           ],
-          "description": "Get details for a content subcategory (v7). Query subcategory-id=integer (from a category / subcategory listing). Send the fixed header app-name: VSF."
+          "description": "Get details for a content subcategory (v7). Query subcategory-id=integer (from a category / subcategory listing). The app-name: VSF header is sent automatically.",
+          "header_values": {
+            "app-name": "VSF"
+          }
         },
         "setCFCategories": {
           "method": "POST",

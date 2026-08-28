@@ -30,12 +30,16 @@ type Operation struct {
 	Path   string `json:"path"`
 	// Description is a short, agent-facing explanation of what the op does and when to use
 	// it — surfaced by `describe` so a human or LLM agent can pick the right verb.
-	Description  string         `json:"description,omitempty"`
-	Body         map[string]any `json:"body,omitempty"`
-	Headers      []string       `json:"headers,omitempty"`
-	Query        []string       `json:"query,omitempty"`
-	Placeholders []string       `json:"placeholders,omitempty"`
-	Confirmed    bool           `json:"confirmed"`
+	Description string         `json:"description,omitempty"`
+	Body        map[string]any `json:"body,omitempty"`
+	Headers     []string       `json:"headers,omitempty"`
+	// HeaderValues holds the fixed value the app always sends for a declared header (e.g.
+	// app-name=VSF) so `call` auto-sends it and an agent needn't guess it. A --header flag for
+	// the same name overrides. Contextual headers (ETag, timezone) are NOT listed here.
+	HeaderValues map[string]string `json:"header_values,omitempty"`
+	Query        []string          `json:"query,omitempty"`
+	Placeholders []string          `json:"placeholders,omitempty"`
+	Confirmed    bool              `json:"confirmed"`
 	// Destructive marks a catastrophic, effectively irreversible op (deleting a user,
 	// device, or subscription; wiping messages). `call` refuses these without --confirm.
 	Destructive bool `json:"destructive,omitempty"`

@@ -240,6 +240,47 @@ func TestRunCallGeneratesTraceHeader(t *testing.T) {
 	}
 }
 
+// An op that declares a fixed header value (Operation.HeaderValues, e.g. app-name=VSF) gets
+// it auto-sent so an agent needn't know it; an explicit --header for the same name overrides.
+// RED against the pre-fix descriptor (content_filter ops carried no header_values, so app-name
+// was never sent unless the caller passed -H).
+func TestRunCallSendsFixedHeaderValue(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotAppName string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAppName = r.Header.Get("app-name")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	// No --header: the descriptor's fixed app-name=VSF must be auto-sent.
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotAppName != "VSF" {
+		t.Errorf("fixed header app-name not auto-sent: got %q, want VSF", gotAppName)
+	}
+	// An explicit --header wins over the descriptor default.
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh, userHeaders: map[string]string{"app-name": "OVERRIDE"}}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotAppName != "OVERRIDE" {
+		t.Errorf("--header did not override fixed value: got %q, want OVERRIDE", gotAppName)
+	}
+	// A differently-cased --header (HTTP names are case-insensitive) must still override —
+	// otherwise both app-name=VSF and App-Name=CASED land in the map and the winner is
+	// nondeterministic (Codex #37).
+	if err := runCall(context.Background(), cl.DoH, d, callArgs{entity: "content_filter", op: "getFilterContent", idHeaders: idh, userHeaders: map[string]string{"App-Name": "CASED"}}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if gotAppName != "CASED" {
+		t.Errorf("case-insensitive --header did not override fixed value: got %q, want CASED", gotAppName)
+	}
+}
+
 // runCall refuses an op whose path is a runtime-resolved @Url placeholder rather than
 // requesting the literal placeholder text from the production host.
 func TestRunCallRejectsDynamicURL(t *testing.T) {
