@@ -364,6 +364,27 @@ func TestAppLimitsCaptured(t *testing.T) {
 	}
 }
 
+// TestSharingConfigCaptured locks in updateLocationSharingSettingConfig, verified live via CLI
+// round-trip (2026-08-28, 200): the body carries locationSharingConfig.defaultLocationSharing
+// AND the current settings.locationSharingSettings.sharingList (the pre-capture body had neither
+// — just settings.sharingList and no config), and eventType=allProfiles is baked. RED against it.
+func TestSharingConfigCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["location"].Operations["updateLocationSharingSettingConfig"]
+	if !o.Confirmed {
+		t.Error("updateLocationSharingSettingConfig must be confirmed (verified live)")
+	}
+	if !strings.Contains(o.BodyExample, "locationSharingConfig") || !strings.Contains(o.BodyExample, "locationSharingSettings") {
+		t.Errorf("body must carry locationSharingConfig + locationSharingSettings: %s", o.BodyExample)
+	}
+	if !strings.Contains(o.Path, "eventType=allProfiles") {
+		t.Errorf("path must bake eventType=allProfiles: %s", o.Path)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

@@ -2544,18 +2544,17 @@
         },
         "updateLocationSharingSettingConfig": {
           "method": "PUT",
-          "path": "/vsf/location/v6/settings",
-          "confirmed": false,
+          "path": "/vsf/location/v6/settings?eventType=allProfiles",
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
-            "eventType",
             "profileId"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"profileId\":42,\"settings\":{\"sharingList\":[{\"profileId\":43,\"isLocationShared\":true}]}}]}",
-          "description": "Update location-sharing config for a specific event type/profile (v6)."
+          "body_example": "{\"accountId\":1000001,\"events\":[{\"profileId\":2000001,\"locationSharingConfig\":{\"defaultLocationSharing\":\"dontShareAutomatically\"},\"settings\":{\"locationSharingSettings\":{\"sharingList\":[{\"profileId\":2000002,\"isLocationShared\":false}]}}}]}",
+          "description": "Set the default location-sharing for new family members (verified live 2026-08-28, 200; reversed). eventType=allProfiles is fixed (baked). Body carries locationSharingConfig.defaultLocationSharing=dontShareAutomatically|shareAutomatically AND the current settings.locationSharingSettings.sharingList (echo the members unchanged). events[].profileId=the logged-in guardian; query profileId=target."
         }
       }
     },
