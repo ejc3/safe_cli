@@ -1135,7 +1135,7 @@
         "updateAppLimit": {
           "method": "PUT",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1143,8 +1143,8 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
-          "description": "Update an existing app time limit"
+          "body_example": "{\"id\":10061,\"limits\":{\"blockAllDay\":false,\"days\":[\"mon\",\"tue\",\"wed\",\"thu\",\"fri\",\"sat\",\"sun\"],\"duration\":60},\"name\":\"8 Ball Pool\"}",
+          "description": "Update an app time limit (verified live 2026-08-28, PUT 200; created->updated->deleted). Same body as createAppLimit; identify the limit with the appLimitsId query (the UUID from getAppTimeLimits / the create response)."
         },
         "getFilterContent": {
           "method": "GET",
@@ -4601,7 +4601,7 @@
         "updateAppLimit": {
           "method": "PUT",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4609,8 +4609,8 @@
             "appLimitsId"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
-          "description": "PUT /parental-control/frisco/v7/app-limits — update an existing per-app time limit (by appLimitsId)"
+          "body_example": "{\"id\":10061,\"limits\":{\"blockAllDay\":false,\"days\":[\"mon\",\"tue\",\"wed\",\"thu\",\"fri\",\"sat\",\"sun\"],\"duration\":60},\"name\":\"8 Ball Pool\"}",
+          "description": "Update an app time limit (verified live 2026-08-28, PUT 200; created->updated->deleted). Same body as createAppLimit; identify the limit with the appLimitsId query (the UUID from getAppTimeLimits / the create response)."
         },
         "deleteAppLimit": {
           "method": "DELETE",

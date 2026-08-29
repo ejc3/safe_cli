@@ -459,6 +459,21 @@ func TestScheduleAliasesFixed(t *testing.T) {
 	}
 }
 
+// TestUpdateAppLimitConfirmed: updateAppLimit (content_filter + schedules) verified live via CLI
+// (2026-08-28, create->update->delete 200). Same body as createAppLimit + appLimitsId query.
+func TestUpdateAppLimitConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range []string{"content_filter", "schedules"} {
+		o := d.Entities[en].Operations["updateAppLimit"]
+		if !o.Confirmed || !strings.Contains(o.BodyExample, `"mon"`) {
+			t.Errorf("%s.updateAppLimit must be confirmed with the app-limit body: confirmed=%v ex=%s", en, o.Confirmed, o.BodyExample)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
