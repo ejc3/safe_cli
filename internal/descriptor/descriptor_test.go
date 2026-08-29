@@ -385,6 +385,23 @@ func TestSharingConfigCaptured(t *testing.T) {
 	}
 }
 
+// TestGeofenceDeleteConfirmed: location.deleteGeofenceSettings was verified live (2026-08-28,
+// 200) — a saved location was created via createDeviceGeofenceSettings and deleted by
+// eventId+eventType query. RED against the pre-verification descriptor (confirmed was false).
+func TestGeofenceDeleteConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["location"].Operations["deleteGeofenceSettings"]
+	if !o.Confirmed {
+		t.Error("location.deleteGeofenceSettings must be confirmed (verified live)")
+	}
+	if len(o.Query) == 0 {
+		t.Error("deleteGeofenceSettings must declare its eventId/eventType query params")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
