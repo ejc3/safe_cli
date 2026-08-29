@@ -340,6 +340,30 @@ func TestContactsCaptured(t *testing.T) {
 	}
 }
 
+// TestAppLimitsCaptured locks in the app-limit + category-block ops captured live via eCapture
+// and CLI (2026-08-28): createAppLimit days are lowercase 3-letter (mon..sun), deleteAppLimit is
+// by appLimitsId query, and setCFCategories carries the real {categories:[{id,name,subCategories}]}
+// request shape (not the bloated view-model). RED against the pre-capture descriptor.
+func TestAppLimitsCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range []string{"content_filter", "schedules"} {
+		ca := d.Entities[en].Operations["createAppLimit"]
+		if !ca.Confirmed || !strings.Contains(ca.BodyExample, `"mon"`) || strings.Contains(ca.BodyExample, `"Mon"`) {
+			t.Errorf("%s.createAppLimit must be confirmed with lowercase days (mon, not Mon): confirmed=%v ex=%s", en, ca.Confirmed, ca.BodyExample)
+		}
+		if !d.Entities[en].Operations["deleteAppLimit"].Confirmed {
+			t.Errorf("%s.deleteAppLimit must be confirmed (verified live)", en)
+		}
+	}
+	sc := d.Entities["content_filter"].Operations["setCFCategories"]
+	if !sc.Confirmed || !strings.Contains(sc.BodyExample, "subCategories") || strings.Contains(sc.BodyExample, "isLoading") {
+		t.Errorf("setCFCategories must be confirmed with the real request shape (no isLoading view-model field): confirmed=%v ex=%s", sc.Confirmed, sc.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
