@@ -489,6 +489,21 @@ func TestUpdateScheduledAlertConfirmed(t *testing.T) {
 	}
 }
 
+// TestDeleteContactConfirmed: deleteContactFromTheList (contacts + calls_and_texts) verified live
+// via CLI (2026-08-28, add blocked contact -> delete 200). DELETE by query, no body.
+func TestDeleteContactConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range []string{"contacts", "calls_and_texts"} {
+		o := d.Entities[en].Operations["deleteContactFromTheList"]
+		if !o.Confirmed || len(o.Query) == 0 {
+			t.Errorf("%s.deleteContactFromTheList must be confirmed with query params: confirmed=%v q=%v", en, o.Confirmed, o.Query)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

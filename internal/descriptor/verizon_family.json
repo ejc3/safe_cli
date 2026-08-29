@@ -651,7 +651,7 @@
         "deleteContactFromTheList": {
           "method": "DELETE",
           "path": "/vsf/callandtext/v5/managecontacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -661,7 +661,7 @@
             "contactInfo",
             "deviceId"
           ],
-          "description": "Remove a contact from the trust/block/watch list"
+          "description": "Remove a contact from the child's blocked/trusted/watchlist (verified live 2026-08-28, add->delete 200). DELETE by query: profileId, deviceId, contactType (blocked|trusted|watchlist|all), contactInfo (the phone). No body."
         },
         "getAllTrustBlockWatchContactList": {
           "method": "GET",
@@ -1003,7 +1003,7 @@
         "deleteContactFromTheList": {
           "method": "DELETE",
           "path": "/vsf/callandtext/v5/managecontacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1013,7 +1013,7 @@
             "contactInfo",
             "deviceId"
           ],
-          "description": "Remove a contact from the managed contact list"
+          "description": "Remove a contact from the child's blocked/trusted/watchlist (verified live 2026-08-28, add->delete 200). DELETE by query: profileId, deviceId, contactType (blocked|trusted|watchlist|all), contactInfo (the phone). No body."
         },
         "getAllContactsRequest": {
           "method": "GET",
