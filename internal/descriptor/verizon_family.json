@@ -5159,7 +5159,8 @@
           "confirmed": true,
           "takes_body": true,
           "description": "Update the caller's own auth/user setting (verified live 2026-08-29). Currently the keep-me-signed-in (KMSI) toggle: kmsiEnabled=true enables long-term sign-in (up to 6 months) instead of the 30-minute default. app_uuid is the CALLER'S own session uuid — leave it as the \"<device-uuid>\" placeholder (or omit the value) and the CLI fills it from the token store. triggeredBy=user. Applies to your own session, not a child's.",
-          "body_example": "{\"kmsiEnabled\":true,\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}"
+          "body_example": "{\"kmsiEnabled\":true,\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}",
+          "inject_caller_app_uuid": true
         }
       }
     },

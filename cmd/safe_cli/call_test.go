@@ -401,6 +401,17 @@ func TestRunCallInjectsAppUUID(t *testing.T) {
 	if !strings.Contains(gotBody, `"app_uuid":"CALLER-SET"`) {
 		t.Errorf("explicit app_uuid overwritten: %s", gotBody)
 	}
+	// NOT injected for a non-InjectCallerAppUUID op: identity.childRefreshToken carries a
+	// child/device uuid, so a "<...>" placeholder must pass through untouched (the caller
+	// supplies the real value) rather than be rewritten with the parent's session uuid.
+	nf := callArgs{entity: "identity", op: "childRefreshToken", appUUID: "PARENT-UUID",
+		data: `{"grant_type":"refresh_token","app_uuid":"<device-uuid>","code":"x"}`}
+	if err := runCall(context.Background(), cl.DoH, d, nf, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall(non-flagged): %v", err)
+	}
+	if strings.Contains(gotBody, "PARENT-UUID") || !strings.Contains(gotBody, "device-uuid") {
+		t.Errorf("childRefreshToken app_uuid should NOT be injected: %s", gotBody)
+	}
 }
 
 // parseQuery keeps duplicate keys (some ops send the same query key twice, e.g.

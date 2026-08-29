@@ -52,6 +52,12 @@ type Operation struct {
 	// BodyExample is a minimal valid request body derived from the app's decompiled model
 	// class, when one was extractable. `call` shows it when --data is omitted.
 	BodyExample string `json:"body_example,omitempty"`
+	// InjectCallerAppUUID marks an op whose body's app_uuid field is keyed to the CALLER'S
+	// own session (e.g. user_setting.updateUserSettings) — `call` fills an app_uuid
+	// placeholder from the stored session uuid so an agent needn't know it. It is deliberately
+	// NOT set on ops that carry a child's or a newly-paired device's uuid (identity token
+	// exchanges, pairing), where the caller's uuid would be wrong.
+	InjectCallerAppUUID bool `json:"inject_caller_app_uuid,omitempty"`
 }
 
 // Entity is one type in the data model, with its CRUD operations and actions. Tier marks

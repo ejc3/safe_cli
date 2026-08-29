@@ -507,6 +507,18 @@ func TestProfileNameAndUserSettingsConfirmed(t *testing.T) {
 			t.Errorf("updateUserSettings body missing %s: %s", want, us.BodyExample)
 		}
 	}
+	// The app_uuid in this op is the caller's own session uuid, so `call` injects it; the
+	// identity/pairing token-exchange ops carry a child/device uuid and must NOT be flagged.
+	if !us.InjectCallerAppUUID {
+		t.Error("updateUserSettings must set InjectCallerAppUUID (app_uuid is the caller's session)")
+	}
+	for _, en := range []struct{ e, o string }{
+		{"identity", "childRefreshToken"}, {"identity", "getChildDeviceAccessToken"}, {"pairing", "getIdTokenUsingOtp"},
+	} {
+		if d.Entities[en.e].Operations[en.o].InjectCallerAppUUID {
+			t.Errorf("%s.%s must NOT set InjectCallerAppUUID (carries a child/device uuid)", en.e, en.o)
+		}
+	}
 }
 
 func TestDefaultLoads(t *testing.T) {
