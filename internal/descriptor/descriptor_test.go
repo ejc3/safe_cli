@@ -521,6 +521,39 @@ func TestProfileNameAndUserSettingsConfirmed(t *testing.T) {
 	}
 }
 
+// TestSettingsGapsConfirmed locks in four guardian-scoped settings ops an adversarial
+// reachability audit surfaced and that were then verified live 2026-08-29 (idempotent 200s):
+// account family-name/timezone, account profile edit, notifications mark-all-read, and report
+// settings (whose body is a flat settings:{id:bool} map, corrected from the guessed keys).
+func TestSettingsGapsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	must := func(en, op string, wants ...string) {
+		o := d.Entities[en].Operations[op]
+		if !o.Confirmed {
+			t.Errorf("%s.%s must be confirmed (verified live)", en, op)
+		}
+		for _, w := range wants {
+			if !strings.Contains(o.BodyExample, w) {
+				t.Errorf("%s.%s body missing %q: %s", en, op, w, o.BodyExample)
+			}
+		}
+	}
+	must("account", "updateFamilyNameOrTimeZone", `"familyName"`, `"timezone"`)
+	must("account", "updateProfile", `"profileName"`)
+	must("notifications", "markAllRead")
+	must("notifications", "updateReportSettings", `"settings"`, `"weeklySummaryEmailV2"`)
+	// The prerequisite reads exercised live to verify the writes are confirmed too, so
+	// `describe --json` does not show a verified write depending on an "unverified" read.
+	for _, op := range []string{"getReportSettings2", "getNotificationCount"} {
+		if !d.Entities["notifications"].Operations[op].Confirmed {
+			t.Errorf("notifications.%s must be confirmed (exercised live)", op)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
