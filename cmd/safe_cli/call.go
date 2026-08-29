@@ -325,12 +325,14 @@ func buildBody(defaults map[string]any, data string) ([]byte, error) {
 // A non-placeholder app_uuid the caller passed explicitly is left untouched; a body without
 // the field, a non-object body, or an empty app-uuid are all no-ops.
 func injectAppUUID(body []byte, appUUID string) ([]byte, error) {
-	if appUUID == "" || len(body) == 0 {
+	// Only a JSON object can carry an app_uuid field; skip empties, arrays and scalars up
+	// front (checking the first byte) so a real json.Unmarshal error below stays an error.
+	if appUUID == "" || len(bytes.TrimSpace(body)) == 0 || bytes.TrimSpace(body)[0] != '{' {
 		return body, nil
 	}
 	var obj map[string]any
 	if err := json.Unmarshal(body, &obj); err != nil {
-		return body, nil // not a JSON object (e.g. an array) — nothing to inject
+		return nil, err
 	}
 	cur, ok := obj["app_uuid"]
 	if !ok {
