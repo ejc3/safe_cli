@@ -459,6 +459,30 @@ func TestScheduleAliasesFixed(t *testing.T) {
 	}
 }
 
+// TestUpdateDeleteOpsConfirmed: updateAppLimit, updateScheduledAlert, and deleteContactFromTheList
+// (each on both route-sharing entities) verified live via CLI (2026-08-28, create->update/delete 200).
+func TestUpdateDeleteOpsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(en, op string, want string) {
+		o := d.Entities[en].Operations[op]
+		if !o.Confirmed {
+			t.Errorf("%s.%s must be confirmed (verified live)", en, op)
+		}
+		if want != "" && !strings.Contains(o.BodyExample, want) {
+			t.Errorf("%s.%s body missing %q: %s", en, op, want, o.BodyExample)
+		}
+	}
+	check("content_filter", "updateAppLimit", `"mon"`)
+	check("schedules", "updateAppLimit", `"mon"`)
+	check("schedule_alert", "updateScheduledAlert", `"locationAlert"`)
+	check("schedules", "updateScheduledAlert", `"locationAlert"`)
+	check("contacts", "deleteContactFromTheList", "")
+	check("calls_and_texts", "deleteContactFromTheList", "")
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
