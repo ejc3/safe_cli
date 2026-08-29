@@ -431,6 +431,20 @@ func TestGeofenceUpdateCaptured(t *testing.T) {
 	}
 }
 
+// TestTrustedModeConfirmed: contacts.updateTrustedContacts verified live (2026-08-28, 200) —
+// the trusted-contacts-only toggle sends {settingId:8000, settingValue:0|1}. The body was already
+// correct in the descriptor; this asserts it is now marked confirmed.
+func TestTrustedModeConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["contacts"].Operations["updateTrustedContacts"]
+	if !o.Confirmed || !strings.Contains(o.BodyExample, "settingId") {
+		t.Errorf("updateTrustedContacts must be confirmed with a settingId body: confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
