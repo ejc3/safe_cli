@@ -545,6 +545,13 @@ func TestSettingsGapsConfirmed(t *testing.T) {
 	must("account", "updateProfile", `"profileName"`)
 	must("notifications", "markAllRead")
 	must("notifications", "updateReportSettings", `"settings"`, `"weeklySummaryEmailV2"`)
+	// The prerequisite reads exercised live to verify the writes are confirmed too, so
+	// `describe --json` does not show a verified write depending on an "unverified" read.
+	for _, op := range []string{"getReportSettings2", "getNotificationCount"} {
+		if !d.Entities["notifications"].Operations[op].Confirmed {
+			t.Errorf("notifications.%s must be confirmed (exercised live)", op)
+		}
+	}
 }
 
 func TestDefaultLoads(t *testing.T) {

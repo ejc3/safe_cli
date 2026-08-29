@@ -2911,7 +2911,7 @@
         "getNotificationCount": {
           "method": "GET",
           "path": "/comms/frisco/v6/notifications/unreadCount",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2919,7 +2919,7 @@
             "productType",
             "notificationType"
           ],
-          "description": "Get the unread-notification count, filtered by product/notification type (v6)."
+          "description": "Read a member's unread-notification count (verified live 2026-08-29; returns {\"count\":N}). Query productType (VSF) + notificationType (all). Target with --service-id."
         },
         "getNotifications": {
           "method": "GET",
@@ -2941,11 +2941,11 @@
         "getReportSettings2": {
           "method": "GET",
           "path": "/comms/vsf/v8/report-settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Read notification report settings (v8 report-settings)."
+          "description": "Read report/notification settings (verified live 2026-08-29; returns {emailSettings, profiles}). Its emailSettings[].id + .status give the keys/values for updateReportSettings. Target with --service-id."
         },
         "markAllRead": {
           "method": "PATCH",
