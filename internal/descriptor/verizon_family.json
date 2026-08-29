@@ -1695,13 +1695,13 @@
         "addEmergencyContactsToProfile": {
           "method": "POST",
           "path": "/fam/userprofile-management/v5/userprofiles/contacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"contacts\":[{\"phone\":\"5551234567\",\"name\":\"Grandma\",\"userProfileId\":12345}]}",
-          "description": "Add one or more emergency contacts to a member's profile"
+          "body_example": "{\"contacts\":[{\"userProfileId\":2000001}]}",
+          "description": "Assign emergency contacts to a child (verified live 2026-08-28, added a family member then removed). Body {contacts:[{userProfileId}]} — the profileIds of existing family members to make emergency contacts (from getAllAvailableEmergencyContacts). The pre-capture body had phantom phone/name fields the app does not send."
         },
         "deleteEmergencyContact": {
           "method": "DELETE",

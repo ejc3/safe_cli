@@ -402,6 +402,20 @@ func TestGeofenceDeleteConfirmed(t *testing.T) {
 	}
 }
 
+// TestEmergencyAddCaptured: emergency_contacts.addEmergencyContactsToProfile verified live
+// (2026-08-28, added a family member via CLI/app then removed). Body is {contacts:[{userProfileId}]}
+// only — the pre-capture body had phantom phone/name fields. RED against the pre-capture descriptor.
+func TestEmergencyAddCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["emergency_contacts"].Operations["addEmergencyContactsToProfile"]
+	if !o.Confirmed || !strings.Contains(o.BodyExample, "userProfileId") || strings.Contains(o.BodyExample, "phone") || strings.Contains(o.BodyExample, "Grandma") {
+		t.Errorf("addEmergencyContactsToProfile must be confirmed with a userProfileId-only body (no phone/name): confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
