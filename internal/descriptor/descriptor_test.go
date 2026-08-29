@@ -483,6 +483,32 @@ func TestUpdateDeleteOpsConfirmed(t *testing.T) {
 	check("calls_and_texts", "deleteContactFromTheList", "")
 }
 
+// TestProfileNameAndUserSettingsConfirmed locks in two settings ops verified live 2026-08-29:
+// account.updateProfileName (CLI rename round-trip, minimal {"profileName"} body) and
+// user_setting.updateUserSettings (KMSI toggle; app_uuid is the caller's own session uuid).
+func TestProfileNameAndUserSettingsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pn := d.Entities["account"].Operations["updateProfileName"]
+	if !pn.Confirmed {
+		t.Error("account.updateProfileName must be confirmed (verified live)")
+	}
+	if !strings.Contains(pn.BodyExample, `"profileName"`) {
+		t.Errorf("updateProfileName body must carry profileName: %s", pn.BodyExample)
+	}
+	us := d.Entities["user_setting"].Operations["updateUserSettings"]
+	if !us.Confirmed {
+		t.Error("user_setting.updateUserSettings must be confirmed (verified live)")
+	}
+	for _, want := range []string{`"kmsiEnabled"`, `"app_uuid"`, `"triggeredBy"`} {
+		if !strings.Contains(us.BodyExample, want) {
+			t.Errorf("updateUserSettings body missing %s: %s", want, us.BodyExample)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

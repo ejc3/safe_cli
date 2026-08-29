@@ -293,14 +293,14 @@
         "updateProfileName": {
           "method": "PATCH",
           "path": "/fam/userprofile-management/v5/accounts/userprofiles",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-pending-activation"
           ],
           "takes_body": true,
-          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"EDIT_PROFILE\"}",
-          "description": "Rename a user profile (PATCH accounts/userprofiles with body)."
+          "body_example": "{\"profileName\":\"Example Name\"}",
+          "description": "Rename a member's profile (verified live 2026-08-29, CLI round-trip). Target the member with --service-id (the child's service id). The app sends only the changed field: {\"profileName\":\"...\"}. Other EDIT_PROFILE fields are optional and may be added to the same PATCH: dateOfBirth (YYYY-MM-DD), timeZone (IANA), profileImage (url), appConsent, termsAcceptedDate, transitionStatus, flowType."
         }
       }
     },
@@ -5156,9 +5156,9 @@
         "updateUserSettings": {
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/setting",
-          "confirmed": false,
+          "confirmed": true,
           "takes_body": true,
-          "description": "Update the signed-in user's account/auth settings (raw key-value map body).",
+          "description": "Update the caller's own auth/user setting (verified live 2026-08-29). Currently the keep-me-signed-in (KMSI) toggle: kmsiEnabled=true enables long-term sign-in (up to 6 months) instead of the 30-minute default. app_uuid is the CALLER'S own session uuid — leave it as the \"<device-uuid>\" placeholder (or omit the value) and the CLI fills it from the token store. triggeredBy=user. Applies to your own session, not a child's.",
           "body_example": "{\"kmsiEnabled\":true,\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}"
         }
       }

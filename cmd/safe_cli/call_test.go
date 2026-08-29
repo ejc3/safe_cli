@@ -369,6 +369,40 @@ func TestRunCallPostsBody(t *testing.T) {
 	}
 }
 
+// TestRunCallInjectsAppUUID: an app_uuid body placeholder (empty or "<...>") is filled with
+// this install's app-uuid so an agent needn't know it (user_setting.updateUserSettings keys
+// the setting to the caller's own session uuid); a real app_uuid the caller passes is left be.
+func TestRunCallInjectsAppUUID(t *testing.T) {
+	d, _ := descriptor.Default()
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"statusCode":200}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	// placeholder -> injected
+	args := callArgs{entity: "user_setting", op: "updateUserSettings", appUUID: "THE-UUID",
+		data: `{"kmsiEnabled":true,"app_uuid":"<device-uuid>","triggeredBy":"user"}`}
+	if err := runCall(context.Background(), cl.DoH, d, args, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall: %v", err)
+	}
+	if !strings.Contains(gotBody, `"app_uuid":"THE-UUID"`) || strings.Contains(gotBody, "device-uuid") {
+		t.Errorf("placeholder not injected: %s", gotBody)
+	}
+	// explicit value -> respected
+	args.data = `{"kmsiEnabled":false,"app_uuid":"CALLER-SET","triggeredBy":"user"}`
+	if err := runCall(context.Background(), cl.DoH, d, args, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall(explicit): %v", err)
+	}
+	if !strings.Contains(gotBody, `"app_uuid":"CALLER-SET"`) {
+		t.Errorf("explicit app_uuid overwritten: %s", gotBody)
+	}
+}
+
 // parseQuery keeps duplicate keys (some ops send the same query key twice, e.g.
 // productType=VSF&productType=GIZMO) — a map would drop the first.
 func TestParseQueryKeepsDuplicates(t *testing.T) {

@@ -63,6 +63,7 @@ func (c *callCmd) Run(rc *runContext) error {
 		id:          c.ID,
 		data:        c.Data,
 		idHeaders:   identityHeaders(idt, c.ServiceID, c.ProfileID, c.DeviceID, appUUID),
+		appUUID:     appUUID,
 		query:       query,
 		pathParams:  pathParams,
 		userHeaders: userHeaders,
@@ -105,6 +106,7 @@ func dumpRequest(rc *runContext, idToken string) doFunc {
 type callArgs struct {
 	entity, op, id, data string
 	idHeaders            map[string]string // x-fp-identifier-* values keyed by header name
+	appUUID              string            // this install's app-uuid, injected into an app_uuid body placeholder
 	query                url.Values        // extra query params (ordered, multi-value)
 	pathParams           map[string]string // {name} path placeholder values
 	userHeaders          map[string]string // arbitrary extra request headers
@@ -190,6 +192,10 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	}
 	path = appendQuery(path, a.query)
 	body, err := buildBody(o.Body, a.data)
+	if err != nil {
+		return err
+	}
+	body, err = injectAppUUID(body, a.appUUID)
 	if err != nil {
 		return err
 	}
@@ -309,6 +315,33 @@ func buildBody(defaults map[string]any, data string) ([]byte, error) {
 		}
 	}
 	return json.Marshal(merged)
+}
+
+// injectAppUUID fills the body's app_uuid field with this install's app-uuid when the
+// caller left it as a placeholder (empty, or a "<...>" token like the body_example's
+// "<device-uuid>"). A few ops (user_setting.updateUserSettings, family_line.updateAppUuid)
+// key the setting to the *caller's own* session app-uuid — a value an agent can't easily
+// discover — so the CLI supplies it from the token store rather than making the agent do so.
+// A non-placeholder app_uuid the caller passed explicitly is left untouched; a body without
+// the field, a non-object body, or an empty app-uuid are all no-ops.
+func injectAppUUID(body []byte, appUUID string) ([]byte, error) {
+	if appUUID == "" || len(body) == 0 {
+		return body, nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(body, &obj); err != nil {
+		return body, nil // not a JSON object (e.g. an array) — nothing to inject
+	}
+	cur, ok := obj["app_uuid"]
+	if !ok {
+		return body, nil
+	}
+	s, _ := cur.(string)
+	if s != "" && !strings.HasPrefix(s, "<") {
+		return body, nil // caller supplied a real app_uuid — respect it
+	}
+	obj["app_uuid"] = appUUID
+	return json.Marshal(obj)
 }
 
 // resolveOp finds an operation or action named op on entity.
