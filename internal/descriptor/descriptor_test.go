@@ -474,6 +474,21 @@ func TestUpdateAppLimitConfirmed(t *testing.T) {
 	}
 }
 
+// TestUpdateScheduledAlertConfirmed: updateScheduledAlert (both entities) verified live via CLI
+// (2026-08-28, create->update->delete 200). Same ScheduleAlertRequest body as post w/ existing eventId.
+func TestUpdateScheduledAlertConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range []string{"schedule_alert", "schedules"} {
+		o := d.Entities[en].Operations["updateScheduledAlert"]
+		if !o.Confirmed || !strings.Contains(o.BodyExample, `"locationAlert"`) {
+			t.Errorf("%s.updateScheduledAlert must be confirmed with the locationAlert body: confirmed=%v ex=%s", en, o.Confirmed, o.BodyExample)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

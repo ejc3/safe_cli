@@ -4337,13 +4337,13 @@
         "updateScheduledAlert": {
           "method": "PUT",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"profileId\":2000001,\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"eventDetails\":{\"alertTime\":\"9:00 PM\",\"days\":{\"everyDay\":true,\"weekDays\":[]}},\"recipientList\":[2000002]}]}",
-          "description": "Update a scheduled location alert. Same body as postScheduleAlert (shared ScheduleAlertRequest DTO, PUT to the same route), with eventId set to the existing alert's id."
+          "description": "Update a scheduled location alert (verified live 2026-08-28, PUT 200; created->updated->deleted). Same body as postScheduleAlert, with eventId set to the existing alert; change eventDetails (alertTime/days) to edit it."
         }
       }
     },
@@ -4652,13 +4652,13 @@
         "updateScheduledAlert": {
           "method": "PUT",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"eventDateTime\":1700000000000,\"eventDetails\":{\"alertTime\":\"08:00\",\"days\":{\"everyDay\":false,\"weekDays\":[\"Mon\",\"Tue\",\"Wed\"]},\"endTime\":\"17:00\",\"frequency\":1,\"isEnabled\":true,\"startTime\":\"08:00\"},\"eventId\":\"evt-1\",\"eventType\":\"schedule_alert\",\"profileId\":222,\"recipientList\":[111,222]}],\"productType\":\"VSF\"}",
-          "description": "PUT /vsf/location/v5/scheduled/alert/settings — modify an existing scheduled location alert"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"profileId\":2000001,\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"eventDetails\":{\"alertTime\":\"9:00 PM\",\"days\":{\"everyDay\":true,\"weekDays\":[]}},\"recipientList\":[2000002]}]}",
+          "description": "Update a scheduled location alert (verified live 2026-08-28, PUT 200; created->updated->deleted). Same body as postScheduleAlert, with eventId set to the existing alert; change eventDetails (alertTime/days) to edit it."
         },
         "deleteScheduledAlert": {
           "method": "DELETE",
