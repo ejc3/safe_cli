@@ -445,6 +445,20 @@ func TestTrustedModeConfirmed(t *testing.T) {
 	}
 }
 
+// TestScheduleAliasesFixed: the schedules-entity aliases of scheduled-alert ops share the route
+// with the confirmed schedule_alert ops, so they must carry the same corrected body and be
+// confirmed (not the old schedule_alert/VSF body). RED against the pre-fix descriptor.
+func TestScheduleAliasesFixed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["schedules"].Operations["postScheduleAlert"]
+	if !o.Confirmed || !strings.Contains(o.BodyExample, `"locationAlert"`) || strings.Contains(o.BodyExample, "schedule_alert") {
+		t.Errorf("schedules.postScheduleAlert alias must be confirmed with the corrected locationAlert body: confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

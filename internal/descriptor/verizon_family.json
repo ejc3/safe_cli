@@ -4641,13 +4641,13 @@
         "postScheduleAlert": {
           "method": "POST",
           "path": "/vsf/location/v5/scheduled/alert/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"accountId\":1234567,\"events\":[{\"eventDateTime\":1700000000000,\"eventDetails\":{\"alertTime\":\"08:00\",\"days\":{\"everyDay\":false,\"weekDays\":[\"Mon\",\"Tue\",\"Wed\"]},\"endTime\":\"17:00\",\"frequency\":1,\"isEnabled\":true,\"startTime\":\"08:00\"},\"eventId\":\"evt-1\",\"eventType\":\"schedule_alert\",\"profileId\":222,\"recipientList\":[111,222]}],\"productType\":\"VSF\"}",
-          "description": "POST /vsf/location/v5/scheduled/alert/settings — create a new scheduled location alert"
+          "body_example": "{\"accountId\":1000001,\"productType\":\"vsf\",\"events\":[{\"profileId\":2000001,\"eventType\":\"locationAlert\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"eventDetails\":{\"alertTime\":\"9:00 PM\",\"days\":{\"everyDay\":true,\"weekDays\":[]}},\"recipientList\":[2000002]}]}",
+          "description": "(Alias of schedule_alert.postScheduleAlert) Create a scheduled location alert; eventType=locationAlert, productType=vsf; events[].profileId=requesting guardian, recipientList=[tracked member]."
         },
         "updateScheduledAlert": {
           "method": "PUT",
