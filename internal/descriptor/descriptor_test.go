@@ -483,6 +483,44 @@ func TestUpdateDeleteOpsConfirmed(t *testing.T) {
 	check("calls_and_texts", "deleteContactFromTheList", "")
 }
 
+// TestProfileNameAndUserSettingsConfirmed locks in two settings ops verified live 2026-08-29:
+// account.updateProfileName (CLI rename round-trip, minimal {"profileName"} body) and
+// user_setting.updateUserSettings (KMSI toggle; app_uuid is the caller's own session uuid).
+func TestProfileNameAndUserSettingsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pn := d.Entities["account"].Operations["updateProfileName"]
+	if !pn.Confirmed {
+		t.Error("account.updateProfileName must be confirmed (verified live)")
+	}
+	if !strings.Contains(pn.BodyExample, `"profileName"`) {
+		t.Errorf("updateProfileName body must carry profileName: %s", pn.BodyExample)
+	}
+	us := d.Entities["user_setting"].Operations["updateUserSettings"]
+	if !us.Confirmed {
+		t.Error("user_setting.updateUserSettings must be confirmed (verified live)")
+	}
+	for _, want := range []string{`"kmsiEnabled"`, `"app_uuid"`, `"triggeredBy"`} {
+		if !strings.Contains(us.BodyExample, want) {
+			t.Errorf("updateUserSettings body missing %s: %s", want, us.BodyExample)
+		}
+	}
+	// The app_uuid in this op is the caller's own session uuid, so `call` injects it; the
+	// identity/pairing token-exchange ops carry a child/device uuid and must NOT be flagged.
+	if !us.InjectCallerAppUUID {
+		t.Error("updateUserSettings must set InjectCallerAppUUID (app_uuid is the caller's session)")
+	}
+	for _, en := range []struct{ e, o string }{
+		{"identity", "childRefreshToken"}, {"identity", "getChildDeviceAccessToken"}, {"pairing", "getIdTokenUsingOtp"},
+	} {
+		if d.Entities[en.e].Operations[en.o].InjectCallerAppUUID {
+			t.Errorf("%s.%s must NOT set InjectCallerAppUUID (carries a child/device uuid)", en.e, en.o)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

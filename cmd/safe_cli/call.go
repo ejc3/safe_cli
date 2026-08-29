@@ -45,6 +45,14 @@ func (c *callCmd) Run(rc *runContext) error {
 	// Best-effort: only the two services_hub ops need app-uuid, so a missing device id
 	// must not block every other call — identityHeaders just omits the header.
 	appUUID, _ := resolveAppUUID(ts)
+	// Body app_uuid injection (for InjectCallerAppUUID ops) uses ONLY the stored session
+	// uuid, never resolveAppUUID's generated fallback: an imported session may carry no
+	// AppUUID, and substituting an unrelated install uuid would send the wrong caller
+	// identity. Empty here means "don't inject" — the caller passes app_uuid explicitly.
+	var sessionAppUUID string
+	if ts != nil {
+		sessionAppUUID = ts.AppUUID
+	}
 	query, err := parseQuery(c.Query)
 	if err != nil {
 		return err
@@ -63,6 +71,7 @@ func (c *callCmd) Run(rc *runContext) error {
 		id:          c.ID,
 		data:        c.Data,
 		idHeaders:   identityHeaders(idt, c.ServiceID, c.ProfileID, c.DeviceID, appUUID),
+		appUUID:     sessionAppUUID,
 		query:       query,
 		pathParams:  pathParams,
 		userHeaders: userHeaders,
@@ -105,6 +114,7 @@ func dumpRequest(rc *runContext, idToken string) doFunc {
 type callArgs struct {
 	entity, op, id, data string
 	idHeaders            map[string]string // x-fp-identifier-* values keyed by header name
+	appUUID              string            // this install's app-uuid, injected into an app_uuid body placeholder
 	query                url.Values        // extra query params (ordered, multi-value)
 	pathParams           map[string]string // {name} path placeholder values
 	userHeaders          map[string]string // arbitrary extra request headers
@@ -192,6 +202,12 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	body, err := buildBody(o.Body, a.data)
 	if err != nil {
 		return err
+	}
+	if o.InjectCallerAppUUID {
+		body, err = injectAppUUID(body, a.appUUID)
+		if err != nil {
+			return err
+		}
 	}
 	if o.TakesBody && len(body) == 0 && !a.dryRun {
 		if o.BodyExample != "" {
@@ -309,6 +325,36 @@ func buildBody(defaults map[string]any, data string) ([]byte, error) {
 		}
 	}
 	return json.Marshal(merged)
+}
+
+// injectAppUUID fills the body's app_uuid field with the caller's stored session app-uuid
+// when the caller left it as a placeholder (empty, or a "<...>" token like the
+// body_example's "<device-uuid>"). runCall calls it ONLY for ops flagged
+// InjectCallerAppUUID — those keyed to the caller's own session (user_setting.updateUserSettings)
+// — never for identity/pairing token exchanges that carry a child's or new device's uuid.
+// A non-placeholder app_uuid the caller passed explicitly is left untouched; a body without
+// the field, a non-object body, or an empty app-uuid (e.g. an imported session with no
+// stored uuid) are all no-ops, so a wrong uuid is never substituted.
+func injectAppUUID(body []byte, appUUID string) ([]byte, error) {
+	// Only a JSON object can carry an app_uuid field; skip empties, arrays and scalars up
+	// front (checking the first byte) so a real json.Unmarshal error below stays an error.
+	if appUUID == "" || len(bytes.TrimSpace(body)) == 0 || bytes.TrimSpace(body)[0] != '{' {
+		return body, nil
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(body, &obj); err != nil {
+		return nil, err
+	}
+	cur, ok := obj["app_uuid"]
+	if !ok {
+		return body, nil
+	}
+	s, _ := cur.(string)
+	if s != "" && !strings.HasPrefix(s, "<") {
+		return body, nil // caller supplied a real app_uuid — respect it
+	}
+	obj["app_uuid"] = appUUID
+	return json.Marshal(obj)
 }
 
 // resolveOp finds an operation or action named op on entity.
