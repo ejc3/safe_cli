@@ -2352,7 +2352,7 @@
         "deleteGeofenceSettings": {
           "method": "DELETE",
           "path": "/vsf/location/v6/geofence/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2360,7 +2360,7 @@
             "eventId",
             "eventType"
           ],
-          "description": "Remove a saved geofence/place (by eventId+eventType) from the profile's location settings."
+          "description": "Delete a saved location / geofence (verified live 2026-08-28, 200). Query eventId=the saved location's eventId (from getGeofenceSettings) and eventType=savedLocation; no body."
         },
         "fetchHistory": {
           "method": "GET",
