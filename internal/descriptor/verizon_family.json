@@ -1112,25 +1112,25 @@
         "createAppLimit": {
           "method": "POST",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
-          "description": "Create an app time limit"
+          "body_example": "{\"id\":10061,\"limits\":{\"blockAllDay\":false,\"days\":[\"mon\",\"tue\",\"wed\",\"thu\",\"fri\",\"sat\",\"sun\"],\"duration\":60},\"name\":\"8 Ball Pool\"}",
+          "description": "Set a per-app daily time limit (verified live 2026-08-28, created then deleted). id=the app/subcategory id (from getCategories/Filter content); limits.days are lowercase 3-letter (mon..sun); duration=minutes; blockAllDay=true blocks entirely. name=app name."
         },
         "deleteAppLimit": {
           "method": "DELETE",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "appLimitsId"
           ],
-          "description": "Remove an app time limit by appLimitsId"
+          "description": "Remove an app time limit by appLimitsId (verified live 2026-08-28, 200). Query appLimitsId (the UUID from getAppTimeLimits / the create response); no body."
         },
         "updateAppLimit": {
           "method": "PUT",
@@ -1208,13 +1208,13 @@
         "setCFCategories": {
           "method": "POST",
           "path": "/parental-control/frisco/v8/categories",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"categories\":[{\"allEnabled\":false,\"blocked\":1,\"categoryId\":5,\"enabledCount\":3,\"hasAppLimits\":true,\"id\":\"1\",\"isLoading\":false,\"moreInfo\":\"Includes social media apps\",\"name\":\"Social Networking\",\"showAppLimit\":true,\"subCategories\":[{\"androidUrl\":\"com.instagram.android\",\"enabled\":true,\"hasAppLimit\":false,\"id\":501,\"imagePresignedUrl\":\"https://cdn.example.com/icons/501.png\",\"moreInfo\":\"Photo sharing\",\"name\":\"Instagram\",\"parentCategoriesName\":\"Social Networking\",\"url\":\"https://instagram.com\"}],\"totalCount\":8,\"trusted\":0}]}",
-          "description": "Set which content-filter categories are blocked/allowed"
+          "body_example": "{\"categories\":[{\"id\":\"GAM\",\"name\":\"Games\",\"subCategories\":[{\"enabled\":true,\"hasAppLimit\":false,\"id\":10061,\"name\":\"8 Ball Pool\"}]}]}",
+          "description": "Set which apps/categories are blocked (verified live 2026-08-28, block Games category then restored). categories[]: {id:categoryShortName, name, subCategories:[{enabled(=blocked), hasAppLimit, id, name}]}. enabled=true blocks the app/subcategory."
         }
       }
     },
@@ -4591,13 +4591,13 @@
         "createAppLimit": {
           "method": "POST",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"id\":42,\"limits\":{\"blockAllDay\":false,\"days\":[\"Mon\",\"Tue\"],\"duration\":60},\"name\":\"Games\"}",
-          "description": "POST /parental-control/frisco/v7/app-limits — create a per-app daily time limit"
+          "body_example": "{\"id\":10061,\"limits\":{\"blockAllDay\":false,\"days\":[\"mon\",\"tue\",\"wed\",\"thu\",\"fri\",\"sat\",\"sun\"],\"duration\":60},\"name\":\"8 Ball Pool\"}",
+          "description": "Set a per-app daily time limit (verified live 2026-08-28, created then deleted). id=the app/subcategory id (from getCategories/Filter content); limits.days are lowercase 3-letter (mon..sun); duration=minutes; blockAllDay=true blocks entirely. name=app name."
         },
         "updateAppLimit": {
           "method": "PUT",
@@ -4616,14 +4616,14 @@
         "deleteAppLimit": {
           "method": "DELETE",
           "path": "/parental-control/frisco/v7/app-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "appLimitsId"
           ],
-          "description": "DELETE /parental-control/frisco/v7/app-limits — permanently removes an app time limit (by appLimitsId)"
+          "description": "Remove an app time limit by appLimitsId (verified live 2026-08-28, 200). Query appLimitsId (the UUID from getAppTimeLimits / the create response); no body."
         },
         "getScheduledAlerts": {
           "method": "GET",
