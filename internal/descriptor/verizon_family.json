@@ -2023,14 +2023,14 @@
         "updateDeviceGeofenceSettings": {
           "method": "PUT",
           "path": "/vsf/location/v6/geofence/settings?operation=configGeoDevice",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [],
           "takes_body": true,
-          "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"evt-abc123\",\"isLocationChanged\":true,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.422,\"longitude\":-122.084,\"altitude\":0.0},\"address\":{\"street1\":\"1600 Amphitheatre Pkwy\",\"street2\":\"Apt 2\",\"city\":\"Mountain View\",\"state\":\"CA\",\"zip\":\"94043\",\"country\":\"US\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"deviceId\":101,\"deviceType\":\"PHONE\",\"eligibleForGeofence\":true,\"geofenceId\":\"gf-xyz789\",\"geofenceType\":\"arrival_departure\",\"operation\":\"UPDATE\",\"precision\":{\"type\":\"meters\",\"value\":150.0},\"profileId\":202,\"schedule\":{\"daysOfWeek\":[\"MONDAY\",\"TUESDAY\"],\"startTime\":\"09:00\",\"endTime\":\"17:00\"}}]}],\"accountId\":12345,\"deviceOS\":\"Android\",\"deviceOSVersion\":\"Android 14\",\"deviceModel\":\"Google Pixel 7\",\"MAPPVersion\":\"8.101.30\"}",
-          "description": "Update an existing device geofence / saved-place boundary (PUT location v6 geofence/settings)."
+          "body_example": "{\"editSource\":\"MAPP\",\"events\":[{\"eventType\":\"savedLocation\",\"eventDateTime\":1700000000000,\"eventId\":\"00000000-0000-0000-0000-000000000000\",\"isLocationChanged\":false,\"locationDetails\":{\"name\":\"Home\",\"locationCategory\":\"OTHER\",\"position\":{\"latitude\":37.3,\"longitude\":-121.9,\"altitude\":0.0,\"speed\":0.0},\"address\":{\"street1\":\"1\",\"city\":\"San Jose\",\"state\":\"CA\",\"zip\":\"95125\",\"country\":\"United States\"}},\"geofenceEnabled\":true,\"deviceGeofenceConfigList\":[{\"profileId\":2000002,\"deviceId\":3000002,\"deviceType\":\"PHONE\",\"precision\":{\"type\":\"meters\",\"value\":400},\"geofenceType\":\"all\",\"geofenceId\":\"00000000-0000-0000-0000-000000000000\",\"operation\":\"upsert\"}]}],\"accountId\":1000001,\"deviceOS\":\"Android\",\"deviceModel\":\"Phone\",\"mappVersion\":\"8.101.30\"}",
+          "description": "Update an existing saved location / geofence (verified live 2026-08-28 via the app's edit PUT). Same shape as create PLUS the server-assigned deviceGeofenceConfigList[].geofenceId (from getGeofenceSettings) — a create omits it. geofenceType=all (leave or arrive) | onExit (leave) | onEntry (arrive); operation=upsert; isLocationChanged=false unless the pin moved. eventType=configGeoDevice is baked into the path."
         }
       }
     },

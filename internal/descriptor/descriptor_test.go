@@ -416,6 +416,21 @@ func TestEmergencyAddCaptured(t *testing.T) {
 	}
 }
 
+// TestGeofenceUpdateCaptured: geofence.updateDeviceGeofenceSettings body captured from the
+// app's successful edit PUT (2026-08-28) — it requires the server-assigned geofenceId in
+// deviceGeofenceConfigList (a create omits it) and a geofenceType enum. RED against the
+// pre-capture descriptor (which lacked geofenceId and was unconfirmed).
+func TestGeofenceUpdateCaptured(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := d.Entities["geofence"].Operations["updateDeviceGeofenceSettings"]
+	if !o.Confirmed || !strings.Contains(o.BodyExample, "geofenceId") || !strings.Contains(o.BodyExample, "geofenceType") {
+		t.Errorf("updateDeviceGeofenceSettings must be confirmed and carry geofenceId + geofenceType: confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
