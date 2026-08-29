@@ -970,13 +970,13 @@
         "updateTrustedContacts": {
           "method": "POST",
           "path": "/callandtext/vsf/callandtext/v1/feature/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"settingId\":8000,\"settingValue\":1}",
-          "description": "Update the trusted-contacts feature settings"
+          "description": "Toggle Trusted-contacts-only mode (verified live 2026-08-28, 200; reversed). Body {settingId:8000, settingValue:0|1} — a feature-settings flag; settingValue=1 restricts the child to trusted contacts only, 0 disables."
         },
         "validateGizmoMdn": {
           "method": "POST",
