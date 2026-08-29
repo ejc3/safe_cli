@@ -276,8 +276,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileName\":\"Alex\",\"flowType\":\"EDIT_PROFILE\"}",
-          "description": "Edit a profile (PATCH /userprofiles), targeted by --service-id (verified live 2026-08-29 on the guardian's own service, idempotent 200). The app's EDIT_PROFILE flow sends only the changed field(s); profileName alone is accepted. Optional EDIT_PROFILE fields: timeZone (IANA), dateOfBirth (YYYY-MM-DD), profileImage (url). Distinct from updateProfileName (PATCH /accounts/userprofiles). Reversible: read the current value and PATCH it back."
+          "body_example": "{\"profileName\":\"Alex\"}",
+          "description": "Edit a profile (PATCH /userprofiles), targeted by --service-id (verified live 2026-08-29 on the guardian's own service, idempotent 200). The minimal body {\"profileName\":\"...\"} alone is accepted (verified without any other field). The app's EDIT_PROFILE flow may also send optional fields on the same PATCH: flowType=\"EDIT_PROFILE\", timeZone (IANA), dateOfBirth (YYYY-MM-DD), profileImage (url). Distinct from updateProfileName (PATCH /accounts/userprofiles). Reversible: read the current value and PATCH it back."
         },
         "updateProfileImage": {
           "method": "PUT",
