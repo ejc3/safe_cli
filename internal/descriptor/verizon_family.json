@@ -247,14 +247,14 @@
         "updateFamilyNameOrTimeZone": {
           "method": "PATCH",
           "path": "/fam/userprofile-management/v5/accounts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-pending-activation"
           ],
           "takes_body": true,
-          "body_example": "{\"familyName\":\"The Smiths\",\"timezone\":\"America/New_York\"}",
-          "description": "Update the family/account display name or time zone (PATCH accounts)."
+          "body_example": "{\"familyName\":\"Example Family\",\"timezone\":\"America/New_York\"}",
+          "description": "Edit the family display name and/or account timezone (verified live 2026-08-29, idempotent 200). Account-level: target the GUARDIAN'S OWN service id with --service-id and pass -H x-pending-activation=false. Send BOTH fields (read current via getAccountDetails: familyName + timezone) so the untouched one is not nulled; reversible by PATCHing the originals back. timezone is an IANA id."
         },
         "updatePlan": {
           "method": "PUT",
@@ -271,13 +271,13 @@
         "updateProfile": {
           "method": "PATCH",
           "path": "/fam/userprofile-management/v5/userprofiles",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"appConsent\":\"GRANTED\",\"termsAcceptedDate\":\"2026-08-27T12:00:00Z\",\"timeZone\":\"America/New_York\",\"transitionStatus\":\"COMPLETED\",\"dateOfBirth\":\"2012-05-01\",\"permissionLevel\":true,\"weight\":\"45\",\"sex\":\"M\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"flowType\":\"EDIT_PROFILE\"}",
-          "description": "Update general user-profile fields (PATCH userprofiles with body)."
+          "body_example": "{\"profileName\":\"Alex\",\"flowType\":\"EDIT_PROFILE\"}",
+          "description": "Edit a profile (PATCH /userprofiles), targeted by --service-id (verified live 2026-08-29 on the guardian's own service, idempotent 200). The app's EDIT_PROFILE flow sends only the changed field(s); profileName alone is accepted. Optional EDIT_PROFILE fields: timeZone (IANA), dateOfBirth (YYYY-MM-DD), profileImage (url). Distinct from updateProfileName (PATCH /accounts/userprofiles). Reversible: read the current value and PATCH it back."
         },
         "updateProfileImage": {
           "method": "PUT",
@@ -2950,7 +2950,7 @@
         "markAllRead": {
           "method": "PATCH",
           "path": "/comms/fam/v6/notifications/updateAll",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2958,12 +2958,12 @@
             "productType",
             "notificationType"
           ],
-          "description": "Mark all notifications as read, by product/notification type (v6)."
+          "description": "Mark all of a member's notifications read (verified live 2026-08-29, returns {\"success\":true}; idempotent when the feed is already clear). Target with --service-id (the guardian's own service id works). Query productType (VSF) and notificationType (all)."
         },
         "updateReportSettings": {
           "method": "POST",
           "path": "/comms/vsf/v7/report-settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2971,8 +2971,8 @@
             "reportCategory"
           ],
           "takes_body": true,
-          "body_example": "{\"settings\":{\"lowBattery\":true,\"appInstalled\":false}}",
-          "description": "Update notification report settings (reportCategory query, v7)."
+          "body_example": "{\"settings\":{\"weeklySummaryEmailV2\":true,\"newContactAlertV2\":true,\"dailySummaryEmailV2\":true,\"911CallsAlertV2\":true,\"deviceActivityRestrictionAlertV2\":true}}",
+          "description": "Update report/notification settings (verified live 2026-08-29, {\"statusCode\":200}). Body is {\"settings\":{<settingId>:<bool>}} — a flat Map<String,Boolean> keyed by the setting id (read the current ids+statuses via getReportSettings2, whose emailSettings[].id / .status give the keys). Query reportCategory=all (account/email report settings) | individual (per-profile). Target with --service-id. Reversible: POST the current statuses back (idempotent) — that is exactly how this was confirmed."
         }
       }
     },
