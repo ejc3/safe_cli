@@ -678,6 +678,42 @@ func TestEnabledFeatureVerbs(t *testing.T) {
 	}
 }
 
+// TestFamilyLineVerifiedRoutes pins the wire-verified (2026-09-07, decrypted HPACK)
+// finding that getProvisioningStatus (fl/status) and traceSdkResponse (fl/trace)
+// authenticate with the plain id_token + x-fp-identifier-target-serviceid, NOT an SPC
+// token — so they must be confirmed and declare the target-serviceid header (so
+// `call` injects --service-id). The blanket "all family_line ⇒ SPC" assertion was stale.
+func TestFamilyLineVerifiedRoutes(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fl := d.Entities["family_line"]
+	for _, name := range []string{"getProvisioningStatus", "traceSdkResponse"} {
+		op, ok := fl.Operations[name]
+		if !ok {
+			t.Fatalf("family_line.%s missing", name)
+		}
+		if !op.Confirmed {
+			t.Errorf("family_line.%s must be confirmed (verified plain-id_token route)", name)
+		}
+		hasSvc := false
+		for _, h := range op.Headers {
+			if strings.Contains(h, "serviceid") {
+				hasSvc = true
+			}
+		}
+		if !hasSvc {
+			t.Errorf("family_line.%s must declare x-fp-identifier-target-serviceid so --service-id is injected; headers=%v", name, op.Headers)
+		}
+	}
+	// The summary must still document SPC (for the management ops) AND the plain-id_token exception.
+	sum := fl.Summary
+	if !strings.Contains(sum, "SPC token") || !strings.Contains(sum, "parent id_token") {
+		t.Error("family_line summary must scope SPC to management ops and record the plain-id_token routes")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
