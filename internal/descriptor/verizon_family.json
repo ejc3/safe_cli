@@ -1747,7 +1747,7 @@
       }
     },
     "family_line": {
-      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings.",
+      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings. NOTE: most family_line ops authenticate with a Family-Line SPC token (POST getSpcToken -> spcToken), NOT the parent id_token — calling them with only the id_token returns 403 \"no permissions on this serviceId\". The CLI does not yet mint/use the SPC token, so these ops are currently only reachable from the app.",
       "id_field": "",
       "operations": {
         "acceptFamilyLineInvite": {
@@ -4299,13 +4299,13 @@
         "updateRsaMemberAccess": {
           "method": "PATCH",
           "path": "/fam/rsa/v5/rescue/dependents",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"consentFlag\":true,\"enableRSAFlag\":true}",
-          "description": "PATCH to grant or revoke roadside-assistance access for family members/dependents."
+          "description": "Grant/revoke Roadside Assistance access + consent for the account (verified live 2026-09-07, {\"success\":true}). Body {\"consentFlag\":bool,\"enableRSAFlag\":bool}: both true enables RSA (may add a monthly fee); both false revokes. Target with --service-id (guardian svc). Reversible."
         },
         "validateTowLocation": {
           "method": "POST",
