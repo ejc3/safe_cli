@@ -1622,24 +1622,24 @@
         "putSettings": {
           "method": "PUT",
           "path": "/frisco/driving-insights/v5/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Update driving-insights settings",
+          "description": "Update a member's Driving Insights notification settings (verified live 2026-09-07, 200 idempotent). Requires Driving Insights enabled on the member's device. Body {passenger,tripEndNotification,crashNotification} booleans; read current via getSettings. Target with --service-id.",
           "body_example": "{\"passenger\":false,\"tripEndNotification\":false,\"crashNotification\":true}"
         },
         "putSpeedAlertLimit": {
           "method": "PUT",
           "path": "/frisco/driving-insights/v5/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
           "body_example": "{\"passenger\":false,\"tripEndNotification\":false,\"crashNotification\":true,\"speedAlertNotification\":true,\"speedAlertLimit\":75.0}",
-          "description": "Set the speed-alert threshold (same settings endpoint, speed-limit body)"
+          "description": "Set a member's speed-alert limit + Driving Insights notification settings (verified live 2026-09-07, 200 idempotent). Body adds speedAlertNotification(bool)+speedAlertLimit(number, mph; 0=off) to the putSettings fields. Read current via getSettings. Target with --service-id."
         },
         "getCrashDetail": {
           "method": "GET",
@@ -2047,7 +2047,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
-          "description": "Validate a Gizmo watch's activation during self-activation setup (POST v5 gizmo/activation/validate)."
+          "description": "Validate a Gizmo watch's activation during self-activation setup (POST v5 gizmo/activation/validate).",
+          "unavailable": "Requires activating a Gizmo Watch — no Gizmo on this account."
         }
       }
     },
@@ -2180,7 +2181,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"events\":[{\"appName\":\"Chrome\",\"packageName\":\"com.android.chrome\",\"versionName\":\"120.0\",\"systemApp\":false}],\"timeZone\":\"America/New_York\",\"newAppInstall\":true,\"lastRefreshTime\":1710000000000}",
-          "description": "Report the child device's installed-apps inventory to the backend (POST parental-control v5 installed-apps)."
+          "description": "Report the child device's installed-apps inventory to the backend (POST parental-control v5 installed-apps).",
+          "unavailable": "Originated by the child device to report its installed-apps inventory to the backend; not a parent action."
         }
       }
     },
@@ -2602,7 +2604,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
-          "description": "Add members to an existing group chat (PUT to the group's members list)."
+          "description": "Add members to an existing group chat (PUT to the group's members list).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "clearAllGroupChatMessages": {
           "method": "DELETE",
@@ -2615,7 +2618,8 @@
             "chatGroupId"
           ],
           "destructive": true,
-          "description": "Permanently delete ALL messages in a group chat, wiping its entire history."
+          "description": "Permanently delete ALL messages in a group chat, wiping its entire history.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "createNewGroup": {
           "method": "POST",
@@ -2626,7 +2630,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"name\":\"Family\",\"image\":\"https://cdn.example.com/g.png\",\"type\":\"GROUP\",\"groupMembers\":[{\"memberId\":\"1234567\"}]}",
-          "description": "Create a new group chat."
+          "description": "Create a new group chat.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "deleteGroupChat": {
           "method": "DELETE",
@@ -2639,7 +2644,8 @@
             "group-id"
           ],
           "destructive": true,
-          "description": "Permanently delete an entire group chat and its messages."
+          "description": "Permanently delete an entire group chat and its messages.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "deleteGroupMember": {
           "method": "DELETE",
@@ -2653,7 +2659,8 @@
             "member-id"
           ],
           "destructive": true,
-          "description": "Permanently remove a specific member from a group chat."
+          "description": "Permanently remove a specific member from a group chat.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "exitGroup": {
           "method": "DELETE",
@@ -2665,7 +2672,8 @@
           "placeholders": [
             "group-id"
           ],
-          "description": "Leave a group chat yourself (self-exit)."
+          "description": "Leave a group chat yourself (self-exit).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getAllEligibleMembers": {
           "method": "GET",
@@ -2674,7 +2682,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List account members eligible to be added to a group."
+          "description": "List account members eligible to be added to a group.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getAllGroupMessage": {
           "method": "POST",
@@ -2685,7 +2694,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"requestedGroups\":[{\"chatGroupId\":101,\"currentMessageId\":5000,\"requestedList\":\"NEXT\"}],\"limit\":50,\"includePreview\":true}",
-          "description": "Fetch all messages in a group chat (POST-based query)."
+          "description": "Fetch all messages in a group chat (POST-based query).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getAllGroups": {
           "method": "GET",
@@ -2694,7 +2704,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List all of the account's group chats."
+          "description": "List all of the account's group chats.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getGroupMediaMessage": {
           "method": "GET",
@@ -2708,7 +2719,8 @@
             "messageId",
             "presignedUrl"
           ],
-          "description": "Download a media attachment from a group message (by messageId; optional presigned URL)."
+          "description": "Download a media attachment from a group message (by messageId; optional presigned URL).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getRemainingMembersToAddGroup": {
           "method": "GET",
@@ -2720,7 +2732,8 @@
           "placeholders": [
             "group-id"
           ],
-          "description": "List members still eligible to add to a specific group."
+          "description": "List members still eligible to add to a specific group.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "messageRead": {
           "method": "POST",
@@ -2734,7 +2747,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"lastReadMessageUser\":\"1234567\"}",
-          "description": "Mark group chat message(s) as read."
+          "description": "Mark group chat message(s) as read.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "sendGroupMediaMessage": {
           "method": "POST",
@@ -2748,7 +2762,8 @@
           ],
           "takes_body": true,
           "multipart": true,
-          "description": "Send a media message to a group chat (multipart file upload)."
+          "description": "Send a media message to a group chat (multipart file upload).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "sendGroupTextMessage": {
           "method": "POST",
@@ -2762,7 +2777,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"message\":\"Hello team\"}",
-          "description": "Send a text message to a group chat."
+          "description": "Send a text message to a group chat.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "updateGroupChat": {
           "method": "PATCH",
@@ -2776,7 +2792,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"name\":\"Family Chat\",\"image\":\"https://cdn.example.com/g.png\"}",
-          "description": "Update a group chat's details (e.g. its name)."
+          "description": "Update a group chat's details (e.g. its name).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "deleteMessages": {
           "method": "DELETE",
@@ -2786,7 +2803,8 @@
             "x-fp-identifier-target-serviceid"
           ],
           "destructive": true,
-          "description": "Permanently delete message(s) (target message id supplied via header)."
+          "description": "Permanently delete message(s) (target message id supplied via header).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getMediaMessage": {
           "method": "GET",
@@ -2799,7 +2817,8 @@
             "messageId",
             "presignedUrl"
           ],
-          "description": "Download a media attachment from a 1:1 message (by messageId)."
+          "description": "Download a media attachment from a 1:1 message (by messageId).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "getMessageList": {
           "method": "GET",
@@ -2813,7 +2832,8 @@
             "limit",
             "direction"
           ],
-          "description": "List messages, paged by messageId/direction/limit."
+          "description": "List messages, paged by messageId/direction/limit.",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         },
         "postMessageMedia": {
           "method": "POST",
@@ -2826,7 +2846,8 @@
           ],
           "takes_body": true,
           "multipart": true,
-          "description": "Upload and send a media attachment in a 1:1 message (multipart upload)."
+          "description": "Upload and send a media attachment in a 1:1 message (multipart upload).",
+          "unavailable": "Requires a Gizmo Watch — family group-chat is watch-gated (verified live 2026-09-07: Chat/Call shows the Gizmo Watch upsell, not conversations)."
         }
       }
     },
@@ -3584,7 +3605,8 @@
           ],
           "takes_body": true,
           "description": "End a real-time-tracking (RTT) or lost-pet-mode (LPM) session.",
-          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"RTT\",\"operation\":\"End\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}]}"
+          "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"RTT\",\"operation\":\"End\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}]}",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "escalateRttToLpm": {
           "method": "PATCH",
@@ -3595,7 +3617,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"sessionId\":\"sess-abc123\",\"requestType\":\"LPM\",\"operation\":\"Escalate\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}]}",
-          "description": "Escalate a real-time-tracking session to lost-pet mode."
+          "description": "Escalate a real-time-tracking session to lost-pet mode.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getAllAvailableEmergencyContacts": {
           "method": "GET",
@@ -3604,7 +3627,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List the profile's available emergency contacts."
+          "description": "List the profile's available emergency contacts.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getPetLiveTrackerSessionInfo": {
           "method": "GET",
@@ -3613,7 +3637,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Get info on the current live-tracking session."
+          "description": "Get info on the current live-tracking session.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getPetTrackerLocationHistory": {
           "method": "GET",
@@ -3625,7 +3650,8 @@
           "placeholders": [
             "session-id"
           ],
-          "description": "Get location history for a live-tracking session by session-id."
+          "description": "Get location history for a live-tracking session by session-id.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getPetTrackerSMSLink": {
           "method": "GET",
@@ -3637,7 +3663,8 @@
           "placeholders": [
             "session-id"
           ],
-          "description": "Get a shareable SMS link for a live-tracking session by session-id."
+          "description": "Get a shareable SMS link for a live-tracking session by session-id.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "submitPetLiveTracker": {
           "method": "POST",
@@ -3648,7 +3675,8 @@
           ],
           "takes_body": true,
           "description": "Start a pet live-tracking session.",
-          "body_example": "{\"requestType\":\"LPM\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"petProfileName\":\"Rex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}],\"petLat\":40.7128,\"petLon\":-74.006,\"petAddress\":\"123 Main St, Denver, CO\",\"petLastLocationTime\":1700000000000}"
+          "body_example": "{\"requestType\":\"LPM\",\"ts\":1700000000000,\"userProfileName\":\"Alex\",\"petProfileName\":\"Rex\",\"emergencyContacts\":[{\"accountId\":100,\"profileId\":200,\"deviceId\":300,\"mdn\":\"5551234567\",\"profileName\":\"Alex\",\"deviceOs\":\"ANDROID\",\"profileImageUrl\":\"https://example.com/alex.png\",\"sessionId\":\"sess-abc123\",\"status\":\"ACTIVE\",\"joined\":true}],\"petLat\":40.7128,\"petLon\":-74.006,\"petAddress\":\"123 Main St, Denver, CO\",\"petLastLocationTime\":1700000000000}",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "deleteWifiDetails": {
           "method": "DELETE",
@@ -3656,7 +3684,8 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
-          "description": "Remove a saved WiFi network from the pet collar (DELETE with body)."
+          "description": "Remove a saved WiFi network from the pet collar (DELETE with body).",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "firmwareUpdateStatus": {
           "method": "POST",
@@ -3664,7 +3693,8 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"featureValue\":1}",
-          "description": "Report/update the collar's firmware-update status."
+          "description": "Report/update the collar's firmware-update status.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getActivity": {
           "method": "GET",
@@ -3673,7 +3703,8 @@
           "headers": [
             "duration"
           ],
-          "description": "Get the pet's activity data over a given duration."
+          "description": "Get the pet's activity data over a given duration.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getActivityV2": {
           "method": "GET",
@@ -3682,7 +3713,8 @@
           "headers": [
             "duration"
           ],
-          "description": "Get the pet's activity data over a duration (v2 response model)."
+          "description": "Get the pet's activity data over a duration (v2 response model).",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getBreeds": {
           "method": "GET",
@@ -3691,19 +3723,22 @@
           "query": [
             "species"
           ],
-          "description": "List pet breeds, optionally filtered by species."
+          "description": "List pet breeds, optionally filtered by species.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getCollarSoftwareInfo": {
           "method": "GET",
           "path": "/tracker/fam/v1/device/status",
           "confirmed": false,
-          "description": "Get the collar's device/software status info."
+          "description": "Get the collar's device/software status info.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getEncryptionKey": {
           "method": "GET",
           "path": "/tracker/fam/v1/keys",
           "confirmed": false,
-          "description": "Fetch the pet-tracker encryption key."
+          "description": "Fetch the pet-tracker encryption key.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getPurchaseLink": {
           "method": "GET",
@@ -3712,13 +3747,15 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Get the pet-tracker purchase link."
+          "description": "Get the pet-tracker purchase link.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getReportingToken": {
           "method": "POST",
           "path": "/tracker/fam/v1/pet/mobile-sdk-reporting-token",
           "confirmed": false,
-          "description": "Get a mobile-SDK reporting token (POST, no body)."
+          "description": "Get a mobile-SDK reporting token (POST, no body).",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getRest": {
           "method": "GET",
@@ -3727,13 +3764,15 @@
           "headers": [
             "duration"
           ],
-          "description": "Get the pet's rest/sleep data over a given duration."
+          "description": "Get the pet's rest/sleep data over a given duration.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getSdkToken": {
           "method": "POST",
           "path": "/tracker/fam/v1/sdk-oauth-token",
           "confirmed": false,
-          "description": "Get an SDK OAuth token (POST, no body)."
+          "description": "Get an SDK OAuth token (POST, no body).",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getStepDistribution": {
           "method": "GET",
@@ -3744,19 +3783,22 @@
             "name",
             "ageInYears"
           ],
-          "description": "Get step-count distribution benchmarked by breed/age."
+          "description": "Get step-count distribution benchmarked by breed/age.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getTutorialVideoDetails": {
           "method": "GET",
           "path": "/tracker/fam/v1/hw-works",
           "confirmed": false,
-          "description": "Get how-it-works tutorial video details."
+          "description": "Get how-it-works tutorial video details.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "getWifiList": {
           "method": "GET",
           "path": "/tracker/fam/v1/pet/wifi",
           "confirmed": false,
-          "description": "List the WiFi networks saved on the collar."
+          "description": "List the WiFi networks saved on the collar.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "logFiSdkInteractionEvent": {
           "method": "POST",
@@ -3764,7 +3806,8 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"eventType\":\"FI_SDK_INITIALIZATION_SUCCESS\",\"errorMessage\":\"\",\"additionalInfo\":{\"collarSerialNumber\":\"CS12345\",\"sdkToken\":\"tok-abc\",\"petProfileId\":\"pet-1\",\"additionalMessage\":\"ok\"}}",
-          "description": "Log a Fi-SDK interaction/trace event."
+          "description": "Log a Fi-SDK interaction/trace event.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "saveWifiDetails": {
           "method": "POST",
@@ -3772,7 +3815,8 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
-          "description": "Save a new WiFi network to the collar."
+          "description": "Save a new WiFi network to the collar.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         },
         "updateWifiDetails": {
           "method": "PUT",
@@ -3780,7 +3824,8 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"petProfileId\":789,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"password123\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}",
-          "description": "Update a saved WiFi network on the collar."
+          "description": "Update a saved WiFi network on the collar.",
+          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
         }
       }
     },
@@ -4941,7 +4986,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"accessibilityRemoved\":true,\"stopCode\":0}}",
-          "description": "Report whether the Android accessibility service (needed to block apps) is enabled/disabled on the child device."
+          "description": "Report whether the Android accessibility service (needed to block apps) is enabled/disabled on the child device.",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postAdminStatus": {
           "method": "POST",
@@ -4952,7 +4998,8 @@
           ],
           "takes_body": true,
           "description": "Report the device-admin privilege status (granted or revoked) on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"adminStatusRemoved\":true}}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":{\"adminStatusRemoved\":true}}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postBannerStatus": {
           "method": "POST",
@@ -4963,7 +5010,8 @@
           ],
           "takes_body": true,
           "description": "Report the state of the on-device tamper-warning banner.",
-          "body_example": "{\"eventTimeStamp\":1700000000000,\"remindMeLater\":false,\"closeFlag\":true,\"featureId\":1}"
+          "body_example": "{\"eventTimeStamp\":1700000000000,\"remindMeLater\":false,\"closeFlag\":true,\"featureId\":1}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postCallOnlyModeStatus": {
           "method": "POST",
@@ -4974,7 +5022,8 @@
           ],
           "takes_body": true,
           "description": "Report the call-only-mode tamper status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postHibernationStatus": {
           "method": "POST",
@@ -4985,7 +5034,8 @@
           ],
           "takes_body": true,
           "description": "Report whether the OS has hibernated (auto-suspended) the app on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postParentalControlsRemoved": {
           "method": "POST",
@@ -4994,7 +5044,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Signal that parental controls were removed/disabled on the child device (no body)."
+          "description": "Signal that parental controls were removed/disabled on the child device (no body).",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postScreenTimeCallOnlyModeStatus": {
           "method": "POST",
@@ -5005,7 +5056,8 @@
           ],
           "takes_body": true,
           "description": "Report the screen-time call-only-mode status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "putTamperInstructions": {
           "method": "PUT",
@@ -5016,7 +5068,8 @@
           ],
           "takes_body": true,
           "description": "Update the parent-facing tamper remediation instructions for the device.",
-          "body_example": "{\"templateType\":\"DEFAULT\",\"deviceIds\":[12345]}"
+          "body_example": "{\"templateType\":\"DEFAULT\",\"deviceIds\":[12345]}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postBatteryUsage": {
           "method": "POST",
@@ -5027,7 +5080,8 @@
           ],
           "takes_body": true,
           "description": "Report whether battery optimization is exempting/throttling the app on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postBluetoothScan": {
           "method": "POST",
@@ -5038,7 +5092,8 @@
           ],
           "takes_body": true,
           "description": "Report the Bluetooth-scan permission status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postNotificationStatus": {
           "method": "POST",
@@ -5049,7 +5104,8 @@
           ],
           "takes_body": true,
           "description": "Report the app's notification-permission status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postPhysicalActivityStatus": {
           "method": "POST",
@@ -5060,7 +5116,8 @@
           ],
           "takes_body": true,
           "description": "Report the physical-activity (motion) permission status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "postPowerSaving": {
           "method": "POST",
@@ -5071,7 +5128,8 @@
           ],
           "takes_body": true,
           "description": "Report whether power-saving mode is active on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"addlAttributes\":null}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "updateScreenTimeTamperStatus": {
           "method": "POST",
@@ -5082,7 +5140,8 @@
           ],
           "takes_body": true,
           "description": "Report the screen-time enforcement tamper status on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"screenTimeScheduler\":0,\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"screenTimeScheduler\":0,\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         },
         "updateVpnTamperStatus": {
           "method": "POST",
@@ -5093,7 +5152,8 @@
           ],
           "takes_body": true,
           "description": "Report the VPN status (the VPN carries web filtering) on the child device.",
-          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}"
+          "body_example": "{\"featureValue\":1,\"eventTimeStamp\":1700000000000,\"deviceOS\":\"Android\",\"dohLink\":\"https://doh.example.com/dns-query\",\"profileName\":\"Child\",\"addlAttributes\":{\"screenTimeLastSchedulerRun\":1700000000000,\"vpnStopCode\":0,\"vpnReason\":\"USER_DISABLED\"},\"featureId\":1}",
+          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
         }
       }
     },
@@ -5177,7 +5237,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
-          "description": "Manage an active WebRTC video call (signaling/control such as hang-up or state change)."
+          "description": "Manage an active WebRTC video call (signaling/control such as hang-up or state change).",
+          "unavailable": "Requires a Gizmo Watch — in-app WebRTC video calling is watch-gated (verified live 2026-09-07: the parent app's call button opens the system phone dialer, not an in-app video call)."
         },
         "initCall": {
           "method": "POST",
@@ -5186,7 +5247,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Start (place) a WebRTC video call to a family member (empty POST)."
+          "description": "Start (place) a WebRTC video call to a family member (empty POST).",
+          "unavailable": "Requires a Gizmo Watch — in-app WebRTC video calling is watch-gated (verified live 2026-09-07: the parent app's call button opens the system phone dialer, not an in-app video call)."
         },
         "initCallAnswer": {
           "method": "POST",
@@ -5197,7 +5259,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"callId\":123456,\"callType\":\"VIDEO\"}",
-          "description": "Answer an incoming WebRTC video call."
+          "description": "Answer an incoming WebRTC video call.",
+          "unavailable": "Requires a Gizmo Watch — in-app WebRTC video calling is watch-gated (verified live 2026-09-07: the parent app's call button opens the system phone dialer, not an in-app video call)."
         }
       }
     },
@@ -5231,7 +5294,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"grantType\":\"authorization_code\",\"code\":\"123456\",\"clientId\":\"abc123\",\"pairingDeviceType\":\"watch\"}",
-          "description": "Verify and confirm a watch pairing via the wearable-auth service (POST watch/auth/verify)"
+          "description": "Verify and confirm a watch pairing via the wearable-auth service (POST watch/auth/verify)",
+          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
         },
         "notifyGuardianFromDependantWatch": {
           "method": "POST",
@@ -5243,7 +5307,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"notificationType\":\"LOW_BATTERY\",\"profileName\":\"Alex\"}",
-          "description": "Send a location alert/notification from the child's watch to the guardian"
+          "description": "Send a location alert/notification from the child's watch to the guardian",
+          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
         },
         "onboardWearableWatch": {
           "method": "POST",
@@ -5255,7 +5320,8 @@
           ],
           "takes_body": true,
           "description": "Create the child user profile to onboard a new wearable watch onto the account",
-          "body_example": "{\"dateOfBirth\":\"2015-05-01\",\"devices\":[{\"deviceMake\":\"Samsung\",\"deviceModel\":\"Gizmo Watch 3\",\"deviceOs\":\"ANDROID\",\"deviceType\":\"watch\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"verizon\",\"serialnumber\":\"F2LXXXXXXXXX\"}],\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileSource\":\"WEARABLE\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Mom\",\"userProfileId\":42}],\"relationship\":\"CHILD\",\"weight\":\"45\",\"sex\":\"M\",\"breedId\":\"labrador\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"wifiDetails\":{\"petProfileId\":7,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"s3cr3tpass\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}}"
+          "body_example": "{\"dateOfBirth\":\"2015-05-01\",\"devices\":[{\"deviceMake\":\"Samsung\",\"deviceModel\":\"Gizmo Watch 3\",\"deviceOs\":\"ANDROID\",\"deviceType\":\"watch\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"verizon\",\"serialnumber\":\"F2LXXXXXXXXX\"}],\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileSource\":\"WEARABLE\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Mom\",\"userProfileId\":42}],\"relationship\":\"CHILD\",\"weight\":\"45\",\"sex\":\"M\",\"breedId\":\"labrador\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"wifiDetails\":{\"petProfileId\":7,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"s3cr3tpass\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}}",
+          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
         },
         "resendInvite": {
           "method": "PATCH",
@@ -5266,7 +5332,8 @@
           ],
           "takes_body": true,
           "description": "Resend the family-service invite for the watch profile (PATCH invites)",
-          "body_example": "{\"inviteStatus\":\"PENDING\"}"
+          "body_example": "{\"inviteStatus\":\"PENDING\"}",
+          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
         },
         "watchAuth": {
           "method": "POST",
@@ -5277,7 +5344,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"grantType\":\"authorization_code\",\"clientId\":\"abc123\",\"friscoTokenType\":\"ONLINE\",\"refreshToken\":\"eyJhbGciOiJSUzI1NiJ9.refresh\",\"appUuid\":\"550e8400-e29b-41d4-a716-446655440000\",\"pairingDeviceAppUuid\":\"660e8400-e29b-41d4-a716-446655440001\",\"pairingDeviceModel\":\"Gizmo Watch 3\",\"pairingDeviceType\":\"watch\"}",
-          "description": "Acquire the watch device's auth/access token (bootstrap token acquisition, no service-id header)"
+          "description": "Acquire the watch device's auth/access token (bootstrap token acquisition, no service-id header)",
+          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
         }
       }
     },

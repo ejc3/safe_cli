@@ -63,3 +63,48 @@ func TestDescribeShowsHeaderAndPathNames(t *testing.T) {
 		t.Errorf("describe must not surface decompiler dynamic-header artifacts:\n%s", s)
 	}
 }
+
+// Confirmed dead-end entities are hidden from `entities` and their ops refused by `call`,
+// while `describe` still documents them marked unavailable (disabled, not deleted).
+func TestUnavailableDeadEndsHiddenAndRefused(t *testing.T) {
+	d, err := descriptor.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// entities --json lists only callable entities: the dead ends are absent (names are
+	// quoted, so this is an exact-name check, not a loose substring).
+	var ejson strings.Builder
+	if err := (&entitiesCmd{}).Run(&runContext{D: d, G: &Globals{JSON: true}, Out: &ejson}); err != nil {
+		t.Fatalf("entities --json: %v", err)
+	}
+	js := ejson.String()
+	for _, hidden := range []string{"messaging", "video_calling", "pet_tracker", "tamper", "wearable", "gizmo_activation", "installed_apps"} {
+		if strings.Contains(js, `"`+hidden+`"`) {
+			t.Errorf("entities --json must omit unavailable entity %q:\n%s", hidden, js)
+		}
+	}
+	if !strings.Contains(js, `"account"`) {
+		t.Errorf("entities --json must still list callable entities like account:\n%s", js)
+	}
+	// The table output must note the hidden entities.
+	var eout strings.Builder
+	if err := (&entitiesCmd{}).Run(&runContext{D: d, G: &Globals{}, Out: &eout}); err != nil {
+		t.Fatalf("entities: %v", err)
+	}
+	if !strings.Contains(eout.String(), "entities hidden") {
+		t.Errorf("entities must note hidden entities:\n%s", eout.String())
+	}
+	// describe still documents messaging, marked unavailable.
+	var dout strings.Builder
+	if err := (&describeCmd{Entity: "messaging"}).Run(&runContext{D: d, G: &Globals{}, Out: &dout}); err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	if !strings.Contains(dout.String(), "UNAVAILABLE") {
+		t.Errorf("describe must mark unavailable ops:\n%s", dout.String())
+	}
+	// call refuses an unavailable op up front (before touching tokens), citing the reason.
+	err = (&callCmd{Entity: "messaging", Op: "createNewGroup"}).Run(&runContext{D: d, G: &Globals{}, Out: &strings.Builder{}})
+	if err == nil || !strings.Contains(err.Error(), "unavailable") {
+		t.Errorf("call must refuse an unavailable op; got %v", err)
+	}
+}

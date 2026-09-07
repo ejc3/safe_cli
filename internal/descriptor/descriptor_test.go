@@ -588,6 +588,33 @@ func TestDeviceGatedConfirmed(t *testing.T) {
 	}
 }
 
+// TestDeadEndsDisabled locks in the confirmed dead-end entities (products/devices this
+// account lacks, or child-device-originated telemetry): every op unavailable, entity fully
+// hidden. Disabled, not deleted — the ops still exist. See docs/unavailable-endpoints.md.
+func TestDeadEndsDisabled(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, en := range []string{"messaging", "video_calling", "gizmo_activation", "pet_tracker", "wearable", "tamper", "installed_apps"} {
+		e := d.Entities[en]
+		if e.AvailableOps() != 0 {
+			t.Errorf("%s must be fully unavailable (a confirmed dead end), got %d available ops", en, e.AvailableOps())
+		}
+		for op, o := range e.Operations {
+			if o.Unavailable == "" {
+				t.Errorf("%s.%s must carry an unavailable reason", en, op)
+			}
+		}
+	}
+	// Driving Insights settings, reachable once DI is enabled on the member device, are confirmed.
+	for _, op := range []string{"putSettings", "putSpeedAlertLimit"} {
+		if !d.Entities["driving_insights"].Operations[op].Confirmed {
+			t.Errorf("driving_insights.%s must be confirmed (verified live)", op)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

@@ -58,7 +58,18 @@ type Operation struct {
 	// NOT set on ops that carry a child's or a newly-paired device's uuid (identity token
 	// exchanges, pairing), where the caller's uuid would be wrong.
 	InjectCallerAppUUID bool `json:"inject_caller_app_uuid,omitempty"`
+	// Unavailable, when non-empty, is a human-readable reason the op is a confirmed dead end
+	// on this account and cannot be usefully called — a product/device the account does not
+	// have (a Gizmo watch, a pet collar), or a request the managed child device originates
+	// that a parent CLI cannot. `call` refuses an unavailable op with this reason; `entities`
+	// hides entities whose every op is unavailable; `describe` still lists them, marked. The
+	// op stays in the descriptor (auditable, re-enable by clearing this) — it is disabled, not
+	// deleted. See docs/unavailable-endpoints.md.
+	Unavailable string `json:"unavailable,omitempty"`
 }
+
+// Available reports whether the op can be called (not a confirmed dead end).
+func (o Operation) Available() bool { return o.Unavailable == "" }
 
 // Entity is one type in the data model, with its CRUD operations and actions. Tier marks
 // peripheral/secondary surfaces ("p2") — e.g. Driving Insights, which is the one feature
@@ -69,6 +80,24 @@ type Entity struct {
 	Tier       string               `json:"tier,omitempty"`
 	Operations map[string]Operation `json:"operations"`
 	Actions    map[string]Operation `json:"actions,omitempty"`
+}
+
+// AvailableOps returns the number of the entity's operations+actions that are callable
+// (not confirmed dead ends). An entity with zero available ops is a fully-unavailable
+// product/surface the account lacks, and `entities` hides it from the default listing.
+func (e Entity) AvailableOps() int {
+	n := 0
+	for _, o := range e.Operations {
+		if o.Available() {
+			n++
+		}
+	}
+	for _, o := range e.Actions {
+		if o.Available() {
+			n++
+		}
+	}
+	return n
 }
 
 // Attestation records the answer to the project's "deciding question".

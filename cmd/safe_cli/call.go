@@ -34,6 +34,12 @@ type callCmd struct {
 }
 
 func (c *callCmd) Run(rc *runContext) error {
+	// Refuse a confirmed dead end up front (a product/device the account lacks, or a
+	// child-device-originated request a parent cannot make) — even under --dry-run, since
+	// the op is disabled, not merely un-runnable. The reason points the caller at what it needs.
+	if o, err := resolveOp(rc.D, c.Entity, c.Op); err == nil && !o.Available() {
+		return fmt.Errorf("%s %s is unavailable on this account and cannot be called: %s", c.Entity, c.Op, o.Unavailable)
+	}
 	st, ts, err := loadTokens()
 	if err != nil {
 		return err
