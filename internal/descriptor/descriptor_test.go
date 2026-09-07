@@ -596,7 +596,7 @@ func TestDeadEndsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, en := range []string{"messaging", "video_calling", "gizmo_activation", "pet_tracker", "wearable", "tamper", "installed_apps"} {
+	for _, en := range []string{"messaging", "video_calling", "gizmo_activation", "pet_tracker", "wearable", "installed_apps"} {
 		e := d.Entities[en]
 		if e.AvailableOps() != 0 {
 			t.Errorf("%s must be fully unavailable (a confirmed dead end), got %d available ops", en, e.AvailableOps())
@@ -606,6 +606,19 @@ func TestDeadEndsDisabled(t *testing.T) {
 				t.Errorf("%s.%s must carry an unavailable reason", en, op)
 			}
 		}
+	}
+	// tamper is MIXED: the child-device status reports are disabled, but the parent-facing
+	// putTamperInstructions (same route as dashboard.putTamperInstructions) stays available,
+	// so the entity is not fully hidden.
+	tp := d.Entities["tamper"]
+	if !tp.Operations["putTamperInstructions"].Available() {
+		t.Error("tamper.putTamperInstructions is parent-facing and must stay available")
+	}
+	if tp.Operations["postBatteryUsage"].Available() {
+		t.Error("tamper.postBatteryUsage is a child-device report and must be disabled")
+	}
+	if tp.AvailableOps() != 1 {
+		t.Errorf("tamper must have exactly 1 available op (putTamperInstructions), got %d", tp.AvailableOps())
 	}
 	// Driving Insights settings, reachable once DI is enabled on the member device, are confirmed.
 	for _, op := range []string{"putSettings", "putSpeedAlertLimit"} {

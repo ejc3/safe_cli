@@ -34,10 +34,10 @@ Gizmo Watch / pet collar / wearable):
 | `gizmo_activation` | 1 | Activates a **Gizmo Watch** during onboarding — no Gizmo on this account. |
 | `wearable` | 5 | Pairs/onboards a child's **wearable watch (Gizmo)** — none on this account. |
 | `pet_tracker` | 24 | A **pet collar tracker** (Jiobit/Fi) product — no such device on this account. |
-| `tamper` | 15 | Inbound **child-device telemetry**: the managed child device posts the health of its own tamper protections. A parent CLI cannot originate these. |
+| `tamper` | 14 | Inbound **child-device telemetry**: the managed child device posts the health of its own tamper protections. (The parent-facing `tamper.putTamperInstructions` — same route as `dashboard.putTamperInstructions` — stays available.) |
 | `installed_apps` | 1 | Inbound **child-device telemetry**: the child device reports its installed-apps inventory to the backend. Not a parent action. |
 
-Total: **68 ops** across **7 entities**.
+Total: **67 ops** across 7 entities (6 fully hidden; `tamper` keeps its one parent-facing op).
 
 ## Deliberately *not* disabled (reachable-but-restricted, different category)
 

@@ -94,7 +94,7 @@ func TestUnavailableDeadEndsHiddenAndRefused(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("entities must note hidden entities:\n%s", es)
 	}
-	for _, hidden := range []string{"messaging", "video_calling", "pet_tracker", "tamper", "wearable", "gizmo_activation", "installed_apps"} {
+	for _, hidden := range []string{"messaging", "video_calling", "pet_tracker", "wearable", "gizmo_activation", "installed_apps"} {
 		if !strings.Contains(es[i:], hidden) {
 			t.Errorf("hidden-entities note must list %q:\n%s", hidden, es)
 		}

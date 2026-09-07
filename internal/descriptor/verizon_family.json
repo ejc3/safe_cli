@@ -5068,8 +5068,7 @@
           ],
           "takes_body": true,
           "description": "Update the parent-facing tamper remediation instructions for the device.",
-          "body_example": "{\"templateType\":\"DEFAULT\",\"deviceIds\":[12345]}",
-          "unavailable": "Originated by the managed CHILD device reporting the health of its own tamper protections; a parent CLI cannot make these calls (inbound device telemetry, not a parent action)."
+          "body_example": "{\"templateType\":\"DEFAULT\",\"deviceIds\":[12345]}"
         },
         "postBatteryUsage": {
           "method": "POST",
