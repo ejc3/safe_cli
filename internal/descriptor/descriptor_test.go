@@ -554,6 +554,40 @@ func TestSettingsGapsConfirmed(t *testing.T) {
 	}
 }
 
+// TestDeviceGatedConfirmed locks in the device-gated mutations unblocked by pairing a child
+// device and verified live 2026-09-07: internet pause/resume and website allow/block/remove.
+// pauseInternet's pauseSchedule is the display timing with spaces replaced by underscores.
+func TestDeviceGatedConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pi := d.Entities["pause_internet"].Operations["pauseInternet"]
+	if !pi.Confirmed || !strings.Contains(pi.BodyExample, "30_minutes") {
+		t.Errorf("pauseInternet must be confirmed with the underscore schedule value: %v %s", pi.Confirmed, pi.BodyExample)
+	}
+	for _, op := range []string{"unPauseInternet"} {
+		if !d.Entities["pause_internet"].Operations[op].Confirmed {
+			t.Errorf("pause_internet.%s must be confirmed (verified live)", op)
+		}
+	}
+	for _, op := range []string{"postWebsite", "postWebsites", "deleteWebsite"} {
+		if !d.Entities["website"].Operations[op].Confirmed {
+			t.Errorf("website.%s must be confirmed (verified live)", op)
+		}
+	}
+	if !strings.Contains(d.Entities["website"].Operations["postWebsite"].BodyExample, `"status"`) {
+		t.Error("postWebsite body must document the status field (a=allow, b=block)")
+	}
+	// The prerequisite reads exercised to verify/reverse these writes are confirmed too.
+	if !d.Entities["pause_internet"].Operations["getDevices"].Confirmed {
+		t.Error("pause_internet.getDevices must be confirmed (exercised live)")
+	}
+	if !d.Entities["web_and_apps"].Operations["getWebsites2"].Confirmed {
+		t.Error("web_and_apps.getWebsites2 must be confirmed (exercised live)")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

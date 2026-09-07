@@ -3543,7 +3543,7 @@
         "getDevices": {
           "method": "GET",
           "path": "/parental-control/frisco/v6/device/pause",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3552,22 +3552,22 @@
         "pauseInternet": {
           "method": "POST",
           "path": "/frisco/parental-control/v5/device/pause",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Pause internet access for a profile's device(s).",
-          "body_example": "{\"timeZone\":\"America/New_York\",\"profiles\":[{\"profileId\":123,\"devices\":[{\"serviceId\":456,\"deviceId\":789,\"pauseSchedule\":\"30 Minutes\",\"untilIUnpause\":false,\"callOnlyMode\":false}]}]}"
+          "description": "Pause the paired child device's internet (verified live 2026-09-07, 201). Target the child with --service-id. pauseSchedule is the display timing with spaces->underscores (toShortenedPauseSchedule): \"30_minutes\" | \"1_hour\" | \"2_hour\" | \"4_hour\" | \"Until_tomorrow_morning\". For indefinite, set untilIUnpause=true and OMIT pauseSchedule (the app sends null). callOnlyMode=true restricts to calls only. timeZone is a short zone code (EST/PST/...). Reversible via unPauseInternet (DELETE). Read current state with getDevices (status Paused/Unpaused, timeLeft, valid pauseTimings).",
+          "body_example": "{\"timeZone\":\"EST\",\"profiles\":[{\"profileId\":123,\"devices\":[{\"serviceId\":456,\"deviceId\":789,\"pauseSchedule\":\"30_minutes\",\"untilIUnpause\":false,\"callOnlyMode\":false}]}]}"
         },
         "unPauseInternet": {
           "method": "DELETE",
           "path": "/frisco/parental-control/v5/device/pause",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Resume (un-pause) internet access for the device(s)."
+          "description": "Resume (unpause) the paired child device's internet (verified live 2026-09-07, 200). DELETE, no body. Target the child with --service-id. Reverses pauseInternet; a no-op when already unpaused returns a 500 \"Device already unpaused\"."
         }
       }
     },
@@ -5384,7 +5384,7 @@
         "getWebsites2": {
           "method": "GET",
           "path": "/frisco/parental-control/v5/website",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -5399,14 +5399,14 @@
         "deleteWebsite": {
           "method": "DELETE",
           "path": "/frisco/parental-control/v5/website",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "query": [
             "profileDomainId"
           ],
-          "description": "Remove a website entry from the allow/block list, keyed by profileDomainId"
+          "description": "Remove a website from the paired child's allow/block list (verified live 2026-09-07, 200). DELETE, no body; query profileDomainId=<id> (from web_and_apps.getWebsites2, each entry's profileDomainId). Target the child with --service-id. Reverses postWebsite/postWebsites."
         },
         "disableSafeSearch": {
           "method": "DELETE",
@@ -5429,24 +5429,24 @@
         "postWebsite": {
           "method": "POST",
           "path": "/frisco/parental-control/v5/website",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "description": "Add a single website to the allow/block list",
-          "body_example": "{\"url\":\"example.com\",\"status\":\"BLOCKED\"}"
+          "description": "Add a single website to the paired child's allow/block list (verified live 2026-09-07, 201). Target the child with --service-id. status: \"a\"=allow (trusted list) | \"b\"=block (blocked list) (Constants.ALLOWED/BLOCKED). url is a bare domain. Requires a PAIRED device. Read the list with web_and_apps.getWebsites2 (returns websites.blocked[]/trusted[] each with a profileDomainId). Reversible via deleteWebsite by that profileDomainId.",
+          "body_example": "{\"url\":\"example.com\",\"status\":\"a\"}"
         },
         "postWebsites": {
           "method": "POST",
           "path": "/frisco/parental-control/v5/website",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
           "takes_body": true,
-          "body_example": "{\"domains\":[{\"status\":\"BLOCKED\",\"url\":\"example.com\"}]}",
-          "description": "Batch-add multiple websites to the allow/block list in one call"
+          "body_example": "{\"domains\":[{\"status\":\"b\",\"url\":\"example.com\"}]}",
+          "description": "Add one or more websites to the paired child's allow/block list in bulk (verified live 2026-09-07, 201). Target the child with --service-id. domains[].status: \"a\"=allow | \"b\"=block; url is a bare domain. Requires a PAIRED device. Reversible via deleteWebsite by the profileDomainId from getWebsites2."
         }
       }
     },
