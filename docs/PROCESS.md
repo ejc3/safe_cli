@@ -285,11 +285,16 @@ e.g. `x-fp-identifier-target-serviceid`, `x-fp-identifier-app-uuid`, raw `author
 `x-mobile-app-version`, `accept-encoding: gzip`, `user-agent: okhttp/4.12.0` — confirming the
 descriptor's header model against the wire.
 
-**Key finding for auth:** the **Family Line** endpoints
-(`/callandtext/frisco/familyline/v1/fl/status`, `…/fl/trace`) ride the **same plain id_token
-+ `x-fp-identifier-target-serviceid`** as every other call — **no SPC token, no `vzims`
-identity, no two-step token mint** on these routes. The SPC/`getSpcToken` flow seen in the
-decompiled interface does not gate them; they use auth the CLI already implements.
+**Key finding for auth:** the two **Family Line** endpoints seen on the wire in this capture
+(`/callandtext/frisco/familyline/v1/fl/status` GET, `…/fl/trace` POST) ride the **same plain
+id_token + `x-fp-identifier-target-serviceid`** as every other call — **no SPC token, no
+`vzims` identity, no two-step token mint** on these two routes; the SPC/`getSpcToken` flow in
+the decompiled interface does not gate them. This is the *same auth primitive the CLI already
+uses*, so making the CLI call them needs only the descriptor to declare
+`x-fp-identifier-target-serviceid` on these ops (so `runCall` injects `--service-id`) and to
+scope its blanket "family_line ⇒ SPC" note to the ops still believed to need it — a focused
+descriptor follow-up. (The other, uncaptured family_line management routes may still require
+SPC; `getSpcToken` exists, so the two-step flow is not being removed wholesale.)
 
 #### Pitfalls we hit (each cost a full iteration)
 
