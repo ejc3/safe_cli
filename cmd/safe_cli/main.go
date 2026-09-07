@@ -68,8 +68,13 @@ func (c *versionCmd) Run(rc *runContext) error {
 type entitiesCmd struct{}
 
 func (c *entitiesCmd) Run(rc *runContext) error {
-	// Entities whose every op is unavailable (a product/device this account lacks) are
-	// hidden from the default surface — an agent should not be led to a dead end.
+	// JSON is the machine DISCOVERY surface: return every entity name (the descriptor ships
+	// embedded, so another account may have a device this one lacks). Availability is still
+	// discoverable per op via `describe --json` (each Operation carries its `unavailable`
+	// reason). Text mode, by contrast, hides fully-unavailable entities for a clean human list.
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, rc.D.EntityNames())
+	}
 	var names, hidden []string
 	for _, name := range rc.D.EntityNames() {
 		e, _ := rc.D.Entity(name)
@@ -78,9 +83,6 @@ func (c *entitiesCmd) Run(rc *runContext) error {
 			continue
 		}
 		names = append(names, name)
-	}
-	if rc.G.JSON {
-		return outfmt.JSON(rc.Out, names)
 	}
 	var rows [][]string
 	for _, name := range names {

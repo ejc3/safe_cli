@@ -71,28 +71,36 @@ func TestUnavailableDeadEndsHiddenAndRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// entities --json lists only callable entities: the dead ends are absent (names are
-	// quoted, so this is an exact-name check, not a loose substring).
+	// entities --json is the machine DISCOVERY surface: it returns the FULL entity list
+	// (another account may have a device this one lacks), dead ends included.
 	var ejson strings.Builder
 	if err := (&entitiesCmd{}).Run(&runContext{D: d, G: &Globals{JSON: true}, Out: &ejson}); err != nil {
 		t.Fatalf("entities --json: %v", err)
 	}
 	js := ejson.String()
-	for _, hidden := range []string{"messaging", "video_calling", "pet_tracker", "tamper", "wearable", "gizmo_activation", "installed_apps"} {
-		if strings.Contains(js, `"`+hidden+`"`) {
-			t.Errorf("entities --json must omit unavailable entity %q:\n%s", hidden, js)
+	for _, name := range []string{"account", "messaging", "wearable", "pet_tracker"} {
+		if !strings.Contains(js, `"`+name+`"`) {
+			t.Errorf("entities --json must list every entity for discovery, missing %q:\n%s", name, js)
 		}
 	}
-	if !strings.Contains(js, `"account"`) {
-		t.Errorf("entities --json must still list callable entities like account:\n%s", js)
-	}
-	// The table output must note the hidden entities.
+	// Text mode hides fully-unavailable entities from the table and notes them by name in the
+	// trailer (a name appearing in the note proves it was filtered out of the table).
 	var eout strings.Builder
 	if err := (&entitiesCmd{}).Run(&runContext{D: d, G: &Globals{}, Out: &eout}); err != nil {
 		t.Fatalf("entities: %v", err)
 	}
-	if !strings.Contains(eout.String(), "entities hidden") {
-		t.Errorf("entities must note hidden entities:\n%s", eout.String())
+	es := eout.String()
+	i := strings.Index(es, "entities hidden")
+	if i < 0 {
+		t.Fatalf("entities must note hidden entities:\n%s", es)
+	}
+	for _, hidden := range []string{"messaging", "video_calling", "pet_tracker", "tamper", "wearable", "gizmo_activation", "installed_apps"} {
+		if !strings.Contains(es[i:], hidden) {
+			t.Errorf("hidden-entities note must list %q:\n%s", hidden, es)
+		}
+	}
+	if !strings.Contains(es, "account") {
+		t.Errorf("entities table must still list callable entities like account:\n%s", es)
 	}
 	// describe still documents messaging, marked unavailable.
 	var dout strings.Builder
