@@ -68,15 +68,36 @@ func (c *versionCmd) Run(rc *runContext) error {
 type entitiesCmd struct{}
 
 func (c *entitiesCmd) Run(rc *runContext) error {
+	// JSON is the machine DISCOVERY surface: return every entity name (the descriptor ships
+	// embedded, so another account may have a device this one lacks). Availability is still
+	// discoverable per op via `describe --json` (each Operation carries its `unavailable`
+	// reason). Text mode, by contrast, hides fully-unavailable entities for a clean human list.
 	if rc.G.JSON {
 		return outfmt.JSON(rc.Out, rc.D.EntityNames())
 	}
-	var rows [][]string
+	var names, hidden []string
 	for _, name := range rc.D.EntityNames() {
 		e, _ := rc.D.Entity(name)
-		rows = append(rows, []string{name, fmt.Sprintf("%d", len(e.Operations)+len(e.Actions)), e.Summary})
+		if e.AvailableOps() == 0 {
+			hidden = append(hidden, name)
+			continue
+		}
+		names = append(names, name)
 	}
-	return outfmt.Table(rc.Out, []string{"ENTITY", "OPS", "SUMMARY"}, rows)
+	var rows [][]string
+	for _, name := range names {
+		e, _ := rc.D.Entity(name)
+		rows = append(rows, []string{name, fmt.Sprintf("%d", e.AvailableOps()), e.Summary})
+	}
+	if err := outfmt.Table(rc.Out, []string{"ENTITY", "OPS", "SUMMARY"}, rows); err != nil {
+		return err
+	}
+	if len(hidden) > 0 {
+		_, err := fmt.Fprintf(rc.Out, "\n%d entities hidden (unavailable on this account — no callable ops): %s\n"+
+			"Inspect one with 'describe <name>'.\n", len(hidden), strings.Join(hidden, ", "))
+		return err
+	}
+	return nil
 }
 
 type describeCmd struct {
@@ -100,11 +121,18 @@ func (c *describeCmd) Run(rc *runContext) error {
 		}
 	}
 	var rows [][]string
+	unavail := 0
 	row := func(name string, op descriptor.Operation) []string {
 		if op.Destructive {
 			name = "⚠ " + name // catastrophic: requires --confirm
 		}
-		return []string{name, op.Method, opFlags(op, e.IDField), op.Description}
+		desc := op.Description
+		if !op.Available() {
+			name = "✗ " + name // unavailable: `call` refuses it
+			desc = "[UNAVAILABLE: " + op.Unavailable + "] " + desc
+			unavail++
+		}
+		return []string{name, op.Method, opFlags(op, e.IDField), desc}
 	}
 	for _, k := range e.OperationNames() {
 		rows = append(rows, row(k, e.Operations[k]))
@@ -114,6 +142,11 @@ func (c *describeCmd) Run(rc *runContext) error {
 	}
 	if err := outfmt.Table(rc.Out, []string{"OP", "METHOD", "FLAGS", "WHAT IT DOES"}, rows); err != nil {
 		return err
+	}
+	if unavail > 0 {
+		if _, err := fmt.Fprintf(rc.Out, "\n✗ = unavailable on this account (%d here) — `call` refuses it; see the reason in WHAT IT DOES.\n", unavail); err != nil {
+			return err
+		}
 	}
 	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=--service-id (child)  body=--data  query=NAMES (--query name=value)  "+
 		"header=NAMES (--header name=value)  path=NAMES (--path name=value)  "+

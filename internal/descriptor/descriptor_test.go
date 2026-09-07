@@ -588,6 +588,80 @@ func TestDeviceGatedConfirmed(t *testing.T) {
 	}
 }
 
+// TestDeadEndsDisabled locks in the confirmed dead-end entities (products/devices this
+// account lacks, or child-device-originated telemetry): every op unavailable, entity fully
+// hidden. Disabled, not deleted — the ops still exist. See docs/unavailable-endpoints.md.
+func TestDeadEndsDisabled(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Fully-hidden entities: every op a confirmed dead end (Gizmo group-chat/video, child-device
+	// telemetry) with no callable op, so `entities` hides them.
+	for _, en := range []string{"messaging", "video_calling", "installed_apps"} {
+		e := d.Entities[en]
+		if e.AvailableOps() != 0 {
+			t.Errorf("%s must be fully unavailable, got %d available ops", en, e.AvailableOps())
+		}
+	}
+	// Mixed entities: some ops disabled, at least one still callable, so they stay listed.
+	// tamper keeps the parent-facing putTamperInstructions (same route as dashboard's); the
+	// product entities keep the route-shared/general ops (purchase link, invite resend, etc.).
+	for _, m := range []struct{ en, disabled, available string }{
+		{"tamper", "postBatteryUsage", "putTamperInstructions"},
+		{"pet_tracker", "submitPetLiveTracker", "getPurchaseLink"},
+		{"wearable", "watchAuth", "resendInvite"},
+	} {
+		e := d.Entities[m.en]
+		if e.Operations[m.disabled].Available() {
+			t.Errorf("%s.%s must be disabled (product/child dead end)", m.en, m.disabled)
+		}
+		if !e.Operations[m.available].Available() {
+			t.Errorf("%s.%s must stay available (route reachable elsewhere / parent-facing)", m.en, m.available)
+		}
+		if e.AvailableOps() == 0 {
+			t.Errorf("%s must keep at least one callable op", m.en)
+		}
+	}
+	// Driving Insights settings, reachable once DI is enabled on the member device, are confirmed.
+	for _, op := range []string{"putSettings", "putSpeedAlertLimit"} {
+		if !d.Entities["driving_insights"].Operations[op].Confirmed {
+			t.Errorf("driving_insights.%s must be confirmed (verified live)", op)
+		}
+	}
+}
+
+// TestNoUnavailableSharesRouteWithAvailable enforces the invariant that fixes the Codex
+// finding class (tamper.putTamperInstructions, gizmo/pet/wearable aliases): if any op on a
+// (method,path) route is callable, none on that route may be marked unavailable — otherwise
+// the CLI would disable functionality reachable via a sibling op.
+func TestNoUnavailableSharesRouteWithAvailable(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type route struct{ method, path string }
+	avail := map[route]string{}
+	unavail := map[route]string{}
+	for en, e := range d.Entities {
+		for _, grp := range []map[string]Operation{e.Operations, e.Actions} {
+			for op, o := range grp {
+				r := route{o.Method, o.Path}
+				if o.Available() {
+					avail[r] = en + "." + op
+				} else {
+					unavail[r] = en + "." + op
+				}
+			}
+		}
+	}
+	for r, u := range unavail {
+		if a, ok := avail[r]; ok {
+			t.Errorf("%s is unavailable but shares route %s %s with the available %s — disable both or neither", u, r.method, r.path, a)
+		}
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {

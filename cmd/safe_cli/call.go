@@ -31,9 +31,18 @@ type callCmd struct {
 	Header    []string `name:"header" short:"H" help:"Extra request header as name=value (repeatable), for headers a op declares that no flag covers (e.g. timezone, schedule-type, If-None-Match)."`
 	Confirm   bool     `name:"confirm" help:"Required to run a catastrophic, effectively irreversible operation (deleting a user/device/subscription, wiping messages)."`
 	DryRun    bool     `name:"dry-run" help:"Print the exact HTTP request (method, URL, headers, body) that would be sent, without sending it — for diffing against the app's traffic."`
+	Force     bool     `name:"force" help:"Send an operation marked unavailable in the descriptor anyway (the 'unavailable' reasons are observed on one account — pass this if yours has the device/product)."`
 }
 
 func (c *callCmd) Run(rc *runContext) error {
+	// An op's `unavailable` reason is ADVISORY: it was observed on one account's device
+	// inventory, but the descriptor ships embedded, so this can't know the caller's own
+	// account. Refuse by default to steer agents off a likely dead end, but let --force send
+	// it anyway (a different account may have the device), and never block --dry-run (that
+	// only prints the request; it makes no call).
+	if o, err := resolveOp(rc.D, c.Entity, c.Op); err == nil && !o.Available() && !c.Force && !c.DryRun {
+		return fmt.Errorf("%s %s is marked unavailable on this account: %s\nIf your account has it, re-run with --force (or --dry-run to inspect the request)", c.Entity, c.Op, o.Unavailable)
+	}
 	st, ts, err := loadTokens()
 	if err != nil {
 		return err
