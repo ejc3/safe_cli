@@ -209,6 +209,58 @@ text mode eCapture gives you the raw `SSL_write`/`SSL_read` buffers, so:
   wire headers are not** — which is why header parity is proven from the decompiled
   interceptor contract + live server acceptance (§11), not a raw byte-diff.
 
+### 5.1 Getting the EXACT wire headers (HPACK decode) — and the Android-17 wall
+
+Text mode can't give the HPACK headers (§5). To recover them you must **decrypt the TLS**
+so a real HTTP/2 decoder (tshark/Wireshark) can rebuild the HPACK table — which needs the
+TLS **master/traffic secrets**, not just the plaintext buffers. eCapture's `pcap`/`keylog`
+modes extract those secrets (hooking `SSL_do_handshake`), writing an `SSLKEYLOGFILE`.
+
+The reliable capture-and-decode recipe (verified 2026-09-07):
+
+```bash
+# 1. Extract keys with eCapture keylog mode (writable cwd so the key file lands):
+adb shell su -c 'cd /data/local/tmp && ./ecapture tls -m keylog -k k.log \
+  --libssl=/apex/com.android.conscrypt/lib64/libssl.so'
+# 2. Capture COMPLETE packets on the HOST, from the Cuttlefish cellular bridge the guest
+#    egresses on (guest default route dev buried_eth0 -> gw 192.168.97.1 == host cvd-mtap-01).
+#    In-guest TC capture (`-m pcap -i buried_eth0`) drops/truncates handshakes; host tcpdump
+#    sees whole sessions:
+sudo tcpdump -i cvd-mtap-01 -w box.pcap -U 'tcp port 443'
+# 3. Force NEW TLS sessions (so their handshakes are captured): `am force-stop` the app, then
+#    relaunch and drive it. 4. Combine + decode:
+editcap --inject-secrets tls,k.log box.pcap keyed.pcapng
+tshark -r keyed.pcapng -Y http2.headers.method -T fields -e http2.headers.path
+```
+
+**eCapture version-detection bug on bleeding-edge Android.** eCapture builds the eBPF
+bytecode name as `boringssl_a_<ro.build.version.release>` read from `/system/build.prop`
+(`internal/probe/openssl/config_ecandroid.go`). It ships offsets only for **a_13..a_16**
+(Android 13–16). Cuttlefish here reports **release=17** (API 37), so eCapture asks for a
+nonexistent `boringssl_a_17_kern.o` and silently falls back to **a_13** (the wrong offsets).
+Force a supported variant by **bind-mounting a patched build.prop** (root):
+
+```bash
+adb shell su -c 'cp /system/build.prop /data/local/tmp/bp && \
+  sed -i "s/^ro.build.version.release=.*/ro.build.version.release=16/" /data/local/tmp/bp && \
+  mount --bind /data/local/tmp/bp /system/build.prop'   # eCapture now loads boringssl_a_16
+```
+
+**The wall (still open as of eCapture v2.5.2).** With `a_16`, eCapture extracts a secret
+keyed by the **correct client-random** (it matches the pcap ClientHello), but the TLS 1.3
+**traffic-secret value is wrong** — 64 bytes / 128 hex where AES-128-GCM-SHA256 (cipher
+`0x1301`) needs 32 bytes / 64 hex — so tshark reports `no decoder available`. Neither the
+first nor last 32 bytes are the real secret: **Android 17's conscrypt SSL struct layout is
+newer than any offset eCapture ships** (CHANGELOG: v2.4.2 "fix BoringSSL keylog on Android
+15/16"; nothing for 17). BoringSSL's TLS 1.3 secrets are private C++ members with no exported
+`ssl_log_secret` symbol and no wired keylog callback, and `bpftrace` isn't present, so a
+one-liner uprobe on the log function isn't available either. Net: on Android 17, request
+**bodies** are still readable (text mode, §5) but the **exact HPACK headers are not
+recoverable** until eCapture adds Android-17 offsets, or you build a custom uprobe against the
+reversed conscrypt struct, or repackage the APK without pinning and MITM it. This is why
+features whose auth rides in headers the CLI can't yet reproduce (e.g. Family Line's SPC-token
+flow) are documented rather than automated.
+
 ## 6. The parental-control API model — plain id_token, **not** SigV4/Cognito
 
 An early inference (and a `call` that drew `403 "Authorization header requires
