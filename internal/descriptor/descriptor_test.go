@@ -579,6 +579,13 @@ func TestDeviceGatedConfirmed(t *testing.T) {
 	if !strings.Contains(d.Entities["website"].Operations["postWebsite"].BodyExample, `"status"`) {
 		t.Error("postWebsite body must document the status field (a=allow, b=block)")
 	}
+	// The prerequisite reads exercised to verify/reverse these writes are confirmed too.
+	if !d.Entities["pause_internet"].Operations["getDevices"].Confirmed {
+		t.Error("pause_internet.getDevices must be confirmed (exercised live)")
+	}
+	if !d.Entities["web_and_apps"].Operations["getWebsites2"].Confirmed {
+		t.Error("web_and_apps.getWebsites2 must be confirmed (exercised live)")
+	}
 }
 
 func TestDefaultLoads(t *testing.T) {

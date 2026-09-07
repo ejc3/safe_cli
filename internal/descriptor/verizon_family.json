@@ -3543,7 +3543,7 @@
         "getDevices": {
           "method": "GET",
           "path": "/parental-control/frisco/v6/device/pause",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -5384,7 +5384,7 @@
         "getWebsites2": {
           "method": "GET",
           "path": "/frisco/parental-control/v5/website",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
