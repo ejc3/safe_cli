@@ -1747,7 +1747,7 @@
       }
     },
     "family_line": {
-      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings. NOTE: family_line ops authenticate with a Family-Line SPC token, not the parent id_token (with the id_token alone they 403 \"no permissions on this serviceId\"). Supported two-step CLI flow (not yet automated): (1) mint the token — call family_line getSpcToken --data {\"tokenIssued\":<epoch-ms>,\"grantType\":\"token\"}; (2) call the op with --header Authorization=<spcToken>, which overrides the stored id_token for that request.",
+      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings. NOTE: family_line ops authenticate with a Family-Line SPC token, not the parent id_token (with the id_token alone they 403). Supported two-step CLI flow (not yet automated): (1) mint the token: call family_line getSpcToken --data '{\"tokenIssued\":<epoch-ms>,\"grantType\":\"token\"}' ; (2) call the op with --header 'Authorization=<spcToken>' (single-quote both so the JSON and value survive the shell); the header overrides the stored id_token for that request.",
       "id_field": "",
       "operations": {
         "acceptFamilyLineInvite": {
