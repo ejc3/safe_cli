@@ -209,57 +209,126 @@ text mode eCapture gives you the raw `SSL_write`/`SSL_read` buffers, so:
   wire headers are not** — which is why header parity is proven from the decompiled
   interceptor contract + live server acceptance (§11), not a raw byte-diff.
 
-### 5.1 Getting the EXACT wire headers (HPACK decode) — and the Android-17 wall
+### 5.1 Getting the EXACT wire headers (HPACK decode) on Android 17
 
-Text mode can't give the HPACK headers (§5). To recover them you must **decrypt the TLS**
-so a real HTTP/2 decoder (tshark/Wireshark) can rebuild the HPACK table — which needs the
-TLS **master/traffic secrets**, not just the plaintext buffers. eCapture's `pcap`/`keylog`
-modes extract those secrets (hooking `SSL_do_handshake`), writing an `SSLKEYLOGFILE`.
+Text mode can't give the HPACK headers (§5). To recover them you must **decrypt the TLS** so
+a real HTTP/2 decoder can rebuild the HPACK dynamic table — which needs the TLS 1.3 **traffic
+secrets**, not just the plaintext `SSL_write`/`SSL_read` buffers. On Android ≤16 eCapture's
+`keylog`/`pcap` modes do this by hooking `SSL_do_handshake` and reading the secrets out of
+BoringSSL. **On Android 17 (Cuttlefish, API 37) that path is broken** — the section below
+explains why, then gives the method that actually works and every pitfall it cost us.
 
-The reliable capture-and-decode recipe (verified 2026-09-07):
+> **Everything below is done in a scratch dir OUTSIDE the repo checkout.** Every capture,
+> key log, and memory dump carries live TLS secrets and authenticated sessions (recoverable
+> id_tokens + per-user identifiers). The `*.pcap`/`*.pcapng`/keylog `.gitignore` globs are a
+> backstop, not the control — keeping these files out of the working tree is.
 
-```bash
-# 1. Extract keys with eCapture keylog mode (writable cwd so the key file lands):
-adb shell su -c 'cd /data/local/tmp && ./ecapture tls -m keylog -k k.log \
-  --libssl=/apex/com.android.conscrypt/lib64/libssl.so'
-# 2. Capture COMPLETE packets on the HOST, from the Cuttlefish cellular bridge the guest
-#    egresses on (guest default route dev buried_eth0 -> gw 192.168.97.1 == host cvd-mtap-01).
-#    In-guest TC capture (`-m pcap -i buried_eth0`) drops/truncates handshakes; host tcpdump
-#    sees whole sessions:
-sudo tcpdump -i cvd-mtap-01 -w box.pcap -U 'tcp port 443'
-# 3. Force NEW TLS sessions (so their handshakes are captured): `am force-stop` the app, then
-#    relaunch and drive it. 4. Combine + decode:
-editcap --inject-secrets tls,k.log box.pcap keyed.pcapng
-tshark -r keyed.pcapng -Y http2.headers.method -T fields -e http2.headers.path
+#### Why the shipped eCapture path fails on Android 17
+
+1. **Version-detection fallback.** eCapture builds its eBPF bytecode name as
+   `boringssl_a_<ro.build.version.release>` from `/system/build.prop`
+   (`internal/probe/openssl/config_ecandroid.go`) and ships offsets only for **a_13..a_16**.
+   Cuttlefish reports `release=17`, so it asks for a nonexistent `boringssl_a_17_kern.o` and
+   silently falls back to **a_13** (wrong offsets). You can force a shipped variant by
+   bind-mounting a patched build.prop (`sed ro.build.version.release=16` → `mount --bind …
+   /system/build.prop`), but that only gets you to the next wall.
+2. **Wrong struct, wrong lifetime.** eCapture reads the TLS 1.3 traffic secrets out of the
+   **`bssl::SSL_HANDSHAKE`** object (`kern/boringssl_masterkey.h`, offsets computed from
+   `BSSL__SSL_HANDSHAKE_MAX_VERSION`). Two problems on A17: (a) the handshake struct grew
+   (`new_session` moved `0x5f0`→`0x7d0`, etc.), so a_16's handshake offsets are wrong; and
+   (b) BoringSSL **frees `SSL_HANDSHAKE` once the handshake completes** — but eCapture's
+   `SSL_write`/`SSL_read` uprobes fire *after* that, so even correct offsets read freed
+   memory. This is why a forced-a_16 run yields a secret keyed by the **correct client-random
+   but a garbage 64-byte traffic-secret value** (AES-128-GCM-SHA256 needs 32) and tshark says
+   `no decoder available`.
+
+#### The method that works: read `SSL3_STATE` from process memory, decrypt offline
+
+The application-traffic secrets *also* live in **`bssl::SSL3_STATE`**, which — unlike
+`SSL_HANDSHAKE` — **persists for the whole connection** and whose layout is stable
+(client_random reads correctly at `SSL3_STATE+0x30`). The relevant fields (android17-release
+`src/ssl/internal.h`, verified by `offsetof`) are, as `InplaceVector<uint8_t,48>` (48 bytes +
+1 size byte, consecutive):
+
+| field                  | `SSL3_STATE+` | for the app (always the TLS **client**) |
+|------------------------|---------------|------------------------------------------|
+| `write_traffic_secret` | `0x120`       | **CLIENT_TRAFFIC_SECRET_0** (client→server) |
+| `read_traffic_secret`  | `0x151`       | **SERVER_TRAFFIC_SECRET_0** (server→client) |
+| `exporter_secret`      | `0x182`       | exporter                                 |
+
+They are **role-relative (`write`/`read`), not `server`/`client`** — eCapture's a_16 kern
+mislabels them (`SERVER…0x120`/`CLIENT…0x151`), i.e. **swapped** for a client. The size byte
+of each vector is `0x20` (=32), which is how you spot them in a dump.
+
+The pipeline (all offline after one continuous capture; small static-musl `memscan` + a
+~120-line Python decoder, kept in the scratch dir):
+
+```text
+1. tcpdump -i cvd-mtap-01 -s0 -U -w cap.pcap 'tcp port 443'   # host bridge; continuous, no gaps
+2. force-stop + relaunch the app; drive it so ONE long-lived HTTP/2 connection to
+   api.prd.vsf.aws.vz-connect.com builds up hundreds of app-data frames (see pitfalls).
+3. from cap.pcap, pull that connection's ClientHello random (tshark tls.handshake.random).
+4. while the app is STILL running, memscan its pid for those 32 random bytes:
+     SSL3_STATE base = hit - 0x30 ; client_secret = base+0x120[:32] ; server = base+0x151[:32]
+   (memscan = static-musl aarch64 binary reading /proc/<pid>/mem as root.)
+5. offline TLS1.3 decrypt (no tshark): key/iv = HKDF-Expand-Label(secret,"key"/"iv"); per
+   record nonce = iv XOR record_seq (app-key seq resets to 0 after the client Finished);
+   AES-128-GCM over each 0x17 record with AAD = the 5-byte record header.
+6. concat the decrypted inner-0x17 payloads → the HTTP/2 byte stream → feed HEADERS frames
+   to a stateful HPACK decoder (python `hpack`) to get the exact request headers.
 ```
 
-**eCapture version-detection bug on bleeding-edge Android.** eCapture builds the eBPF
-bytecode name as `boringssl_a_<ro.build.version.release>` read from `/system/build.prop`
-(`internal/probe/openssl/config_ecandroid.go`). It ships offsets only for **a_13..a_16**
-(Android 13–16). Cuttlefish here reports **release=17** (API 37), so eCapture asks for a
-nonexistent `boringssl_a_17_kern.o` and silently falls back to **a_13** (the wrong offsets).
-Force a supported variant by **bind-mounting a patched build.prop** (root):
+This decrypts real VSF traffic end-to-end (proof: the client's first app record decodes to
+the HTTP/2 preface `PRI * HTTP/2.0…`). It recovers every request's exact wire header set —
+e.g. `x-fp-identifier-target-serviceid`, `x-fp-identifier-app-uuid`, raw `authorization`
+(the id_token, **no** `Bearer`), `x-source-app: AndroidMAPP`, `x-transaction-id`,
+`x-mobile-app-version`, `accept-encoding: gzip`, `user-agent: okhttp/4.12.0` — confirming the
+descriptor's header model against the wire.
 
-```bash
-adb shell su -c 'cp /system/build.prop /data/local/tmp/bp && \
-  sed -i "s/^ro.build.version.release=.*/ro.build.version.release=16/" /data/local/tmp/bp && \
-  mount --bind /data/local/tmp/bp /system/build.prop'   # eCapture now loads boringssl_a_16
-```
+**Key finding for auth:** the **Family Line** endpoints
+(`/callandtext/frisco/familyline/v1/fl/status`, `…/fl/trace`) ride the **same plain id_token
++ `x-fp-identifier-target-serviceid`** as every other call — **no SPC token, no `vzims`
+identity, no two-step token mint** on these routes. The SPC/`getSpcToken` flow seen in the
+decompiled interface does not gate them; they use auth the CLI already implements.
 
-**The wall (still open as of eCapture v2.5.2).** With `a_16`, eCapture extracts a secret
-keyed by the **correct client-random** (it matches the pcap ClientHello), but the TLS 1.3
-**traffic-secret value is wrong** — 64 bytes / 128 hex where AES-128-GCM-SHA256 (cipher
-`0x1301`) needs 32 bytes / 64 hex — so tshark reports `no decoder available`. Neither the
-first nor last 32 bytes are the real secret: **Android 17's conscrypt SSL struct layout is
-newer than any offset eCapture ships** (CHANGELOG: v2.4.2 "fix BoringSSL keylog on Android
-15/16"; nothing for 17). BoringSSL's TLS 1.3 secrets are private C++ members with no exported
-`ssl_log_secret` symbol and no wired keylog callback, and `bpftrace` isn't present, so a
-one-liner uprobe on the log function isn't available either. Net: on Android 17, request
-**bodies** are still readable (text mode, §5) but the **exact HPACK headers are not
-recoverable** until eCapture adds Android-17 offsets, or you build a custom uprobe against the
-reversed conscrypt struct, or repackage the APK without pinning and MITM it. This is why
-features whose auth rides in headers the CLI can't yet reproduce (e.g. Family Line's SPC-token
-flow) are documented rather than automated.
+#### Pitfalls we hit (each cost a full iteration)
+
+- **`SSL_HANDSHAKE` is freed post-handshake.** Read the secrets from `SSL3_STATE`
+  (persistent), not the handshake object. This is the whole reason the shipped tool fails.
+- **`server`/`client` are really `write`/`read`.** For the app (client role) `write_traffic_secret`
+  (`0x120`) is the *client* secret. Swapping them → GCM tag fails, tshark says nothing useful.
+  Validate a candidate offset by actually decrypting the client's first app record, not by
+  eyeballing entropy.
+- **VSF barely uses its REST API interactively.** Live location/map data rides a **PubNub**
+  (`ps.pndsn.com`) channel over **TLS 1.2**; the dashboard, refresh button, and child pages
+  are served from cache. VSF's TLS 1.3 connections are mostly idle **preconnects** (handshake,
+  then nothing). A **reversible mutation — Pause internet → Resume internet on a child —**
+  reliably forces a real decryptable POST; navigation/refresh usually does not. (Revert it.)
+- **Capture-gap nonce desync.** The TLS 1.3 record nonce is `iv XOR record_seq`. If you stop
+  and restart tcpdump, the records lost in the gap desync the counter and every later record
+  fails to decrypt. **Capture continuously**, from before the target connection's handshake
+  through its app-data, in one file.
+- **tshark won't frame the records.** After the encrypted handshake, Wireshark/tshark loses
+  TLS record framing on these streams (shows `content_type` blank, no `content_type==23`),
+  so `editcap --inject-secrets` + `tshark http2` decrypts **nothing** even with correct
+  secrets. Don't debug tshark — decrypt offline and only use tshark for cleartext record
+  framing / ClientHello fields.
+- **Connection reuse + per-file stream renumbering.** The app keeps one long-lived HTTP/2
+  connection and reuses it; its handshake lands in an earlier capture than its app-data, and
+  `tcp.stream` ids differ per file, so naive `mergecap` won't stitch it. Pin the exact
+  5-tuple (client port) instead.
+- **App restarts free the SSL objects.** The pid changes (memory pressure, a crash mid-drive);
+  a random from the dead pid won't be in the new pid's memory. Target the **long-lived**
+  connection (hundreds of frames) of the **currently-running** pid and scan while it's alive.
+- **Partial `/proc/<pid>/mem` reads.** A window can be truncated where the mapping ends
+  (`pread` returns short); parse the dump defensively (trim to the returned length, even hex).
+
+**On the eCapture fix.** The robust upstream fix is to read the A16+/A17 TLS 1.3 traffic
+secrets from `SSL3_STATE.write_traffic_secret`/`read_traffic_secret` (persistent, offsets
+above) instead of the freed `SSL_HANDSHAKE`, and to correct the `write`/`read` (not
+`server`/`client`) labeling. Generating an `a_17` offset set from the `android17-release`
+BoringSSL tag also needs a one-line offset-tool fix: `ssl_cipher_st.id` was renamed to
+`protocol_id` (uint16) and `bio_st`/`bio_method_st` moved to `crypto/bio/internal.h`.
 
 ## 6. The parental-control API model — plain id_token, **not** SigV4/Cognito
 

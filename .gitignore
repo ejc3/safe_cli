@@ -16,6 +16,15 @@
 !*.env.example
 *.local
 
+# TLS capture / key-log artifacts — carry live traffic secrets and per-user session
+# ids (recoverable OAuth tokens). The capture recipe (docs/PROCESS.md §5.1) writes
+# these OUTSIDE the checkout; these globs are a backstop in case one lands in-tree.
+*.pcap
+*.pcapng
+*.keylog
+*.sslkeylog
+k.log
+
 # OS / editor noise.
 .DS_Store
 
