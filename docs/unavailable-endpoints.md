@@ -29,15 +29,16 @@ Gizmo Watch / pet collar / wearable):
 
 | Entity | Ops | Why |
 | --- | --- | --- |
-| `messaging` | 19 | Family group-chat is **Gizmo-Watch-gated**. In the app, Chat/Call shows the Gizmo Watch upsell instead of any conversation. |
-| `video_calling` | 3 | In-app WebRTC video calling is **Gizmo-Watch-gated**. In the app, a member's call button opens the **system phone dialer**, not an in-app video call. |
-| `gizmo_activation` | 1 | Activates a **Gizmo Watch** during onboarding — no Gizmo on this account. |
-| `wearable` | 5 | Pairs/onboards a child's **wearable watch (Gizmo)** — none on this account. |
-| `pet_tracker` | 24 | A **pet collar tracker** (Jiobit/Fi) product — no such device on this account. |
-| `tamper` | 14 | Inbound **child-device telemetry**: the managed child device posts the health of its own tamper protections. (The parent-facing `tamper.putTamperInstructions` — same route as `dashboard.putTamperInstructions` — stays available.) |
-| `installed_apps` | 1 | Inbound **child-device telemetry**: the child device reports its installed-apps inventory to the backend. Not a parent action. |
+| `messaging` | 19 | Family group-chat is **Gizmo-Watch-gated** (verified live: Chat/Call shows the Gizmo upsell). Fully hidden. |
+| `video_calling` | 3 | In-app WebRTC video calling is **Gizmo-Watch-gated** (verified live: a member's call opens the system dialer). Fully hidden. |
+| `installed_apps` | 1 | Inbound **child-device telemetry** (the child reports its app inventory). Fully hidden. |
+| `tamper` | 14 | Child-device tamper-status reports. The parent-facing `putTamperInstructions` (same route as `dashboard.putTamperInstructions`) stays available, so the entity is still listed. |
+| `pet_tracker` | 22 | Pet-collar-specific ops (live tracking, wifi, firmware). The route-shared/general ops — `getPurchaseLink` (buy one) and `getAllAvailableEmergencyContacts` — stay available. |
+| `wearable` | 3 | Gizmo-wearable-specific ops (`confirmWatchPairing`, `watchAuth`, `notifyGuardianFromDependantWatch`). The general `resendInvite` and the shared-route `onboardWearableWatch` stay available. |
 
-Total: **67 ops** across 7 entities (6 fully hidden; `tamper` keeps its one parent-facing op).
+Total: **62 ops** disabled across 6 entities (3 fully hidden; `tamper`/`pet_tracker`/`wearable` keep their route-shared or parent-facing ops).
+
+**Invariant:** an op is never disabled if its `(method, path)` route is also served by an available op — otherwise the CLI would block functionality reachable via a sibling. Enforced by `TestNoUnavailableSharesRouteWithAvailable`. This is what un-disabled the earlier over-reach (`gizmo_activation.validateGizmoActivation` = `pairing.validateGizmoActivation`, the pet_tracker read aliases, `wearable.resendInvite`).
 
 ## Deliberately *not* disabled (reachable-but-restricted, different category)
 

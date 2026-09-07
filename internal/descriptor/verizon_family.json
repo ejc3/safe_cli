@@ -2047,8 +2047,7 @@
           ],
           "takes_body": true,
           "body_example": "{\"flowType\":\"GIZMO\",\"imei\":\"990000862471854\",\"iccid\":\"89014103211118510720\"}",
-          "description": "Validate a Gizmo watch's activation during self-activation setup (POST v5 gizmo/activation/validate).",
-          "unavailable": "Requires activating a Gizmo Watch — no Gizmo on this account."
+          "description": "Validate a Gizmo watch's activation during self-activation setup (POST v5 gizmo/activation/validate)."
         }
       }
     },
@@ -3627,8 +3626,7 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List the profile's available emergency contacts.",
-          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
+          "description": "List the profile's available emergency contacts."
         },
         "getPetLiveTrackerSessionInfo": {
           "method": "GET",
@@ -3747,8 +3745,7 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Get the pet-tracker purchase link.",
-          "unavailable": "Requires a pet collar tracker device (e.g. Jiobit/Fi) — none on this account."
+          "description": "Get the pet-tracker purchase link."
         },
         "getReportingToken": {
           "method": "POST",
@@ -5319,8 +5316,7 @@
           ],
           "takes_body": true,
           "description": "Create the child user profile to onboard a new wearable watch onto the account",
-          "body_example": "{\"dateOfBirth\":\"2015-05-01\",\"devices\":[{\"deviceMake\":\"Samsung\",\"deviceModel\":\"Gizmo Watch 3\",\"deviceOs\":\"ANDROID\",\"deviceType\":\"watch\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"verizon\",\"serialnumber\":\"F2LXXXXXXXXX\"}],\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileSource\":\"WEARABLE\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Mom\",\"userProfileId\":42}],\"relationship\":\"CHILD\",\"weight\":\"45\",\"sex\":\"M\",\"breedId\":\"labrador\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"wifiDetails\":{\"petProfileId\":7,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"s3cr3tpass\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}}",
-          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
+          "body_example": "{\"dateOfBirth\":\"2015-05-01\",\"devices\":[{\"deviceMake\":\"Samsung\",\"deviceModel\":\"Gizmo Watch 3\",\"deviceOs\":\"ANDROID\",\"deviceType\":\"watch\",\"mdn\":\"5551234567\",\"primaryDevice\":\"true\",\"providerId\":\"verizon\",\"serialnumber\":\"F2LXXXXXXXXX\"}],\"profileImage\":\"https://example.com/avatar.png\",\"profileName\":\"Alex\",\"profileRole\":\"DEPENDENT\",\"profileSource\":\"WEARABLE\",\"contacts\":[{\"phone\":\"5559876543\",\"name\":\"Mom\",\"userProfileId\":42}],\"relationship\":\"CHILD\",\"weight\":\"45\",\"sex\":\"M\",\"breedId\":\"labrador\",\"userprofile_attributes\":{\"breedType\":\"PUREBRED\",\"breed\":\"Labrador\",\"stepGoal\":\"10000\",\"petType\":\"DOG\"},\"wifiDetails\":{\"petProfileId\":7,\"ssid\":\"HomeWiFi\",\"credentials\":{\"ssid\":\"HomeWiFi\",\"psk\":\"s3cr3tpass\",\"isHidden\":false},\"addressLabel\":\"Home\",\"position\":{\"latitude\":40.7128,\"longitude\":-74.006}}}"
         },
         "resendInvite": {
           "method": "PATCH",
@@ -5331,8 +5327,7 @@
           ],
           "takes_body": true,
           "description": "Resend the family-service invite for the watch profile (PATCH invites)",
-          "body_example": "{\"inviteStatus\":\"PENDING\"}",
-          "unavailable": "Requires pairing a child's wearable watch (Gizmo) — none on this account."
+          "body_example": "{\"inviteStatus\":\"PENDING\"}"
         },
         "watchAuth": {
           "method": "POST",
