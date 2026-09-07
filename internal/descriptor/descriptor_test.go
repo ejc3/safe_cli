@@ -662,6 +662,22 @@ func TestNoUnavailableSharesRouteWithAvailable(t *testing.T) {
 	}
 }
 
+// TestEnabledFeatureVerbs: roadside_assistance.updateRsaMemberAccess verified live (2026-09-07)
+// when enabling RSA; and the family_line entity documents its SPC-token auth requirement.
+func TestEnabledFeatureVerbs(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsa := d.Entities["roadside_assistance"].Operations["updateRsaMemberAccess"]
+	if !rsa.Confirmed || !strings.Contains(rsa.BodyExample, "enableRSAFlag") {
+		t.Errorf("updateRsaMemberAccess must be confirmed with enableRSAFlag: %v %s", rsa.Confirmed, rsa.BodyExample)
+	}
+	if !strings.Contains(d.Entities["family_line"].Summary, "SPC token") {
+		t.Error("family_line summary must document the SPC-token auth requirement")
+	}
+}
+
 func TestDefaultLoads(t *testing.T) {
 	d, err := Default()
 	if err != nil {
