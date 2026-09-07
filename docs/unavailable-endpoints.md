@@ -6,13 +6,21 @@ CLI can never make. Each such op carries an `"unavailable": "<reason>"` field in
 descriptor. It is **disabled, not deleted** — the entry stays for auditability and is
 re-enabled by clearing the field (e.g. after adding the device).
 
+The `unavailable` reason is **advisory**: it was observed on one account's device inventory,
+but the descriptor ships embedded in the binary, so the CLI cannot know the caller's own
+account. It therefore steers agents off a likely dead end without hard-blocking a different
+account that does have the device.
+
 Effect on the CLI:
 
-- `call <entity> <op>` **refuses** an unavailable op (even under `--dry-run`) and prints the reason.
+- `call <entity> <op>` **refuses by default** and prints the reason — but `--force` sends it
+  anyway (for an account that *does* have the device), and `--dry-run` is never blocked (it only
+  prints the request, makes no call).
 - `entities` **hides** an entity whose every op is unavailable, and prints a one-line note listing them.
 - `describe <entity>` still lists the ops, each marked `✗` with `[UNAVAILABLE: …]` — so the map is not lost.
 
-Enforced by `TestDeadEndsDisabled` (descriptor guard).
+Enforced by `TestDeadEndsDisabled` (descriptor guard) and `TestUnavailableDeadEndsHiddenAndRefused`
+(CLI behaviour, incl. the `--force`/`--dry-run` bypass).
 
 ## Currently disabled
 

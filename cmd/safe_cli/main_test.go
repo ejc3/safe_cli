@@ -102,9 +102,20 @@ func TestUnavailableDeadEndsHiddenAndRefused(t *testing.T) {
 	if !strings.Contains(dout.String(), "UNAVAILABLE") {
 		t.Errorf("describe must mark unavailable ops:\n%s", dout.String())
 	}
-	// call refuses an unavailable op up front (before touching tokens), citing the reason.
+	// call refuses an unavailable op by default (before touching tokens), citing the reason.
 	err = (&callCmd{Entity: "messaging", Op: "createNewGroup"}).Run(&runContext{D: d, G: &Globals{}, Out: &strings.Builder{}})
 	if err == nil || !strings.Contains(err.Error(), "unavailable") {
-		t.Errorf("call must refuse an unavailable op; got %v", err)
+		t.Errorf("call must refuse an unavailable op by default; got %v", err)
+	}
+	// ...but the block is advisory: --force and --dry-run must NOT be refused for unavailability
+	// (the reason is observed on one account; a different account may have the device). They may
+	// still fail later (e.g. no tokens), just not with the unavailable refusal.
+	for _, c := range []*callCmd{
+		{Entity: "messaging", Op: "createNewGroup", Force: true},
+		{Entity: "messaging", Op: "createNewGroup", DryRun: true},
+	} {
+		if err := c.Run(&runContext{D: d, G: &Globals{}, Out: &strings.Builder{}}); err != nil && strings.Contains(err.Error(), "marked unavailable") {
+			t.Errorf("call with force=%v dry-run=%v must bypass the unavailable block; got %v", c.Force, c.DryRun, err)
+		}
 	}
 }
