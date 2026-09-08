@@ -397,6 +397,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			return err
 		}
 		if op.InjectCallerAppUUID { // the caller's own session uuid, as `call` injects it
+			if vc.sessionUUID == "" {
+				return fmt.Errorf("%s %s fills the body's app_uuid with this session's app-uuid, and the stored token set has none (imported without app_uuid); re-import it with app_uuid or run `safe_cli auth login`. Nothing was sent", c.Area, c.Verb)
+			}
 			if body, err = injectAppUUID(body, vc.sessionUUID); err != nil {
 				return err
 			}
@@ -907,6 +910,11 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 			}
 			m["_meta"] = map[string]any{"target": tgt}
 			return outfmt.JSON(out, m)
+		}
+		var v any
+		if err := json.Unmarshal(resp.Body, &v); err == nil && tgt != nil {
+			// An array or scalar body: keep it whole under "data" so _meta still travels.
+			return outfmt.JSON(out, map[string]any{"data": v, "_meta": map[string]any{"target": tgt}})
 		}
 		_, err := out.Write(ensureNewline(resp.Body))
 		return err

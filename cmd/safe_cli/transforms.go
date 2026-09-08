@@ -27,6 +27,9 @@ var transforms = map[string]func(any) (any, error){
 	"mode_block_alert": tfModeBlockAlert,
 }
 
+// listTransforms take a whole list as their input rather than one value at a time.
+var listTransforms = map[string]bool{"day3_lower": true, "day3_title": true}
+
 // applyTransform runs the named transform, or returns v unchanged for "".
 func applyTransform(name string, v any) (any, error) {
 	if name == "" {
@@ -35,6 +38,33 @@ func applyTransform(name string, v any) (any, error) {
 	f, ok := transforms[name]
 	if !ok {
 		return nil, fmt.Errorf("transform %q is not implemented by the engine", name)
+	}
+	// A repeatable flag arrives as a list; a scalar transform applies to each value, while a
+	// list-native transform (the day lists) takes the whole list.
+	if listTransforms[name] {
+		return f(v)
+	}
+	switch items := v.(type) {
+	case []string:
+		out := make([]any, 0, len(items))
+		for _, it := range items {
+			tv, err := f(it)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, tv)
+		}
+		return out, nil
+	case []any:
+		out := make([]any, 0, len(items))
+		for _, it := range items {
+			tv, err := f(it)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, tv)
+		}
+		return out, nil
 	}
 	return f(v)
 }

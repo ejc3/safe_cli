@@ -277,6 +277,16 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"where2","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
       "flags":[{"name":"lat","type":"float","maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","maps_to":"query:lon","help":"h"},{"name":"address","type":"string","maps_to":"query:address","help":"h"}]}},
+  "rep":{"method":"POST","path":"/rep","takes_body":true,
+    "cli":{"area":"t","verb":"rep","priority":"core","target":"account","summary":"s",
+      "body_template":"{\"items\":[{\"s\":\"$s\"}]}",
+      "flags":[{"name":"s","type":"enum","enum":["allow","block"],"repeatable":true,"required":true,"maps_to":"body:$s","transform":"allow_block_ab","help":"h"}]}},
+  "nest":{"method":"POST","path":"/nest","takes_body":true,
+    "cli":{"area":"t","verb":"nest","priority":"core","target":"account","summary":"s",
+      "body_template":"{\"profiles\":[{\"name\":\"p\",\"domains\":[{\"url\":\"$url\"}]}]}","constants":{"name":"p"},
+      "flags":[{"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"}]}},
+  "arr":{"method":"GET","path":"/arr","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"arr","priority":"core","target":"child","summary":"s"}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -669,6 +679,45 @@ func TestInvokeExistsKeyedByAbsentFlagIsNotMet(t *testing.T) {
 	}
 }
 
+// Codex #69 round 5:
+func TestInvokeRepeatableScalarTransformPerElement(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "rep", area: "t", verb: "rep", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"s": []string{"allow", "block"}}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatalf("a scalar transform must apply to each repeated value: %v", err)
+	}
+	if b := fb.seen["/rep"].body; !strings.Contains(b, `{"s":"a"}`) || !strings.Contains(b, `{"s":"b"}`) {
+		t.Errorf("body = %s", b)
+	}
+}
+
+func TestInvokeRepeatExpandsNearestArray(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "nest", area: "t", verb: "nest", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"url": []string{"a.com", "b.com"}}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	b := fb.seen["/nest"].body
+	if strings.Count(b, `"name":"p"`) != 1 || strings.Count(b, `"url"`) != 2 {
+		t.Errorf("want ONE profile with two domains, got %s", b)
+	}
+}
+
+func TestInvokeArrayResponseKeepsMeta(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/arr"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`[{"a":1},{"a":2}]`)) }
+	d := engineDescriptor(t)
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, childCall("arr", "arr", nil), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "_meta") || !strings.Contains(out.String(), `"a": 2`) && !strings.Contains(out.String(), `"a":2`) {
+		t.Errorf("--json must keep the array and add _meta: %s", out.String())
+	}
+}
+
 // Codex #69 round 4:
 //   - a required query param that renders empty (explicit "" or a lookup miss) is refused
 //     before sending, as `call` already does;
@@ -770,14 +819,16 @@ func TestInvokeJSONNullBodyGetsMeta(t *testing.T) {
 func TestInvokeInjectsCallerAppUUID(t *testing.T) {
 	fb := newFakeBackend(t)
 	d := engineDescriptor(t)
-	// The header uuid (install fallback) is not the session uuid: only the latter is injected.
+	// The header uuid (install fallback) is not the session uuid: without a session uuid
+	// (a token set imported without app_uuid) the verb is refused — a generated verb has no
+	// --data override to supply it, and the placeholder must never go out.
 	vc := verbCall{entity: "t", op: "kmsi", area: "t", verb: "kmsi", selfSvc: "1000001", selfPid: "1000002", appUUID: "99999999-9999-9999-9999-999999999999"}
-	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
-		t.Fatal(err)
+	err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "app_uuid") {
+		t.Fatalf("without a session uuid the verb must be refused naming app_uuid, got %v", err)
 	}
-	// (json.Marshal escapes "<" in the untouched placeholder)
-	if b := fb.seen["/kmsi"].body; strings.Contains(b, "99999999") || (!strings.Contains(b, "<device-uuid>") && !strings.Contains(b, `\u003cdevice-uuid\u003e`)) {
-		t.Errorf("without a session uuid the placeholder must stay (never the header fallback): %s", b)
+	if _, sent := fb.seen["/kmsi"]; sent {
+		t.Error("nothing may be sent with the placeholder unfilled")
 	}
 	vc.sessionUUID = "11111111-2222-3333-4444-555555555555"
 	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
