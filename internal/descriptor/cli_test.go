@@ -14,7 +14,8 @@ func cliFixture(cli string, extra string) []byte {
 	return []byte(`{"name":"t","base_url":"https://h","entities":{"pause":{"id_field":"","operations":{
 	  "pauseIt":{"method":"POST","path":"/p","takes_body":true` + extra + `,"cli":` + cli + `},
 	  "other":{"method":"GET","path":"/o"},
-	  "other2":{"method":"POST","path":"/o2","takes_body":true,"query":["lat","lon","address"]}}}}}`)
+	  "other2":{"method":"POST","path":"/o2","takes_body":true,"query":["lat","lon","address","alt"],"headers":["timezone"]},
+	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}}}}}}`)
 }
 
 // A complete, valid verb — the pause-internet `pause` shape from docs/CLI-DESIGN.md §4,
@@ -130,6 +131,23 @@ func TestCLIValidationRejects(t *testing.T) {
 		// Codex #67: a structured transform fills a FIXED set of vars; spreads_to must match it.
 		{"spreads_to wrong arity", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$blockContent\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"spreads_to":["body:$blockContent"],"transform":"mode_block_alert","help":"h"}]}`, "", "must spread to exactly"},
 		{"spreads_to wrong names", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"spreads_to":["body:$a","body:$b"],"transform":"mode_block_alert","help":"h"}]}`, "", "must spread to exactly"},
+		// Codex #67 (round on 71d0426): four more load-time rules.
+		{"command path declared by two ops", `{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "declared by both"},
+		{"alias to a different route", `{"alias_of":"pause.other"}`, "", "does not share method and path"},
+		{"alias to an op with no verb", `{"alias_of":"pause.other2"}`, `"method":"POST","path":"/o2"`, "canonical verb"},
+		{"two flags to one header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"header:x-h","help":"h"},{"name":"b","type":"string","maps_to":"header:x-h","help":"h"}]}`, `"takes_body":false`, "already mapped"},
+		{"two flags to one placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"path:thing","help":"h"},{"name":"b","type":"string","maps_to":"path:thing","help":"h"}]}`, `"takes_body":false,"path":"/x/{thing}"`, "already mapped"},
+		{"enum default not in list", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"enum","enum":["a","b"],"default":"zzz","maps_to":"body:$x","help":"h"}]}`, "", "default"},
+		{"int flag with string default", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"int","default":"seven","maps_to":"body:$x","help":"h"}]}`, "", "default"},
+		{"bool flag with string default", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"bool","default":"yes","maps_to":"body:$x","help":"h"}]}`, "", "default"},
+		// The design's eight mechanisms (docs/CLI-DESIGN.md §4, the expressiveness sweep).
+		{"query map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profielId"},"resolve":["$child.profileId"]}`, `"takes_body":false,"query":["lat"]`, "not a supported resolved variable"},
+		{"query map resolver var not in resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profileId"}}`, `"takes_body":false,"query":["lat"]`, "not listed in resolve"},
+		{"header map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","headers":{"timezone":"$ghost.zone"}}`, `"takes_body":false,"headers":["timezone"]`, "not a supported resolved variable"},
+		{"unkeyed lookup without a field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other::\"}","resolve":["$lookup:pause.other::"]}`, "", "malformed $lookup"},
+		{"default that is an unknown resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","default":"$ghost.value","maps_to":"body:$x","help":"h"}]}`, "", "not a supported resolved variable"},
+		{"placeholder with no source", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}/{thing}"`, "{thing} has no source"},
+		{"target id placeholder on an account verb", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}"`, "{deviceId} has no source"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -248,6 +266,36 @@ func TestCLIListOfVerbsAndHeadersAccepted(t *testing.T) {
 	}
 	if got := d.Entities["pause"].Operations["pauseIt"].CLI; len(got) != 1 || got[0].Verb != "pause" {
 		t.Errorf("single-object cli must be a one-element list, got %+v", got)
+	}
+}
+
+// The eight mechanisms in their valid shapes: a resolver var as a query value, a query flag
+// declared only by a select branch's op, a resolver var as a header value, an unkeyed
+// lookup (also as a flag default and an exists: condition), a filter: destination, two
+// flags sharing a body var under mutual excludes, and target-id placeholders on a child verb.
+func TestCLIExpressivenessSweepAccepted(t *testing.T) {
+	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	  "body_template":"{\"mon\":\"$mon?\",\"name\":\"$name\",\"limitId\":\"$lookup:pause.other::screenTimeLimitId\"}",
+	  "query":{"lat":"$child.profileId"},
+	  "headers":{"timezone":"$local.timezone"},
+	  "resolve":["$child.profileId","$local.timezone","$lookup:pause.other::screenTimeLimitId"],
+	  "select":[{"when":"exists:$lookup:pause.other::screenTimeLimitId","op":"pause.other2"},{"when":"flag:alt","op":"pause.other2"}],
+	  "flags":[
+	    {"name":"weekdays","type":"int","excludes":["mon"],"maps_to":"body:$mon","help":"h"},
+	    {"name":"mon","type":"int","excludes":["weekdays"],"maps_to":"body:$mon","help":"h"},
+	    {"name":"name","type":"string","default":"$lookup:pause.other::familyName","maps_to":"body:$name","help":"h"},
+	    {"name":"alt","type":"string","maps_to":"query:alt","help":"h"},
+	    {"name":"only","type":"string","maps_to":"filter:role","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, `"query":["lat"],"headers":["timezone"],"path":"/d/{deviceId}/{profileId}"`)); err != nil {
+		t.Fatalf("the sweep's valid shapes must parse: %v", err)
+	}
+}
+
+// alias_of must name a verb-bearing op on the SAME method and path: "twin" shares POST /p
+// with pauseIt, so pauseIt may alias it.
+func TestCLIAliasToDuplicateRouteAccepted(t *testing.T) {
+	if _, err := Parse(cliFixture(`{"alias_of":"pause.twin"}`, "")); err != nil {
+		t.Fatalf("alias to a same-route verb op must parse: %v", err)
 	}
 }
 

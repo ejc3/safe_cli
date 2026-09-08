@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -210,6 +211,9 @@ var (
 	cliResolveFamilies = []string{"$child.", "$self.", "$account.", "$local.", "$now.", "$uuid", "$lookup:"}
 )
 
+// placeholderRe matches {name} segments in an op path.
+var placeholderRe = regexp.MustCompile(`\{([^}]+)\}`)
+
 func set(xs ...string) map[string]bool {
 	m := make(map[string]bool, len(xs))
 	for _, x := range xs {
@@ -221,6 +225,7 @@ func set(xs ...string) map[string]bool {
 // validateCLIBlocks checks every op's `cli` block (invariants 2–4 of the architecture
 // pass). lookup resolves "entity.op" for alias_of targets.
 func (d *Descriptor) validateCLIBlocks() error {
+	paths := map[string]string{} // "area group verb" -> the one entity.op that generates it
 	for _, ename := range d.EntityNames() {
 		e := d.Entities[ename]
 		check := func(ops map[string]Operation) error {
@@ -242,6 +247,13 @@ func (d *Descriptor) validateCLIBlocks() error {
 							return fmt.Errorf("%s.%s cli[%d]: verb %s declared twice on this op", ename, oname, i, key)
 						}
 						seenVerb[key] = true
+						// The generator binds one command path to one op; two ops claiming it
+						// would silently select or overwrite one of them.
+						full := strings.TrimSpace(c.Area + " " + c.Group + " " + c.Verb)
+						if owner, dup := paths[full]; dup && owner != ename+"."+oname {
+							return fmt.Errorf("%s.%s cli[%d]: command path %q is declared by both %s and %s.%s", ename, oname, i, full, owner, ename, oname)
+						}
+						paths[full] = ename + "." + oname
 					}
 					if err := d.validateCLI(o, c); err != nil {
 						return fmt.Errorf("%s.%s cli[%d]: %w", ename, oname, i, err)
@@ -290,8 +302,23 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		return fmt.Errorf("must be exactly one of a verb (area+verb), alias_of, or call_only")
 	}
 	if c.AliasOf != "" {
-		if !d.opExists(c.AliasOf) {
+		target, ok := d.lookupOp(c.AliasOf)
+		if !ok {
 			return fmt.Errorf("alias_of %q does not name an existing entity.op", c.AliasOf)
+		}
+		// Aliases exist for duplicate routes: the target must be the same request identity,
+		// and it must carry the canonical verb (not itself an alias or call-only).
+		if target.Method != o.Method || target.Path != o.Path {
+			return fmt.Errorf("alias_of %q does not share method and path (%s %s vs %s %s)", c.AliasOf, o.Method, o.Path, target.Method, target.Path)
+		}
+		hasVerb := false
+		for _, tb := range target.CLI {
+			if tb.Verb != "" {
+				hasVerb = true
+			}
+		}
+		if !hasVerb {
+			return fmt.Errorf("alias_of %q must name an op with a canonical verb block", c.AliasOf)
 		}
 		return nil
 	}
@@ -402,10 +429,21 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	if !cliTargets[c.Target] {
 		return fmt.Errorf("target %q must be account|self|child|device", c.Target)
 	}
+	// Query names a flag may target: the op's own, plus any a select branch's op declares
+	// (calls log --number -> otherPartyMdn exists only on the specific-contact op); the
+	// engine sends only what the chosen op declares.
+	queryNames := append([]string{}, o.Query...)
+	for _, r := range c.Select {
+		if bo, ok := d.lookupOp(r.Op); ok {
+			queryNames = append(queryNames, bo.Query...)
+		}
+	}
 	// Flags: unique names, known types, exactly one destination form, well-formed maps_to.
 	flagByName := make(map[string]Flag, len(c.Flags))
-	bodyVarByFlag := make(map[string]Flag)   // body var name -> flag
-	queryFromFlag := make(map[string]string) // query name -> the flag that maps to it
+	bodyVarByFlag := make(map[string]Flag)    // body var name -> flag
+	queryFromFlag := make(map[string]string)  // query name -> the flag that maps to it
+	headerFromFlag := make(map[string]string) // header name -> flag
+	pathFromFlag := make(map[string]string)   // placeholder -> flag
 	for _, f := range c.Flags {
 		if f.Name == "" {
 			return fmt.Errorf("a flag has no name")
@@ -422,6 +460,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 		if strings.TrimSpace(f.Help) == "" {
 			return fmt.Errorf("flag --%s: needs help text (every flag's help states its default and effect)", f.Name)
+		}
+		if err := d.checkDefault(f); err != nil {
+			return err
 		}
 		// Exactly one destination form: maps_to (one destination, scalar transform) or
 		// spreads_to (several body vars, structured transform).
@@ -462,27 +503,55 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				return fmt.Errorf("flag --%s: body maps_to %q must be a $var", f.Name, f.MapsTo)
 			}
 			v := strings.TrimPrefix(arg, "$")
-			if prev, dup := bodyVarByFlag[v]; dup {
-				return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value)", f.Name, v, prev.Name)
+			// Two flags may share one template value only if each excludes the other, so
+			// the value never has two live sources (screen-time set --weekdays vs --mon).
+			if prev, dup := bodyVarByFlag[v]; dup && !(contains(prev.Excludes, f.Name) && contains(f.Excludes, prev.Name)) {
+				return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value unless each excludes the other)", f.Name, v, prev.Name)
+			} else if !dup {
+				bodyVarByFlag[v] = f
 			}
-			bodyVarByFlag[v] = f
 		case "query":
-			if !contains(o.Query, arg) {
-				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, o.Query)
+			if !contains(queryNames, arg) {
+				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, queryNames)
 			}
 			if prev, dup := queryFromFlag[arg]; dup {
 				return fmt.Errorf("flag --%s: query %q is already mapped from --%s (one query parameter, one source)", f.Name, arg, prev)
 			}
 			queryFromFlag[arg] = f.Name
 		case "header":
-			// header names are free-form; the headers block checks them at call time.
+			if prev, dup := headerFromFlag[arg]; dup {
+				return fmt.Errorf("flag --%s: header %q is already mapped from --%s (one request slot, one source)", f.Name, arg, prev)
+			}
+			headerFromFlag[arg] = f.Name
 		case "path":
 			if !strings.Contains(o.Path, "{"+arg+"}") {
 				return fmt.Errorf("flag --%s: path %q is not a {placeholder} in the op's path %s", f.Name, arg, o.Path)
 			}
+			if prev, dup := pathFromFlag[arg]; dup {
+				return fmt.Errorf("flag --%s: path %q is already mapped from --%s (one request slot, one source)", f.Name, arg, prev)
+			}
+			pathFromFlag[arg] = f.Name
+		case "filter":
+			// A client-side selector: never part of the request (location where --child on
+			// the account dashboard; calls list --list), so it maps to no template or param.
+			if arg == "" {
+				return fmt.Errorf("flag --%s: filter maps_to needs a response field name", f.Name)
+			}
 		default:
-			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path", f.Name, kind)
+			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter", f.Name, kind)
 		}
+	}
+	// Every {placeholder} in the path has a Parse-time source: a path: flag, or one of the
+	// target's ids on a child/device verb (which the engine fills).
+	for _, m := range placeholderRe.FindAllStringSubmatch(o.Path, -1) {
+		ph := m[1]
+		if _, ok := pathFromFlag[ph]; ok {
+			continue
+		}
+		if (c.Target == "child" || c.Target == "device") && (ph == "deviceId" || ph == "profileId" || ph == "serviceId") {
+			continue
+		}
+		return fmt.Errorf("path placeholder {%s} has no source: map a flag with path:%s, or use a child/device target for deviceId/profileId/serviceId", ph, ph)
 	}
 	for _, f := range c.Flags {
 		for _, x := range f.Excludes {
@@ -563,15 +632,30 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			return fmt.Errorf("query[%s] is declared as a constant and also mapped from a flag", name)
 		}
 		if strings.HasPrefix(v, "$") {
-			if _, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
+			if looksResolve(v) { // a resolver variable, validated like a body variable
+				if err := d.checkResolveVar(v, flagByName); err != nil {
+					return fmt.Errorf("query[%s]: %w", name, err)
+				}
+				if !contains(c.Resolve, v) {
+					return fmt.Errorf("query[%s] uses resolved value %s, which is not listed in resolve", name, v)
+				}
+			} else if _, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
 			}
 		}
 	}
 	// Fixed header constants: every name must be a header the op declares.
-	for name := range c.Headers {
+	for name, v := range c.Headers {
 		if !contains(o.Headers, name) {
 			return fmt.Errorf("headers[%s] is not one of the op's declared headers %v", name, o.Headers)
+		}
+		if strings.HasPrefix(v, "$") { // a resolver variable ($local.timezone for a contextual header)
+			if err := d.checkResolveVar(v, flagByName); err != nil {
+				return fmt.Errorf("headers[%s]: %w", name, err)
+			}
+			if !contains(c.Resolve, v) {
+				return fmt.Errorf("headers[%s] uses resolved value %s, which is not listed in resolve", name, v)
+			}
 		}
 	}
 	for _, req := range o.RequiredQuery {
@@ -631,12 +715,18 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
 		}
 		ref, keyEq, field := parts[0], parts[1], parts[2]
-		key, flag, ok := strings.Cut(keyEq, "=")
-		if !ok || key == "" || flag == "" || field == "" {
-			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
+		if field == "" {
+			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
 		}
 		if !d.opExists(ref) {
 			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
+		}
+		if keyEq == "" { // unkeyed: the target's singleton record (screen-time set's one limit)
+			return nil
+		}
+		key, flag, ok := strings.Cut(keyEq, "=")
+		if !ok || key == "" || flag == "" {
+			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
 		}
 		if _, ok := flagByName[flag]; !ok {
 			return fmt.Errorf("$lookup %q is keyed by unknown flag %q", v, flag)
@@ -649,6 +739,55 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 	}
 	sort.Strings(names)
 	return fmt.Errorf("%q is not a supported resolved variable (want one of %s, or $lookup:<entity>.<op>:<key>=<flag>:<field>)", v, strings.Join(names, " "))
+}
+
+// checkDefault validates a flag's default against its declared type, or — for a "$..."
+// default — as a resolver variable or lookup that the engine fills at invocation
+// ($local.timezone; $lookup:account.getAccountDetails::familyName to resend an untouched
+// field from its current value). A default the type cannot hold would feed the generated
+// command a value its own transform rejects, or make kong refuse the surface at startup.
+func (d *Descriptor) checkDefault(f Flag) error {
+	if f.Default == nil {
+		return nil
+	}
+	if s, ok := f.Default.(string); ok && strings.HasPrefix(s, "$") {
+		if err := d.checkResolveVar(s, map[string]Flag{}); err != nil {
+			return fmt.Errorf("flag --%s: default: %w", f.Name, err)
+		}
+		return nil
+	}
+	bad := func() error {
+		return fmt.Errorf("flag --%s: default %v is not a valid %s value", f.Name, f.Default, f.Type)
+	}
+	switch f.Type {
+	case "enum":
+		s, ok := f.Default.(string)
+		if !ok || !contains(f.Enum, s) {
+			return fmt.Errorf("flag --%s: default %v is not one of its enum %v", f.Name, f.Default, f.Enum)
+		}
+	case "int":
+		n, ok := f.Default.(float64)
+		if !ok || n != float64(int64(n)) {
+			return bad()
+		}
+	case "float":
+		if _, ok := f.Default.(float64); !ok {
+			return bad()
+		}
+	case "bool":
+		if _, ok := f.Default.(bool); !ok {
+			return bad()
+		}
+	case "list":
+		if _, ok := f.Default.([]any); !ok {
+			return bad()
+		}
+	default: // string, duration, date, datetime, tz
+		if _, ok := f.Default.(string); !ok {
+			return bad()
+		}
+	}
+	return nil
 }
 
 // walkTemplate classifies every leaf of the template: "$name"/"$name?" must be a flag's body
