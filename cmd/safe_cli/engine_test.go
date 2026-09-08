@@ -11,6 +11,7 @@ import (
 
 	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/descriptor"
+	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
 // fakeBackend serves the account read for the synthetic family plus whatever routes a
@@ -998,5 +999,23 @@ func TestInvokeExcludesAndSharedVar(t *testing.T) {
 	}
 	if !strings.Contains(fb.seen["/stime"].body, `"mon":30`) {
 		t.Errorf("body = %s", fb.seen["/stime"].body)
+	}
+}
+
+// runVerb keeps the header uuid (the token set's, else the persisted install fallback) apart
+// from the session uuid used for body injection: a token set imported without its own
+// app-uuid must not have the fallback injected as the caller's identity (Codex #71 round 5).
+func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
+	ts := &tokenstore.TokenSet{} // no session uuid
+	vc := verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{"custom:identifier-serviceid": "1000001"}, "fallback-uuid")
+	if vc.appUUID != "fallback-uuid" || vc.selfSvc != "1000001" {
+		t.Errorf("header uuid must be the resolved (fallback) uuid and the claims must be read: %+v", vc)
+	}
+	if vc.sessionUUID != "" {
+		t.Errorf("without a session uuid nothing may be injected, got %q", vc.sessionUUID)
+	}
+	ts.AppUUID = "session-uuid"
+	if vc = verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{}, "session-uuid"); vc.sessionUUID != "session-uuid" {
+		t.Errorf("session uuid must come from the token set: %+v", vc)
 	}
 }

@@ -1099,13 +1099,25 @@ func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any
 	}
 	claims := tokenstore.Claims(idt)
 	appUUID, _ := resolveAppUUID(ts)
+	vc := verbCallFor(entity, op, area, verb, given, child, dryRun, confirm, allowUnpaired, ts, claims, appUUID)
+	if dryRun {
+		vc.dump = dumpRequest(rc, idt)
+	}
+	return invoke(context.Background(), authedRequest(rc, st, ts), rc.D, vc, rc.Out, rc.G.JSON)
+}
+
+// verbCallFor assembles the call: the caller's own ids from the token claims, the header
+// app-uuid (the token set's, else the persisted install fallback) and, separately, the
+// SESSION uuid for body injection — only the token set's own, never the fallback, so an
+// imported session cannot be attributed to this install.
+func verbCallFor(entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool, ts *tokenstore.TokenSet, claims map[string]string, appUUID string) verbCall {
 	vc := verbCall{
 		entity: entity, op: op, area: area, verb: verb, given: given, child: child,
 		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
 		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
 	}
-	if dryRun {
-		vc.dump = dumpRequest(rc, idt)
+	if ts != nil {
+		vc.sessionUUID = ts.AppUUID
 	}
-	return invoke(context.Background(), authedRequest(rc, st, ts), rc.D, vc, rc.Out, rc.G.JSON)
+	return vc
 }
