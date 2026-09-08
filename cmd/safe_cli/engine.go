@@ -20,14 +20,18 @@ import (
 // pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
 // applied here), the target, and the global switches.
 type verbCall struct {
-	entity, op    string
-	area, verb    string         // which of the op's verb blocks this is
-	given         map[string]any // flag name -> parsed value, explicitly given flags only
-	child         string         // --child SERVICE-ID ("" when not given)
-	selfSvc       string         // the caller's own service id (from the id_token)
-	selfPid       string         // the caller's own profile id (from the id_token)
-	appUUID       string
-	dryRun        bool
+	entity, op string
+	area, verb string         // which of the op's verb blocks this is
+	given      map[string]any // flag name -> parsed value, explicitly given flags only
+	child      string         // --child SERVICE-ID ("" when not given)
+	selfSvc    string         // the caller's own service id (from the id_token)
+	selfPid    string         // the caller's own profile id (from the id_token)
+	appUUID    string
+	dryRun     bool
+	// dump, when set with dryRun, replaces do for the FINAL request only: the account read
+	// and lookups stay real (they resolve the ids the dump shows), the verb's own request
+	// is rendered and printed, never sent.
+	dump          doFunc
 	confirm       bool
 	allowUnpaired bool
 }
@@ -300,7 +304,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	}
 	// nulls: an explicitly given flag unsets the variables of the flags it nulls, so their
 	// "$var?" properties are omitted (pause --indefinite drops pauseSchedule).
-	for name := range given {
+	for name := range present { // a false bool is absent here too: it nulls nothing
 		for _, x := range flagByName[name].Nulls {
 			if _, arg, _ := strings.Cut(flagByName[x].MapsTo, ":"); arg != "" {
 				delete(vars, strings.TrimPrefix(arg, "$"))
@@ -364,6 +368,11 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if err != nil {
 			return err
 		}
+		if op.InjectCallerAppUUID { // the caller's own session uuid, as `call` injects it
+			if body, err = injectAppUUID(body, vc.appUUID); err != nil {
+				return err
+			}
+		}
 	}
 	headers, missingSvc, err := assembleHeaders(op, idHeaders, userHeaders)
 	if err != nil {
@@ -372,7 +381,16 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if len(missingSvc) > 0 {
 		return fmt.Errorf("%s %s: no service id for %s (internal: target resolution left it empty)", c.Area, c.Verb, strings.Join(missingSvc, ", "))
 	}
-	resp, err := do(ctx, op.Method, path, body, headers)
+	send := do
+	if vc.dryRun {
+		// A dry run must never reach the live sender: without a dumper there is nothing
+		// safe to call, so refuse rather than fall through.
+		if vc.dump == nil {
+			return fmt.Errorf("--dry-run: no request dumper was supplied (internal error); nothing was sent")
+		}
+		send = vc.dump
+	}
+	resp, err := send(ctx, op.Method, path, body, headers)
 	if err != nil {
 		return err
 	}
@@ -813,7 +831,7 @@ func lookupMiss(spec string, given map[string]any) error {
 func writeDryRun(out io.Writer, asJSON bool, resp *client.Response, tgt *member) error {
 	if asJSON {
 		var m map[string]any
-		if err := json.Unmarshal(resp.Body, &m); err != nil {
+		if err := json.Unmarshal(resp.Body, &m); err != nil || m == nil {
 			m = map[string]any{"request": string(resp.Body)}
 		}
 		if tgt != nil {
@@ -840,6 +858,9 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 	if asJSON {
 		var m map[string]any
 		if err := json.Unmarshal(resp.Body, &m); err == nil && tgt != nil {
+			if m == nil { // a JSON null body decodes to a nil map
+				m = map[string]any{}
+			}
 			m["_meta"] = map[string]any{"target": tgt}
 			return outfmt.JSON(out, m)
 		}

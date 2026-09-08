@@ -173,17 +173,12 @@ func TestInvokeDryRunShowsResolvedTarget(t *testing.T) {
 	rc := &runContext{D: d, G: &Globals{}}
 	// dumpRequest builds the request the way the real client would, then returns its dump.
 	dump := dumpRequest(rc, "TOK")
-	// The engine still needs the account read; route it to the fake backend.
-	do := func(ctx context.Context, method, path string, body []byte, headers map[string]string) (*client.Response, error) {
-		if strings.Contains(path, "userprofiles") {
-			return fb.do()(ctx, method, path, body, headers)
-		}
-		return dump(ctx, method, path, body, headers)
-	}
+	// The engine keeps the account read real and dumps only the final request.
 	vc := pauseCall(map[string]any{"for": "2h"}, "2000001")
 	vc.dryRun = true
+	vc.dump = dump
 	var out strings.Builder
-	if err := invoke(context.Background(), do, d, vc, &out, false); err != nil {
+	if err := invoke(context.Background(), fb.do(), d, vc, &out, false); err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
 	s := out.String()
@@ -260,6 +255,11 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"nq","priority":"core","target":"account","summary":"s",
       "body_template":"{\"for\":\"$for?\",\"inf\":\"$inf\"}","query":{"mode":"$for"},
       "flags":[{"name":"for","type":"string","default":"30m","maps_to":"body:$for","help":"h"},{"name":"inf","type":"bool","default":false,"maps_to":"body:$inf","nulls":["for"],"help":"h"}]}},
+  "kmsi":{"method":"POST","path":"/kmsi","takes_body":true,"inject_caller_app_uuid":true,
+    "cli":{"area":"t","verb":"kmsi","priority":"core","target":"self","summary":"s",
+      "body_template":"{\"kmsiEnabled\":\"$on\",\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}",
+      "constants":{"app_uuid":"<device-uuid>","triggeredBy":"user"},
+      "flags":[{"name":"on","type":"bool","default":true,"maps_to":"body:$on","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -625,6 +625,62 @@ func TestInvokeOneReadPerLookupOp(t *testing.T) {
 	}
 	if reads != 1 {
 		t.Errorf("three lookups on one op must read it once, read %d times", reads)
+	}
+}
+
+// A bool given as false is absent for nulls too: --indefinite=false --for 1h is a timed pause.
+func TestInvokeFalseBoolDoesNotNull(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	if err := invoke(context.Background(), fb.do(), d, pauseCall(map[string]any{"indefinite": false, "for": "1h"}, "2000001"), &strings.Builder{}, true); err != nil {
+		t.Fatalf("invoke: %v", err)
+	}
+	if b := fb.seen[pausePath].body; !strings.Contains(b, `"pauseSchedule":"1_hour"`) || !strings.Contains(b, `"untilIUnpause":false`) {
+		t.Errorf("--indefinite=false --for 1h must send a timed pause: %s", b)
+	}
+}
+
+// Codex #69 round 3:
+//   - --dry-run with no request dumper must never fall through to the live sender;
+//   - a JSON null body still gets _meta under --json instead of a nil-map panic;
+//   - an op marked inject_caller_app_uuid gets the caller's stored app-uuid in its body, as
+//     `call` already does.
+func TestInvokeDryRunNeverSendsWithoutADumper(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	vc := pauseCall(map[string]any{"for": "1h"}, "2000001")
+	vc.dryRun = true // and vc.dump left nil
+	err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true)
+	if err == nil {
+		t.Fatal("a dry run without a dumper must be refused, not sent")
+	}
+	if _, sent := fb.seen[pausePath]; sent {
+		t.Error("the live pause was sent under --dry-run")
+	}
+}
+
+func TestInvokeJSONNullBodyGetsMeta(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/c"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`null`)) }
+	d := engineDescriptor(t)
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, childCall("chores", "chores", nil), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "_meta") {
+		t.Errorf("--json output must carry _meta even for a null body: %s", out.String())
+	}
+}
+
+func TestInvokeInjectsCallerAppUUID(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "kmsi", area: "t", verb: "kmsi", selfSvc: "1000001", selfPid: "1000002", appUUID: "11111111-2222-3333-4444-555555555555"}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if b := fb.seen["/kmsi"].body; !strings.Contains(b, `"app_uuid":"11111111-2222-3333-4444-555555555555"`) || strings.Contains(b, "<device-uuid>") {
+		t.Errorf("the caller's app-uuid must replace the placeholder: %s", b)
 	}
 }
 
