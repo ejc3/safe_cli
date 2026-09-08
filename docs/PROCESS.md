@@ -366,7 +366,7 @@ near-universal one is `x-fp-identifier-target-serviceid` = the **target (child's
 service id** — the parent acts on a *child*, not their own service (the parent's own
 serviceid returns `403 "no permissions on this serviceId"`). `safe_cli members`
 enumerates the family and prints each member's service/profile/device ids and role
-(GUARDIAN vs DEPENDENT) so you know what to pass as `--service-id`.
+(guardian vs child, with PAIRING) so you know what to pass as `--service-id`.
 
 ## 7. The `x-signature` request signer — algorithm and bring-your-own-key
 

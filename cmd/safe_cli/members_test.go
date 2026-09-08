@@ -75,6 +75,11 @@ func TestFilterMembers(t *testing.T) {
 	if got := filterMembers(ms, "andra", "child"); len(got) != 1 || got[0].Name != "Alexandra" {
 		t.Errorf("--find + --role: %+v", got)
 	}
+	// No match must be an EMPTY array, not nil: `members --json --find zzz` prints [] so a
+	// collection-shaped response never changes type on a normal no-results search.
+	if got := filterMembers(ms, "zzz", ""); got == nil || len(got) != 0 {
+		t.Errorf("no-match filter must return a non-nil empty slice, got %#v", got)
+	}
 }
 
 // The role label never leaks the API's wire values, and an unknown role still shows.

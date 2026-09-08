@@ -153,6 +153,13 @@ func tfEpochMs(v any) (any, error) {
 // dayNames indexes Monday-first so expansions read the way a schedule is written.
 var dayNames = []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
 
+// dayByName accepts exactly the 3-letter or full English day names (lowercase).
+var dayByName = map[string]string{
+	"mon": "mon", "monday": "mon", "tue": "tue", "tuesday": "tue", "wed": "wed", "wednesday": "wed",
+	"thu": "thu", "thursday": "thu", "fri": "fri", "friday": "fri", "sat": "sat", "saturday": "sat",
+	"sun": "sun", "sunday": "sun",
+}
+
 // parseDays accepts a list (or comma-separated string) of day names in any case, full or
 // 3-letter, plus the expansions weekdays | weekends | all, and returns lowercase 3-letter
 // names in the order given (expansions in Monday-first order), de-duplicated.
@@ -199,17 +206,10 @@ func parseDays(v any) ([]string, error) {
 				add(d)
 			}
 		default:
-			if len(s) < 3 {
-				return nil, fmt.Errorf("%q is not a day name", tok)
-			}
-			d := s[:3]
-			known := false
-			for _, n := range dayNames {
-				if n == d {
-					known = true
-				}
-			}
-			if !known {
+			// Exact 3-letter or full name only — a prefix match would silently turn a typo
+			// like "mondayx" into mon and create a schedule on the wrong day.
+			d, ok := dayByName[s]
+			if !ok {
 				return nil, fmt.Errorf("%q is not a day name (mon..sun, weekdays, weekends, all)", tok)
 			}
 			add(d)

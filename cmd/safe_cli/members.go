@@ -93,7 +93,7 @@ func filterMembers(ms []member, find, role string) []member {
 	if role == "dependent" {
 		role = "child"
 	}
-	var out []member
+	out := []member{} // never nil: --json prints [] for no matches, not null
 	for _, m := range ms {
 		if find != "" && !strings.Contains(strings.ToLower(m.Name), strings.ToLower(find)) {
 			continue

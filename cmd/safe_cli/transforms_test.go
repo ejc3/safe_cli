@@ -27,6 +27,7 @@ func TestTransformsGroundedMappings(t *testing.T) {
 		{"allow_block_ab", "Block", "b"},
 		{"allow_block_ab", "b", "b"},
 		{"day3_lower", "Mon,tuesday,WED", []string{"mon", "tue", "wed"}},
+		{"day3_lower", "monday,Tuesday,wednesday,thursday,friday,saturday,sunday", []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}},
 		{"day3_lower", "weekdays", []string{"mon", "tue", "wed", "thu", "fri"}},
 		{"day3_lower", []string{"weekends", "mon"}, []string{"sat", "sun", "mon"}},
 		{"day3_lower", "all", []string{"mon", "tue", "wed", "thu", "fri", "sat", "sun"}},
@@ -88,6 +89,9 @@ func TestTransformsRejectBadInput(t *testing.T) {
 		{"tz_short", "Mars/Olympus", "IANA zone"},
 		{"iso_micro", "yesterday-ish", "not a time"},
 		{"day3_lower", "funday", "not a day name"},
+		{"day3_lower", "mondayx", "not a day name"}, // a prefix match would silently make this mon
+		{"day3_lower", "sundae", "not a day name"},
+		{"day3_title", "tue-ish", "not a day name"},
 		{"day3_lower", "", "no days"},
 		{"allow_block_ab", "maybe", "allow or block"},
 		{"bool01", "yes", "wants a bool"},

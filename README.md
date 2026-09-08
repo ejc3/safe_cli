@@ -32,15 +32,15 @@ The surface is designed to be assembled from introspection — no memorization:
 $ safe_cli entities                     # the whole data model
 $ safe_cli describe content_filter      # one entity's ops: names, method, flags, what each does
 $ safe_cli members                      # the family, with the ids you target
-NAME    ROLE       SERVICE-ID  PROFILE-ID  DEVICE-ID  PAIRING
-Parent  GUARDIAN   1000001     2000001     3000001
-Kid     DEPENDENT  1000002     2000002     3000002    UNPAIRED
+NAME    ROLE      PAIRING   SERVICE-ID  PROFILE-ID  DEVICE-ID
+Parent  guardian            1000001     2000001     3000001
+Kid     child     UNPAIRED  1000002     2000002     3000002
 ```
 
 (Example rows — synthetic names and ids.)
 
 `members` is the intended first call once logged in: it tells you which
-`--service-id` to pass (a **DEPENDENT** is a managed child — pass the child's service
+`--service-id` to pass (ROLE `child` is a managed child — pass the child's service
 id, e.g. `1000002` above, not your own).
 
 `describe` names, per op, exactly what to supply — `svc` (needs `--service-id`),
