@@ -150,7 +150,8 @@ func (c *describeCmd) Run(rc *runContext) error {
 	}
 	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=--service-id (child)  body=--data  query=NAMES (--query name=value)  "+
 		"header=NAMES (--header name=value)  path=NAMES (--path name=value)  "+
-		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. Full paths: --json.")
+		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. "+
+		"A trailing * marks a required param `call` refuses to run without. Full paths: --json.")
 	return err
 }
 
@@ -191,7 +192,7 @@ func opFlags(op descriptor.Operation, idField string) string {
 		f = append(f, "path="+strings.Join(ph, ","))
 	}
 	if len(op.Query) > 0 {
-		f = append(f, "query="+strings.Join(op.Query, ","))
+		f = append(f, "query="+strings.Join(markRequired(op.Query, op.RequiredQuery), ","))
 	}
 	if h := headerNames(op); len(h) > 0 {
 		f = append(f, "header="+strings.Join(h, ","))
@@ -203,6 +204,25 @@ func opFlags(op descriptor.Operation, idField string) string {
 		return "-"
 	}
 	return strings.Join(f, " ")
+}
+
+// markRequired renders a query-name list with a trailing "*" on each name the op requires, so
+// `describe`'s FLAGS column shows at a glance which --query params `call` will refuse to run
+// without. required is the op's RequiredQuery (a subset of names).
+func markRequired(names, required []string) []string {
+	req := make(map[string]bool, len(required))
+	for _, r := range required {
+		req[r] = true
+	}
+	out := make([]string, len(names))
+	for i, n := range names {
+		if req[n] {
+			out[i] = n + "*"
+		} else {
+			out[i] = n
+		}
+	}
+	return out
 }
 
 // extraPlaceholders returns the {name} path segments other than the entity's own id field —

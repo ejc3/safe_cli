@@ -148,6 +148,20 @@ func parseQuery(pairs []string) (url.Values, error) {
 	return q, nil
 }
 
+// missingRequiredQuery returns the required query names absent from q. A name present with an
+// empty value counts as missing: the backend rejects an empty required param the same as an
+// omitted one (the call/text activity op 400s "start date is empty"), and url.Values.Get
+// returns "" for both an absent key and a present-but-empty one.
+func missingRequiredQuery(required []string, q url.Values) []string {
+	var missing []string
+	for _, name := range required {
+		if q.Get(name) == "" {
+			missing = append(missing, name)
+		}
+	}
+	return missing
+}
+
 // parseKV turns repeated name=value flags into a map (nil for none); flag names the flag
 // for the error message.
 func parseKV(flag string, pairs []string) (map[string]string, error) {
@@ -207,6 +221,9 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 	if err != nil {
 		return err
 	}
+	if missing := missingRequiredQuery(o.RequiredQuery, a.query); len(missing) > 0 {
+		return fmt.Errorf("%s %s needs query param(s) %s — pass --query name=value for each (run `safe_cli describe %s`; required params are marked *)", a.entity, a.op, strings.Join(missing, ", "), a.entity)
+	}
 	path = appendQuery(path, a.query)
 	body, err := buildBody(o.Body, a.data)
 	if err != nil {
@@ -218,7 +235,11 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			return err
 		}
 	}
-	if o.TakesBody && len(body) == 0 && !a.dryRun {
+	// Structural validation refuses on --dry-run too: dry-run prints the request it WOULD send,
+	// so a request missing its body/service-id isn't a request worth diffing — it's malformed.
+	// (An op's `unavailable` reason is different: that's an account fact, not a structure one, so
+	// dry-run is still allowed to inspect it — see callCmd.Run.)
+	if o.TakesBody && len(body) == 0 {
 		if o.BodyExample != "" {
 			return fmt.Errorf("%s %s needs a JSON body — pass --data. Example: %s", a.entity, a.op, o.BodyExample)
 		}
@@ -249,7 +270,7 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			missingSvc = append(missingSvc, h)
 		}
 	}
-	if len(missingSvc) > 0 && !a.dryRun {
+	if len(missingSvc) > 0 {
 		return fmt.Errorf("%s %s needs %s — pass --service-id with the TARGET (child's) service id (parental-control acts on a child, not the parent's own service)", a.entity, a.op, strings.Join(missingSvc, ", "))
 	}
 	// Any extra --header values not already placed (e.g. a header the op doesn't declare)

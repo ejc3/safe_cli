@@ -691,7 +691,11 @@
             "summaryOnly",
             "betaProviders"
           ],
-          "description": "List call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', summaryOnly=true|false, betaProviders=RCS|RCS,GIZMO (optional)."
+          "required_query": [
+            "startDate",
+            "endDate"
+          ],
+          "description": "List call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (both required — the API 400s an empty start/end date), summaryOnly=true|false, betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getCallAndTextProfileSummaryListV7": {
           "method": "GET",

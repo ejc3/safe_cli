@@ -753,6 +753,48 @@ func TestParseRejectsNoEntities(t *testing.T) {
 	}
 }
 
+// Parse rejects a descriptor whose op names a required_query param that is not in its query
+// list: `describe` lists query, and `call` demands required_query, so a required name absent
+// from query would be undocumented — a descriptor bug caught at load rather than confusing a
+// caller at runtime.
+func TestParseRejectsRequiredQueryNotInQuery(t *testing.T) {
+	js := `{"name":"x","base_url":"https://h","entities":{"a":{"id_field":"","operations":` +
+		`{"getX":{"method":"GET","path":"/x","query":["startDate"],"required_query":["endDate"]}}}}}`
+	_, err := Parse([]byte(js))
+	if err == nil || !strings.Contains(err.Error(), "required_query") {
+		t.Fatalf("want a required_query-not-in-query error, got %v", err)
+	}
+	// A required_query that IS a subset of query loads fine.
+	ok := `{"name":"x","base_url":"https://h","entities":{"a":{"id_field":"","operations":` +
+		`{"getX":{"method":"GET","path":"/x","query":["startDate","endDate"],"required_query":["startDate"]}}}}}`
+	if _, err := Parse([]byte(ok)); err != nil {
+		t.Fatalf("valid required_query subset should load: %v", err)
+	}
+}
+
+// The call/text activity list op requires startDate and endDate — verified against the live
+// API, which 400s "start date is empty;end date is empty" without them. This pins that
+// grounding so the required_query is not silently dropped or widened to unverified params.
+func TestCallTextActivityRequiredQuery(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, _ := d.Entity("calls_and_texts")
+	op := e.Operations["getCallAndTextActivityListV7"]
+	got := map[string]bool{}
+	for _, r := range op.RequiredQuery {
+		got[r] = true
+	}
+	if len(op.RequiredQuery) != 2 || !got["startDate"] || !got["endDate"] {
+		t.Errorf("required_query = %v, want exactly [startDate endDate]", op.RequiredQuery)
+	}
+	// betaProviders/summaryOnly are documented optional — they must NOT be required.
+	if got["betaProviders"] || got["summaryOnly"] {
+		t.Errorf("optional params marked required: %v", op.RequiredQuery)
+	}
+}
+
 func TestNamesAreSorted(t *testing.T) {
 	d, err := Default()
 	if err != nil {
