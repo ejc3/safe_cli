@@ -1747,7 +1747,7 @@
       }
     },
     "family_line": {
-      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings. NOTE: family_line ops authenticate with a Family-Line SPC token, not the parent id_token (with the id_token alone they 403). Supported two-step CLI flow (not yet automated): (1) mint the token: call family_line getSpcToken --data '{\"tokenIssued\":<epoch-ms>,\"grantType\":\"token\"}' ; (2) call the op with --header 'Authorization=<spcToken>' (single-quote both so the JSON and value survive the shell); the header overrides the stored id_token for that request.",
+      "summary": "Verizon Family Line (a shared voice line for a kid's device): provision/deprovision the line, invite and remove members, manage the E911 address, sync call logs, swap devices, and adjust line settings. AUTH IS PER-ROUTE. Two routes are VERIFIED on the wire (2026-09-07, decrypted HPACK) to use the PLAIN parent id_token + x-fp-identifier-target-serviceid — getProvisioningStatus (fl/status) and traceSdkResponse (fl/trace) — and are callable directly with --service-id (no token minting). The line-MANAGEMENT ops (provision, invite/remove members, address, call logs, swap, settings) are believed to still require a Family-Line SPC token (with the id_token alone they 403); these are NOT yet wire-verified. Two-step CLI flow for the SPC-gated ops (not yet automated): (1) mint the token: call family_line getSpcToken --data '{\"tokenIssued\":<epoch-ms>,\"grantType\":\"token\"}' ; (2) call the op with --header 'Authorization=<spcToken>' (single-quote both so the JSON and value survive the shell); the header overrides the stored id_token for that request.",
       "id_field": "",
       "operations": {
         "acceptFamilyLineInvite": {
@@ -1784,8 +1784,9 @@
         "getProvisioningStatus": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/status",
-          "confirmed": false,
-          "description": "Check Family Line provisioning status"
+          "headers": ["x-fp-identifier-target-serviceid"],
+          "confirmed": true,
+          "description": "Check Family Line provisioning status. VERIFIED on the wire (2026-09-07, decrypted HPACK): authenticates with the plain parent id_token + x-fp-identifier-target-serviceid — NOT the Family-Line SPC token — so it is callable directly with --service-id."
         },
         "getSpcToken": {
           "method": "POST",
@@ -1851,10 +1852,11 @@
         "traceSdkResponse": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/trace",
-          "confirmed": false,
+          "headers": ["x-fp-identifier-target-serviceid"],
+          "confirmed": true,
           "takes_body": true,
           "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}",
-          "description": "Send SDK diagnostic/trace data for the Family Line"
+          "description": "Send SDK diagnostic/trace data for the Family Line. VERIFIED on the wire (2026-09-07, decrypted HPACK): plain parent id_token + x-fp-identifier-target-serviceid (no SPC token); callable directly with --service-id."
         },
         "updateAppUuid": {
           "method": "POST",
