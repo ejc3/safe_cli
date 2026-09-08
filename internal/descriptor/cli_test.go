@@ -485,7 +485,7 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
 	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"l\":\"$lookup:pause.other:id=cat:^categoryId\",\"cat\":\"$cat\"}",
 	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name","$lookup:pause.other:id=cat:^categoryId"],
-	  "flags":[{"name":"cat","type":"int","required":true,"maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
+	  "flags":[{"name":"cat","type":"int","required":true,"maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","required":true,"maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
 	}
