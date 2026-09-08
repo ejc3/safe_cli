@@ -50,17 +50,13 @@ func (c *AppsBlockCmd) Run(rc *runContext) error {
 
 // AppsListCmd: apps  list <- content_filter.getCategories
 type AppsListCmd struct {
-	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
-	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
-	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."`
-	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Find   *string `name:"find" help:"Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
 func (c *AppsListCmd) Run(rc *runContext) error {
 	given := map[string]any{}
-	if c.SearchEngines != nil {
-		given["search-engines"] = *c.SearchEngines
-	}
 	if c.Find != nil {
 		given["find"] = *c.Find
 	}

@@ -21,15 +21,16 @@ import (
 // pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
 // applied here), the target, and the global switches.
 type verbCall struct {
-	entity, op string
-	area, verb string         // which of the op's verb blocks this is
-	group      string         // the block's optional third level (`website safe-search enable`)
-	given      map[string]any // flag name -> parsed value, explicitly given flags only
-	child      string         // --child SERVICE-ID ("" when not given)
-	selfSvc    string         // the caller's own service id (from the id_token)
-	selfPid    string         // the caller's own profile id (from the id_token)
-	appUUID    string
-	dryRun     bool
+	entity, op  string
+	area, verb  string         // which of the op's verb blocks this is
+	group       string         // the block's optional third level (`website safe-search enable`)
+	given       map[string]any // flag name -> parsed value, explicitly given flags only
+	child       string         // --child SERVICE-ID ("" when not given)
+	selfSvc     string         // the caller's own service id (from the id_token)
+	selfPid     string         // the caller's own profile id (from the id_token)
+	appUUID     string
+	sessionUUID string // the token set's own app-uuid, for body injection; never the install fallback
+	dryRun      bool
 	// dump, when set with dryRun, replaces do for the FINAL request only: the account read
 	// and lookups stay real (they resolve the ids the dump shows), the verb's own request
 	// is rendered and printed, never sent.
@@ -1215,9 +1216,9 @@ func runVerb(rc *runContext, entity, op, area, group, verb string, given map[str
 // app-uuid (the token set's, else the persisted install fallback) and, separately, the
 // SESSION uuid for body injection — only the token set's own, never the fallback, so an
 // imported session cannot be attributed to this install.
-func verbCallFor(entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool, ts *tokenstore.TokenSet, claims map[string]string, appUUID string) verbCall {
+func verbCallFor(entity, op, area, group, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool, ts *tokenstore.TokenSet, claims map[string]string, appUUID string) verbCall {
 	vc := verbCall{
-		entity: entity, op: op, area: area, verb: verb, given: given, child: child,
+		entity: entity, op: op, area: area, group: group, verb: verb, given: given, child: child,
 		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
 		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
 	}

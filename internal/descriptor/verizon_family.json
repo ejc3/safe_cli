@@ -1449,13 +1449,6 @@
               "summary": "List the apps the filter knows — the Apps & websites groups (Messaging, Social Media, Games, Videos, Music, Finance, Generative AI, Dating, Email, VoIP), each app with its id and enabled=true where it is blocked now.",
               "flags": [
                 {
-                  "name": "search-engines",
-                  "type": "bool",
-                  "default": false,
-                  "maps_to": "query:include-safesearch",
-                  "help": "Also include the app's safe-search entries (default: false)."
-                },
-                {
                   "name": "find",
                   "type": "string",
                   "maps_to": "find:name",

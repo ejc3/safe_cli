@@ -1048,7 +1048,7 @@ func TestInvokeExcludesAndSharedVar(t *testing.T) {
 // app-uuid must not have the fallback injected as the caller's identity (Codex #71 round 5).
 func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
 	ts := &tokenstore.TokenSet{} // no session uuid
-	vc := verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{"custom:identifier-serviceid": "1000001"}, "fallback-uuid")
+	vc := verbCallFor("t", "op", "a", "", "v", nil, "", false, false, false, ts, map[string]string{"custom:identifier-serviceid": "1000001"}, "fallback-uuid")
 	if vc.appUUID != "fallback-uuid" || vc.selfSvc != "1000001" {
 		t.Errorf("header uuid must be the resolved (fallback) uuid and the claims must be read: %+v", vc)
 	}
@@ -1056,7 +1056,7 @@ func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
 		t.Errorf("without a session uuid nothing may be injected, got %q", vc.sessionUUID)
 	}
 	ts.AppUUID = "session-uuid"
-	if vc = verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{}, "session-uuid"); vc.sessionUUID != "session-uuid" {
+	if vc = verbCallFor("t", "op", "a", "", "v", nil, "", false, false, false, ts, map[string]string{}, "session-uuid"); vc.sessionUUID != "session-uuid" {
 		t.Errorf("session uuid must come from the token set: %+v", vc)
 	}
 }
