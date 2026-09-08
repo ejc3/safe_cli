@@ -122,6 +122,11 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"requires unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","requires":["ghost"],"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		{"one_of with one group", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"]],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
 		{"one_of unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"],["ghost"]],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
+		// Codex #66 round 5: one op, several verbs — `cli` may be a list; alias/call_only stay single.
+		{"cli list mixing alias and verb", `[{"alias_of":"pause.other"},{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}]`, "", "only entry"},
+		{"cli list duplicate verb", `[{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]},{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}]`, "", "declared twice"},
+		// Codex #66 round 5: fixed header constants must name headers the op declares.
+		{"header constant not declared on op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"x-nope":"1"},"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "not one of the op's declared headers"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -212,6 +217,37 @@ func TestCLISelectOverridesAndDependentFlagsAccepted(t *testing.T) {
 	}
 }
 
+// One operation backing two verbs: sibling blocks share the op's templates and differ by a
+// constant (filter block/allow both drive updateSubcategory with enabled true/false). A
+// verb may also declare fixed header constants the op declares.
+func TestCLIListOfVerbsAndHeadersAccepted(t *testing.T) {
+	block := func(verb string, enabled bool) string {
+		b := map[bool]string{true: "true", false: "false"}[enabled]
+		return `{"area":"filter","verb":"` + verb + `","priority":"core","target":"child","summary":"s",
+		  "body_template":"{\"enabled\":` + b + `,\"id\":\"$id\"}",
+		  "constants":{"enabled":` + b + `},
+		  "headers":{"x-pending-activation":"false"},
+		  "flags":[{"name":"id","type":"int","required":true,"maps_to":"body:$id","help":"h"}]}`
+	}
+	cli := "[" + block("block", true) + "," + block("allow", false) + "]"
+	d, err := Parse(cliFixture(cli, `"headers":["x-pending-activation"]`))
+	if err != nil {
+		t.Fatalf("a list of verb blocks with header constants must parse: %v", err)
+	}
+	op := d.Entities["pause"].Operations["pauseIt"]
+	if len(op.CLI) != 2 || op.CLI[0].Verb != "block" || op.CLI[1].Verb != "allow" {
+		t.Fatalf("want two verb blocks block/allow, got %+v", op.CLI)
+	}
+	// The single-object form still parses to a one-element list.
+	d, err = Parse(cliFixture(validPause, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := d.Entities["pause"].Operations["pauseIt"].CLI; len(got) != 1 || got[0].Verb != "pause" {
+		t.Errorf("single-object cli must be a one-element list, got %+v", got)
+	}
+}
+
 // The embedded descriptor carries the first real cli blocks: pause-internet's three verbs,
 // exactly as docs/CLI-DESIGN.md §5/§6 specify them.
 func TestEmbeddedPauseInternetCLI(t *testing.T) {
@@ -226,18 +262,19 @@ func TestEmbeddedPauseInternetCLI(t *testing.T) {
 		"unPauseInternet": {"resume", "device", "core"},
 	}
 	for op, w := range want {
-		c := e.Operations[op].CLI
-		if c == nil {
+		blocks := e.Operations[op].CLI
+		if len(blocks) == 0 {
 			t.Errorf("pause_internet.%s has no cli block", op)
 			continue
 		}
+		c := blocks[0]
 		if c.Area != "pause-internet" || c.Verb != w.verb || c.Target != w.target || c.Priority != w.priority {
 			t.Errorf("pause_internet.%s cli = area=%q verb=%q target=%q priority=%q, want pause-internet/%s/%s/%s",
 				op, c.Area, c.Verb, c.Target, c.Priority, w.verb, w.target, w.priority)
 		}
 	}
 	// pause: --indefinite must null --for so "$for?" is omitted (Codex #66-1).
-	p := e.Operations["pauseInternet"].CLI
+	p := e.Operations["pauseInternet"].CLI[0]
 	var indef *Flag
 	for i := range p.Flags {
 		if p.Flags[i].Name == "indefinite" {

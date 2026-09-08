@@ -43,6 +43,11 @@ type CLI struct {
 	// descriptor's name-only `query` list cannot carry a value, so every constant a
 	// zero-flag verb needs (categorySupported=v6, strategy=NotNull) is declared here.
 	Query map[string]string `json:"query,omitempty"`
+	// Headers maps a header the op declares to the fixed value this verb sends when no flag
+	// supplies it (`account set` -> x-pending-activation=false), analogous to Query. Headers
+	// the op already fixes in header_values are auto-sent; identity/trace headers are filled
+	// by the engine.
+	Headers map[string]string `json:"headers,omitempty"`
 	// Constants declares, by name, the body fields kept baked from the example
 	// (MAPPVersion, editSource, productType). A template literal not listed here is rejected.
 	Constants map[string]any `json:"constants,omitempty"`
@@ -149,6 +154,30 @@ type Output struct {
 	Table []string `json:"table,omitempty"`
 }
 
+// CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation
+// backs several verbs (content_filter.updateSubcategory drives both `filter block` and
+// `filter allow`, differing by a constant). It decodes from a JSON object or array; an
+// alias_of or call_only entry must be the only one.
+type CLIBlocks []*CLI
+
+func (b *CLIBlocks) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		var list []*CLI
+		if err := json.Unmarshal(trimmed, &list); err != nil {
+			return err
+		}
+		*b = list
+		return nil
+	}
+	var one CLI
+	if err := json.Unmarshal(trimmed, &one); err != nil {
+		return err
+	}
+	*b = CLIBlocks{&one}
+	return nil
+}
+
 // The closed vocabularies the generator and engine understand. A name outside these is a
 // descriptor bug caught at load, not a silently-ignored field.
 var (
@@ -194,11 +223,21 @@ func (d *Descriptor) validateCLIBlocks() error {
 			sort.Strings(names)
 			for _, oname := range names {
 				o := ops[oname]
-				if o.CLI == nil {
-					continue
-				}
-				if err := d.validateCLI(o); err != nil {
-					return fmt.Errorf("%s.%s cli: %w", ename, oname, err)
+				seenVerb := make(map[string]bool, len(o.CLI))
+				for i, c := range o.CLI {
+					if len(o.CLI) > 1 && (c.AliasOf != "" || c.CallOnly) {
+						return fmt.Errorf("%s.%s cli[%d]: alias_of or call_only must be the only entry of an op's cli list", ename, oname, i)
+					}
+					if c.Verb != "" {
+						key := c.Area + " " + c.Verb
+						if seenVerb[key] {
+							return fmt.Errorf("%s.%s cli[%d]: verb %s declared twice on this op", ename, oname, i, key)
+						}
+						seenVerb[key] = true
+					}
+					if err := d.validateCLI(o, c); err != nil {
+						return fmt.Errorf("%s.%s cli[%d]: %w", ename, oname, i, err)
+					}
 				}
 			}
 			return nil
@@ -230,8 +269,7 @@ func (d *Descriptor) opExists(ref string) bool {
 	return ok
 }
 
-func (d *Descriptor) validateCLI(o Operation) error {
-	c := o.CLI
+func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	// Exactly one shape.
 	isVerb := c.Area != "" || c.Verb != ""
 	shapes := 0
@@ -516,6 +554,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if _, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
 			}
+		}
+	}
+	// Fixed header constants: every name must be a header the op declares.
+	for name := range c.Headers {
+		if !contains(o.Headers, name) {
+			return fmt.Errorf("headers[%s] is not one of the op's declared headers %v", name, o.Headers)
 		}
 	}
 	for _, req := range o.RequiredQuery {
