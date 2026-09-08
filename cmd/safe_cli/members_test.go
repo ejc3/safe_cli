@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/alecthomas/kong"
 )
 
 // parseAccount must flatten the nested account-details shape (accounts[].userprofiles[].
@@ -106,5 +109,21 @@ func TestParseAccountNoServicesIsEmptyArray(t *testing.T) {
 	}
 	if got := filterMembers(a.Members, "", ""); got == nil {
 		t.Error("the unfiltered listing must stay a non-nil slice")
+	}
+}
+
+// `members --help` itself states the row order (docs/CLI-DESIGN.md §5), not only the
+// post-request footer, so "the first child" is well-defined before any call (Codex #68).
+func TestMembersHelpStatesOrder(t *testing.T) {
+	var buf bytes.Buffer
+	var cli CLI
+	parser, err := kong.New(&cli, kong.Name("safe_cli"), kong.Exit(func(int) {}), kong.Writers(&buf, &buf))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = parser.Parse([]string{"members", "--help"})
+	out := buf.String()
+	if !strings.Contains(out, "PAIRED before UNPAIRED") || !strings.Contains(out, "--child") {
+		t.Errorf("members --help must state the order and the --child target:\n%s", out)
 	}
 }
