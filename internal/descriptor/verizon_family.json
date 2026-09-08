@@ -3648,9 +3648,6 @@
                 "type": "bool",
                 "default": false,
                 "maps_to": "body:$indefinite",
-                "excludes": [
-                  "for"
-                ],
                 "nulls": [
                   "for"
                 ],

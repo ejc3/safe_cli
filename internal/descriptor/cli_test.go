@@ -70,6 +70,13 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"optional var on a required flag nothing nulls", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "nothing nulls it"},
 		{"optional resolved var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"p\":\"$child.profileId?\"}","resolve":["$child.profileId"]}`, "", "cannot be optional"},
 		{"nulls unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","nulls":["ghost"],"help":"h"}]}`, "", "unknown flag"},
+		// Codex #66 re-review: an exclusion against a defaulted flag is undecidable (the
+		// default makes the flag always present), so it is rejected; precedence is nulls.
+		{"excludes names a defaulted flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"y\":\"$y\"}","flags":[{"name":"x","type":"string","default":"d","maps_to":"body:$x","help":"h"},{"name":"y","type":"bool","default":false,"maps_to":"body:$y","excludes":["x"],"help":"h"}]}`, "", "has a default"},
+		// Codex #66 re-review: verb-level at_least_one (account set --family-name|--timezone).
+		{"at_least_one with a single flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","at_least_one":["x"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
+		{"at_least_one names unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","at_least_one":["x","ghost"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
+		{"at_least_one names a required flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"y\":\"$y\"}","at_least_one":["x","y"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"y","type":"string","maps_to":"body:$y","help":"h"}]}`, "", "already required"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -93,6 +100,22 @@ func TestCLIDeclaredConstantIsAccepted(t *testing.T) {
 	  "flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, "")); err != nil {
 		t.Fatalf("declared constants must be accepted: %v", err)
+	}
+}
+
+// The two shapes the re-review rules are FOR must still parse: precedence over a defaulted
+// flag via nulls (no excludes), and an optional pair guarded by at_least_one.
+func TestCLINullsPrecedenceAndAtLeastOneAccepted(t *testing.T) {
+	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	  "body_template":"{\"x\":\"$x?\",\"y\":\"$y\",\"name\":\"$name?\",\"tz\":\"$tz?\"}",
+	  "at_least_one":["name","tz"],
+	  "flags":[
+	    {"name":"x","type":"enum","enum":["a","b"],"default":"a","maps_to":"body:$x","help":"h"},
+	    {"name":"y","type":"bool","default":false,"nulls":["x"],"maps_to":"body:$y","help":"h"},
+	    {"name":"name","type":"string","maps_to":"body:$name","help":"h"},
+	    {"name":"tz","type":"tz","maps_to":"body:$tz","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, "")); err != nil {
+		t.Fatalf("nulls precedence + at_least_one must be accepted: %v", err)
 	}
 }
 

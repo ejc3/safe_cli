@@ -49,12 +49,15 @@ type CLI struct {
 	// and $lookup:<entity>.<op>:<key>=<flag>:<field> for enrichment reads.
 	Resolve []string `json:"resolve,omitempty"`
 	// Variants picks the op by whether --child is given ({"account": "x.y", "child": "x.z"}).
-	Variants      map[string]string `json:"variants,omitempty"`
-	AliasOf       string            `json:"alias_of,omitempty"`
-	CallOnly      bool              `json:"call_only,omitempty"`
-	Reason        string            `json:"reason,omitempty"`
-	LiveEmergency bool              `json:"live_emergency,omitempty"` // requires --confirm and warns
-	Output        *Output           `json:"output,omitempty"`
+	Variants map[string]string `json:"variants,omitempty"`
+	// AtLeastOne requires at least one of the named optional flags (`account set
+	// [--family-name] [--timezone]`); validated to name declared, non-required flags.
+	AtLeastOne    []string `json:"at_least_one,omitempty"`
+	AliasOf       string   `json:"alias_of,omitempty"`
+	CallOnly      bool     `json:"call_only,omitempty"`
+	Reason        string   `json:"reason,omitempty"`
+	LiveEmergency bool     `json:"live_emergency,omitempty"` // requires --confirm and warns
+	Output        *Output  `json:"output,omitempty"`
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
@@ -242,9 +245,38 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		}
 	}
 	for _, f := range c.Flags {
-		for _, x := range append(append([]string{}, f.Excludes...), f.Nulls...) {
+		for _, x := range f.Excludes {
+			g, ok := flagByName[x]
+			if !ok {
+				return fmt.Errorf("flag --%s: excludes/nulls names unknown flag %q", f.Name, x)
+			}
+			// A defaulted flag is always populated, so "only --this" and "--this --that=<default>"
+			// are indistinguishable and the exclusion cannot be decided either way. Precedence
+			// over a defaulted flag is expressed with nulls (its "$var?" is omitted) instead.
+			if g.Default != nil {
+				return fmt.Errorf("flag --%s: excludes --%s, which has a default (a defaulted flag is always present, so the exclusion cannot be decided); express precedence with nulls instead", f.Name, x)
+			}
+		}
+		for _, x := range f.Nulls {
 			if _, ok := flagByName[x]; !ok {
 				return fmt.Errorf("flag --%s: excludes/nulls names unknown flag %q", f.Name, x)
+			}
+		}
+	}
+	// at_least_one: a verb-level "one of these optional flags must be given" (account set
+	// --family-name|--timezone). Names must be declared, and requiring one of a set only
+	// makes sense when none of them is individually required.
+	if len(c.AtLeastOne) > 0 {
+		if len(c.AtLeastOne) < 2 {
+			return fmt.Errorf("at_least_one needs at least two flags, got %v", c.AtLeastOne)
+		}
+		for _, x := range c.AtLeastOne {
+			g, ok := flagByName[x]
+			if !ok {
+				return fmt.Errorf("at_least_one names unknown flag %q", x)
+			}
+			if g.Required {
+				return fmt.Errorf("at_least_one names --%s, which is already required", x)
 			}
 		}
 	}
