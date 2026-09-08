@@ -90,3 +90,24 @@ func TestGeneratedHelpIsDiscoverable(t *testing.T) {
 		}
 	}
 }
+
+// runVerb must assemble its call through verbCallFor — the one place the header uuid and
+// the session uuid (for body injection) are told apart — never by a bare literal that
+// forgets sessionUUID (Codex #72 round 3).
+func TestRunVerbUsesVerbCallFor(t *testing.T) {
+	src, err := os.ReadFile("engine.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := bytes.Index(src, []byte("func runVerb("))
+	if i < 0 {
+		t.Fatal("runVerb not found")
+	}
+	body := src[i:]
+	if j := bytes.Index(body, []byte("\n}\n")); j > 0 {
+		body = body[:j]
+	}
+	if !bytes.Contains(body, []byte("verbCallFor(")) || bytes.Contains(body, []byte("vc := verbCall{")) {
+		t.Errorf("runVerb must build its verbCall through verbCallFor:\n%s", body)
+	}
+}

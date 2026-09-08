@@ -1201,11 +1201,7 @@ func runVerb(rc *runContext, entity, op, area, group, verb string, given map[str
 	}
 	claims := tokenstore.Claims(idt)
 	appUUID, _ := resolveAppUUID(ts)
-	vc := verbCall{
-		entity: entity, op: op, area: area, group: group, verb: verb, given: given, child: child,
-		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
-		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
-	}
+	vc := verbCallFor(entity, op, area, group, verb, given, child, dryRun, confirm, allowUnpaired, ts, claims, appUUID)
 	if dryRun {
 		vc.dump = dumpRequest(rc, idt)
 	}
