@@ -299,6 +299,10 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"optrep","priority":"core","target":"account","summary":"s",
       "body_template":"{\"domains\":[{\"url\":\"$url?\"}]}",
       "flags":[{"name":"url","type":"string","repeatable":true,"maps_to":"body:$url","help":"h"}]}},
+  "sub":{"method":"POST","path":"/sub","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"sub","priority":"core","target":"child","summary":"s",
+      "body_template":"{\"n\":\"$lookup:t.cats/Apps & websites:id=app:name\",\"id\":\"$app\"}","resolve":["$lookup:t.cats/Apps & websites:id=app:name"],
+      "flags":[{"name":"app","type":"int","required":true,"maps_to":"body:$app","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -688,6 +692,31 @@ func TestInvokeExistsKeyedByAbsentFlagIsNotMet(t *testing.T) {
 	}
 	if _, looked := fb.seen["/cats"]; looked {
 		t.Error("no lookup may be attempted without its key")
+	}
+}
+
+// A lookup scoped to a top-level subtree ("entity.op/field") finds records only there: an
+// id that exists in another part of the read is a miss, never a silent cross-over
+// (Codex #72: apps block must not reach the content categories).
+func TestInvokeLookupSubtreeScopesTheSearch(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"categories":[{"id":"MORE","categoryId":4014,"subCategories":[{"id":30033,"name":"Downloads"}]}],"Apps & websites":[{"id":"GAM","categoryId":1006,"subCategories":[{"id":10061,"name":"8 Ball Pool"}]}]}`))
+	}
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("sub", "sub", map[string]any{"app": int64(10061)}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if b := fb.seen["/sub"].body; !strings.Contains(b, `"n":"8 Ball Pool"`) {
+		t.Errorf("body = %s", b)
+	}
+	delete(fb.seen, "/sub")
+	err := invoke(context.Background(), fb.do(), d, childCall("sub", "sub", map[string]any{"app": int64(30033)}), &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "30033") {
+		t.Fatalf("an id outside the subtree must be a miss naming it, got %v", err)
+	}
+	if _, sent := fb.seen["/sub"]; sent {
+		t.Error("nothing may be sent after a miss")
 	}
 }
 

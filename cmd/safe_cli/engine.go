@@ -677,6 +677,8 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 		return nil, false, fmt.Errorf("malformed lookup %q", spec)
 	}
 	ref, keyEq, field := parts[0], parts[1], parts[2]
+	// "entity.op/field" searches only that top-level subtree of the read.
+	ref, subtree, _ := strings.Cut(ref, "/")
 	cacheKey := ref + "\x00" + idHeaders["x-fp-identifier-target-serviceid"]
 	doc, ok := lookups[cacheKey]
 	if !ok {
@@ -688,6 +690,10 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 		if lookups != nil {
 			lookups[cacheKey] = doc
 		}
+	}
+	if subtree != "" {
+		m, _ := doc.(map[string]any)
+		doc = m[subtree] // absent: nothing to find
 	}
 	return extractLookup(doc, ref, keyEq, field, given)
 }
