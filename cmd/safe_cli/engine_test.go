@@ -291,6 +291,11 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"kdef","priority":"core","target":"child","summary":"s",
       "body_template":"{\"n\":\"$lookup:t.cats:id=cat:name\",\"cat\":\"$cat\"}","resolve":["$lookup:t.cats:id=cat:name"],
       "flags":[{"name":"cat","type":"int","default":10003,"maps_to":"body:$cat","help":"h"}]}},
+  "abs":{"method":"GET","path":"/abs","headers":["x-fp-identifier-target-serviceid"]},
+  "ktr":{"method":"POST","path":"/ktr","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"ktr","priority":"core","target":"child","summary":"s",
+      "body_template":"{\"label\":\"$lookup:t.abs:ab=status:label\",\"status\":\"$status\"}","resolve":["$lookup:t.abs:ab=status:label"],
+      "flags":[{"name":"status","type":"enum","enum":["allow","block"],"default":"block","maps_to":"body:$status","transform":"allow_block_ab","help":"h"}]}},
   "kexd":{"method":"GET","path":"/kexd","query":["cat"],"headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"kexd","priority":"core","target":"child","summary":"s",
       "select":[{"when":"exists:$lookup:t.cats:id=cat:name","op":"t.listA"}],
@@ -746,6 +751,29 @@ func TestInvokeLookupKeyUsesFlagDefault(t *testing.T) {
 	}
 	if _, branch := fb.seen["/a"]; !branch {
 		t.Error("an exists: condition keyed by a defaulted flag must be evaluated with the default (branch expected)")
+	}
+}
+
+// Codex #69 round 11: a keyed lookup is keyed by the flag's *wire* value — the value after
+// its transform — because that is what the looked-up document carries. With --status block
+// (allow_block_ab -> "b") the row keyed "b" must match, given or defaulted.
+func TestInvokeLookupKeyUsesTransformedValue(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/abs"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"ab":"a","label":"allowed"},{"ab":"b","label":"blocked"}]`))
+	}
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("ktr", "ktr", map[string]any{"status": "allow"}), &strings.Builder{}, true); err != nil {
+		t.Fatalf("the lookup must be keyed by the transformed value: %v", err)
+	}
+	if b := fb.seen["/ktr"].body; !strings.Contains(b, `"label":"allowed"`) || !strings.Contains(b, `"status":"a"`) {
+		t.Errorf("given --status allow: body = %s", b)
+	}
+	if err := invoke(context.Background(), fb.do(), d, childCall("ktr", "ktr", nil), &strings.Builder{}, true); err != nil {
+		t.Fatalf("the defaulted key must be transformed too: %v", err)
+	}
+	if b := fb.seen["/ktr"].body; !strings.Contains(b, `"label":"blocked"`) || !strings.Contains(b, `"status":"b"`) {
+		t.Errorf("defaulted --status block: body = %s", b)
 	}
 }
 

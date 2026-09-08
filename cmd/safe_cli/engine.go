@@ -99,19 +99,25 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// when the flag is asserted: --flag=false is the switch's absence.
 	present := given
 	// keyVals is what a keyed lookup may be keyed by: the given flags plus every literal
-	// default (the schema accepts a defaulted key flag as always present).
+	// default (the schema accepts a defaulted key flag as always present), each carried as
+	// its wire value — after the flag's transform — because that is what the looked-up
+	// document holds. A transform that fails here is reported by the flag loop below.
 	keyVals := map[string]any{}
 	for name, v := range given {
 		keyVals[name] = v
 	}
 	for _, f := range c.Flags {
-		if _, ok := keyVals[f.Name]; ok || f.Default == nil {
-			continue
+		if _, ok := keyVals[f.Name]; !ok && f.Default != nil {
+			if ds, isStr := f.Default.(string); isStr && strings.HasPrefix(ds, "$") {
+				continue // a resolved default is not a lookup key
+			}
+			keyVals[f.Name] = normalizeNum(f.Default)
 		}
-		if ds, isStr := f.Default.(string); isStr && strings.HasPrefix(ds, "$") {
-			continue // a resolved default is not a lookup key
+		if v, ok := keyVals[f.Name]; ok && f.Transform != "" {
+			if tv, err := applyTransform(f.Transform, v); err == nil {
+				keyVals[f.Name] = tv
+			}
 		}
-		keyVals[f.Name] = normalizeNum(f.Default)
 	}
 	asserted := map[string]any{}
 	for name, v := range given {
