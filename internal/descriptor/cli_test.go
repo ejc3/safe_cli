@@ -26,9 +26,9 @@ const validPause = `{
     {"name":"for","type":"enum","enum":["30m","1h","2h","4h","until-morning"],"default":"30m","maps_to":"body:$for","transform":"pause_schedule","help":"How long to pause (default: 30m)."},
     {"name":"indefinite","type":"bool","default":false,"maps_to":"body:$indefinite","nulls":["for"],"help":"Pause until resume; omits pauseSchedule."},
     {"name":"call-only","type":"bool","default":false,"maps_to":"body:$callOnly","help":"Keep calls working."},
-    {"name":"timezone","type":"tz","default":"$account.timezone","maps_to":"body:$tz","transform":"tz_short","help":"Short zone code (default: account timezone)."}
+    {"name":"timezone","type":"tz","default":"$local.timezone","maps_to":"body:$tz","transform":"tz_short","help":"Short zone code (default: local timezone)."}
   ],
-  "resolve":["$child.profileId","$child.serviceId","$child.deviceId","$account.timezone"]
+  "resolve":["$child.profileId","$child.serviceId","$child.deviceId","$local.timezone"]
 }`
 
 func TestCLIValidVerbParses(t *testing.T) {
@@ -137,8 +137,8 @@ func TestCLINullsPrecedenceAndAtLeastOneAccepted(t *testing.T) {
 // placeholder.
 func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
-	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$account.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
-	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$account.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
+	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
+	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
 	  "flags":[{"name":"cat","type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)

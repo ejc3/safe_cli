@@ -3663,17 +3663,17 @@
               {
                 "name": "timezone",
                 "type": "tz",
-                "default": "$account.timezone",
+                "default": "$local.timezone",
                 "maps_to": "body:$tz",
                 "transform": "tz_short",
-                "help": "Short zone code (EST, PST) the pause timing is computed in (default: the account timezone)."
+                "help": "Short zone code (EST, PST) the pause timing is computed in (default: this machine's local zone)."
               }
             ],
             "resolve": [
               "$child.profileId",
               "$child.serviceId",
               "$child.deviceId",
-              "$account.timezone"
+              "$local.timezone"
             ],
             "output": {
               "table": [
