@@ -59,6 +59,11 @@ func TestResolveTarget(t *testing.T) {
 	if _, err := a.resolveTarget("Alex"); err == nil || !strings.Contains(err.Error(), "SERVICE-ID") || !strings.Contains(err.Error(), "--find") {
 		t.Errorf("name as --child should be refused with guidance, got %v", err)
 	}
+	// A guardian's id is refused: child-scoped verbs act on a child, and building a
+	// child-scoped request with the guardian's own profile/device ids would be wrong.
+	if _, err := a.resolveTarget("1000001"); err == nil || !strings.Contains(err.Error(), "guardian") || !strings.Contains(err.Error(), "--role child") {
+		t.Errorf("guardian id as --child should be refused with guidance, got %v", err)
+	}
 	// An unknown id lists the family.
 	if _, err := a.resolveTarget("9999999"); err == nil || !strings.Contains(err.Error(), "2000001") || !strings.Contains(err.Error(), "Alex") {
 		t.Errorf("unknown id should list members, got %v", err)

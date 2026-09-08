@@ -156,6 +156,9 @@ func (a *account) resolveTarget(childFlag string) (member, error) {
 	}
 	for _, m := range a.Members {
 		if m.ServiceID == svc {
+			if !m.IsChild {
+				return member{}, fmt.Errorf("--child %d is %s, a guardian, not a child: child-scoped verbs act on a managed child (run `safe_cli members --role child`)", svc, m.Name)
+			}
 			return m, nil
 		}
 	}
