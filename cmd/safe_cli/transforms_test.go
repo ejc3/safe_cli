@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ejc3/safe_cli/internal/descriptor"
 	"reflect"
 	"strings"
 	"testing"
@@ -105,5 +106,25 @@ func TestTransformsRejectBadInput(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s(%v): want error containing %q, got %v", c.tf, c.in, c.want, err)
 		}
+	}
+}
+
+// Every value the descriptor lets an enum flag offer for a closed transform must be one the
+// registry converts — the two vocabularies cannot drift (Codex #68: mode_block_alert was
+// accepted by the schema but missing here).
+func TestTransformsAcceptEveryDescriptorDomainValue(t *testing.T) {
+	for tf, dom := range descriptor.TransformDomains() {
+		for _, v := range dom {
+			if _, err := applyTransform(tf, v); err != nil {
+				t.Errorf("%s(%q): %v", tf, v, err)
+			}
+		}
+	}
+	got, err := applyTransform("mode_block_alert", "alert")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := got.(map[string]any); m["blockContent"] != false || m["alertOn"] != true {
+		t.Errorf("mode_block_alert(alert) = %v, want blockContent=false alertOn=true", got)
 	}
 }

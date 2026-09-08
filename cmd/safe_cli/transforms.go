@@ -23,6 +23,8 @@ var transforms = map[string]func(any) (any, error){
 	"day3_title":     tfDay3Title,
 	"bool01":         tfBool01,
 	"allow_block_ab": tfAllowBlockAB,
+	// structured: fills several body vars at once (the descriptor pins which).
+	"mode_block_alert": tfModeBlockAlert,
 }
 
 // applyTransform runs the named transform, or returns v unchanged for "".
@@ -275,4 +277,20 @@ func tfAllowBlockAB(v any) (any, error) {
 		return "b", nil
 	}
 	return nil, fmt.Errorf("%q must be allow or block", s)
+}
+
+// tfModeBlockAlert: schedules.postSchedule's blockContent/alertOn are a mutually exclusive
+// pair (verified live); one --mode flag sets both.
+func tfModeBlockAlert(v any) (any, error) {
+	s, ok := v.(string)
+	if !ok {
+		return nil, fmt.Errorf("mode_block_alert wants a string, got %T", v)
+	}
+	switch strings.ToLower(s) {
+	case "block":
+		return map[string]any{"blockContent": true, "alertOn": false}, nil
+	case "alert":
+		return map[string]any{"blockContent": false, "alertOn": true}, nil
+	}
+	return nil, fmt.Errorf("--mode %q must be block or alert", s)
 }
