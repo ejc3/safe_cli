@@ -91,8 +91,14 @@ var (
 	// cliTransforms is the engine's fixed registry (docs/CLI-DESIGN.md §4); the engine is the
 	// only place that implements them, this list only rejects an unknown name early.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "weekday_ints", "bool01", "allow_block_ab")
-	// cliResolvePrefixes are the resolved-variable families the engine can fill.
-	cliResolvePrefixes = []string{"$child.", "$self.", "$account.", "$now.", "$uuid", "$lookup:"}
+	// cliResolveNames is the EXACT vocabulary of resolved variables the engine can fill
+	// (plus the structured $lookup form checked by checkResolveVar). Exact, not a prefix:
+	// a typo like $child.profielId must fail at load, not reach the engine.
+	cliResolveNames = set("$child.serviceId", "$child.profileId", "$child.deviceId", "$child.pairing",
+		"$self.serviceId", "$self.profileId", "$account.id", "$account.timezone", "$now.epochMs", "$uuid")
+	// cliResolveFamilies only decide which error a bad "$x" gets (a mistyped resolved
+	// variable vs. something that is not a resolved variable at all).
+	cliResolveFamilies = []string{"$child.", "$self.", "$account.", "$now.", "$uuid", "$lookup:"}
 )
 
 func set(xs ...string) map[string]bool {
@@ -232,14 +238,22 @@ func (d *Descriptor) validateCLI(o Operation) error {
 			if !strings.HasPrefix(arg, "$") {
 				return fmt.Errorf("flag --%s: body maps_to %q must be a $var", f.Name, f.MapsTo)
 			}
-			bodyVarByFlag[strings.TrimPrefix(arg, "$")] = f
+			v := strings.TrimPrefix(arg, "$")
+			if prev, dup := bodyVarByFlag[v]; dup {
+				return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value)", f.Name, v, prev.Name)
+			}
+			bodyVarByFlag[v] = f
 		case "query":
 			if !contains(o.Query, arg) {
 				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, o.Query)
 			}
 			queryFromFlag[arg] = true
-		case "header", "path":
-			// header names and path placeholders are free-form here; fillPath/headers check at call time.
+		case "header":
+			// header names are free-form; the headers block checks them at call time.
+		case "path":
+			if !strings.Contains(o.Path, "{"+arg+"}") {
+				return fmt.Errorf("flag --%s: path %q is not a {placeholder} in the op's path %s", f.Name, arg, o.Path)
+			}
 		default:
 			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path", f.Name, kind)
 		}
@@ -312,12 +326,16 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		}
 		return nil
 	}
+	if !o.TakesBody {
+		return fmt.Errorf("op declares no body (takes_body=false) but the verb has a body_template")
+	}
 	var tpl any
 	if err := json.Unmarshal([]byte(c.BodyTemplate), &tpl); err != nil {
 		return fmt.Errorf("body_template is not strict JSON (write variables as \"$name\" strings): %w", err)
 	}
+	resolveOK := func(v string) error { return d.checkResolveVar(v, flagByName) }
 	seenVars := make(map[string]bool)
-	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars); err != nil {
+	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK); err != nil {
 		return err
 	}
 	for v, f := range bodyVarByFlag {
@@ -326,17 +344,49 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		}
 	}
 	for _, r := range c.Resolve {
-		if !isResolveVar(r) {
-			return fmt.Errorf("resolve entry %q is not a known resolved-variable family", r)
+		if err := resolveOK(r); err != nil {
+			return fmt.Errorf("resolve entry: %w", err)
 		}
 	}
 	return nil
 }
 
+// checkResolveVar accepts an exact resolved-variable name, or a structurally valid
+// $lookup:<entity>.<op>:<key>=<flag>:<field> whose op exists and whose flag is declared.
+func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error {
+	if cliResolveNames[v] {
+		return nil
+	}
+	if strings.HasPrefix(v, "$lookup:") {
+		parts := strings.Split(strings.TrimPrefix(v, "$lookup:"), ":")
+		if len(parts) != 3 {
+			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
+		}
+		ref, keyEq, field := parts[0], parts[1], parts[2]
+		key, flag, ok := strings.Cut(keyEq, "=")
+		if !ok || key == "" || flag == "" || field == "" {
+			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
+		}
+		if !d.opExists(ref) {
+			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
+		}
+		if _, ok := flagByName[flag]; !ok {
+			return fmt.Errorf("$lookup %q is keyed by unknown flag %q", v, flag)
+		}
+		return nil
+	}
+	names := make([]string, 0, len(cliResolveNames))
+	for n := range cliResolveNames {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return fmt.Errorf("%q is not a supported resolved variable (want one of %s, or $lookup:<entity>.<op>:<key>=<flag>:<field>)", v, strings.Join(names, " "))
+}
+
 // walkTemplate classifies every leaf of the template: "$name"/"$name?" must be a flag's body
 // var or a resolve entry (and "?" only on a flag that can be unset); any other scalar, or
 // array of scalars, must sit under a key declared in Constants.
-func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool) error {
+func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error) error {
 	switch t := v.(type) {
 	case map[string]any:
 		keys := make([]string, 0, len(t))
@@ -345,7 +395,7 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen); err != nil {
+			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen, resolveOK); err != nil {
 				return err
 			}
 		}
@@ -353,13 +403,13 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 	case []any:
 		for _, el := range t {
 			if _, isObj := el.(map[string]any); isObj {
-				if err := walkTemplate(key, el, c, bodyVarByFlag, seen); err != nil {
+				if err := walkTemplate(key, el, c, bodyVarByFlag, seen, resolveOK); err != nil {
 					return err
 				}
 				continue
 			}
 			if s, ok := el.(string); ok && strings.HasPrefix(s, "$") {
-				if err := classifyVar(s, c, bodyVarByFlag, seen); err != nil {
+				if err := classifyVar(s, c, bodyVarByFlag, seen, resolveOK); err != nil {
 					return err
 				}
 				continue
@@ -371,7 +421,7 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 		return nil
 	case string:
 		if strings.HasPrefix(t, "$") {
-			return classifyVar(t, c, bodyVarByFlag, seen)
+			return classifyVar(t, c, bodyVarByFlag, seen, resolveOK)
 		}
 	}
 	// A literal scalar leaf.
@@ -381,7 +431,7 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 	return nil
 }
 
-func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool) error {
+func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error) error {
 	optional := strings.HasSuffix(s, "?")
 	name := strings.TrimSuffix(strings.TrimPrefix(s, "$"), "?")
 	if f, ok := bodyVarByFlag[name]; ok {
@@ -391,7 +441,10 @@ func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[strin
 		}
 		return nil
 	}
-	if isResolveVar("$" + name) {
+	if looksResolve("$" + name) {
+		if err := resolveOK("$" + name); err != nil {
+			return err // a mistyped or malformed resolved variable
+		}
 		if optional {
 			return fmt.Errorf("resolved var $%s cannot be optional (\"?\")", name)
 		}
@@ -412,8 +465,10 @@ func nulledBySomeFlag(flag string, c *CLI) bool {
 	return false
 }
 
-func isResolveVar(v string) bool {
-	for _, p := range cliResolvePrefixes {
+// looksResolve reports whether v is shaped like a resolved variable; validity is decided
+// by checkResolveVar, this only routes the error message.
+func looksResolve(v string) bool {
+	for _, p := range cliResolveFamilies {
 		if strings.HasPrefix(v, p) {
 			return true
 		}

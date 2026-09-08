@@ -77,6 +77,19 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"at_least_one with a single flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","at_least_one":["x"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
 		{"at_least_one names unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","at_least_one":["x","ghost"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		{"at_least_one names a required flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"y\":\"$y\"}","at_least_one":["x","y"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"y","type":"string","maps_to":"body:$y","help":"h"}]}`, "", "already required"},
+		// Codex #67: two flags competing for one template value must fail at Parse, not be
+		// decided by map iteration or engine precedence.
+		{"duplicate body var mapping", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"y","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "already mapped"},
+		// Codex #67: a path mapping must name a real {placeholder} of the op's path.
+		{"path flag to unknown placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"device-id","type":"string","maps_to":"path:device-id","help":"h"}]}`, `"takes_body":false,"path":"/d/{deviceId}"`, "not a {placeholder}"},
+		// Codex #67: a template on an op that declares no body is a classification typo.
+		{"template on a body-less op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, `"takes_body":false`, "declares no body"},
+		// Codex #67: resolved variables are an exact vocabulary, not a prefix match.
+		{"resolved var typo", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"p\":\"$child.profielId\"}","resolve":["$child.profielId"]}`, "", "not a supported resolved variable"},
+		{"uuid typo", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"e\":\"$uuidTypo\"}","resolve":["$uuidTypo"]}`, "", "not a supported resolved variable"},
+		{"malformed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:nope\"}","resolve":["$lookup:nope"]}`, "", "malformed $lookup"},
+		{"lookup to missing op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.nope:id=x:name\",\"x\":\"$x\"}","resolve":["$lookup:pause.nope:id=x:name"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "does not name an existing"},
+		{"lookup keyed by unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other:id=ghost:name\"}","resolve":["$lookup:pause.other:id=ghost:name"]}`, "", "unknown flag"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -116,6 +129,19 @@ func TestCLINullsPrecedenceAndAtLeastOneAccepted(t *testing.T) {
 	    {"name":"tz","type":"tz","maps_to":"body:$tz","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, "")); err != nil {
 		t.Fatalf("nulls precedence + at_least_one must be accepted: %v", err)
+	}
+}
+
+// The shapes the #67 rules must NOT reject: every exact resolved name, a well-formed
+// $lookup keyed by a declared flag against an existing op, and a path mapping to a real
+// placeholder.
+func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
+	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$account.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
+	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$account.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
+	  "flags":[{"name":"cat","type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
+		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
 	}
 }
 
