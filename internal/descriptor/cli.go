@@ -195,7 +195,9 @@ var (
 	cliPriorities = set("core", "common", "long-tail")
 	cliTargets    = set("account", "self", "child", "device")
 	cliAuths      = set("", "id_token", "spc_token")
-	cliFlagTypes  = set("string", "int", "float", "bool", "enum", "duration", "date", "datetime", "tz", "list")
+	// reservedFlagNames are the flags the generator or the CLI itself owns on every verb.
+	reservedFlagNames = set("child", "dry-run", "confirm", "allow-unpaired", "json", "help")
+	cliFlagTypes      = set("string", "int", "float", "bool", "enum", "duration", "date", "datetime", "tz", "list")
 	// cliTransforms is the engine's fixed registry (docs/CLI-DESIGN.md §4); the engine is the
 	// only place that implements them, this list only rejects an unknown name early.
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
@@ -291,6 +293,18 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	if shapes != 1 {
 		return fmt.Errorf("must be exactly one of a verb (area+verb), alias_of, or call_only")
 	}
+	if c.AliasOf != "" || c.CallOnly {
+		// These shapes generate nothing, so any request or verb field on them would be
+		// silently ignored — reject it rather than let a half-written verb hide.
+		if len(c.Flags) > 0 || c.BodyTemplate != "" || len(c.Select) > 0 || len(c.Resolve) > 0 || len(c.Query) > 0 ||
+			len(c.Headers) > 0 || len(c.Constants) > 0 || c.Output != nil || len(c.AtLeastOne) > 0 || len(c.OneOf) > 0 ||
+			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" {
+			if c.CallOnly {
+				return fmt.Errorf("a call_only block carries nothing but call_only, reason and summary; remove the verb/request fields or make it a verb")
+			}
+			return fmt.Errorf("an alias_of block carries nothing but alias_of; remove the verb/request fields or make it a verb")
+		}
+	}
 	if c.AliasOf != "" {
 		target, ok := d.lookupOp(c.AliasOf)
 		if !ok {
@@ -331,6 +345,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	if !cliAuths[c.Auth] {
 		return fmt.Errorf("auth %q must be id_token|spc_token", c.Auth)
 	}
+	if c.Auth == "spc_token" {
+		return fmt.Errorf("auth spc_token is not implemented by the engine yet (family_line ops stay call-only until it is)")
+	}
 	if err := d.validateContract(o, c); err != nil {
 		return err
 	}
@@ -339,6 +356,22 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	// against ITS op, so choosing an op can never apply the base template to an unrelated
 	// route.
 	flagByName := flagIndex(c.Flags)
+	// Every resolve entry must be read somewhere — by the base or a branch template, a query
+	// or header value, a flag default, or an exists: condition; an unused $lookup would be a
+	// wasted request on every invocation.
+	uses := resolveUses(c)
+	for _, r := range c.Resolve {
+		if !uses[r] {
+			return fmt.Errorf("resolve entry %s is never used by the template, a query or header value, a default or a select condition", r)
+		}
+	}
+	for i, br := range c.Select {
+		for _, r := range br.Resolve {
+			if !uses[r] {
+				return fmt.Errorf("select[%d]: resolve entry %s is never used", i, r)
+			}
+		}
+	}
 	seenWhen := map[string]int{}
 	for i, r := range c.Select {
 		// First match wins, so a repeated condition is an unreachable branch — and one that
@@ -413,11 +446,51 @@ func (d *Descriptor) branchSelects(c *CLI, f Flag, kind, arg string) bool {
 	return false
 }
 
+// resolveVarRe finds the "$…" string values of a strict-JSON template.
+var resolveVarRe = regexp.MustCompile(`"(\$[^"]+)"`)
+
+// resolveUses collects every resolver reference a verb makes, across its base contract and
+// every select branch: template values, query and header values, flag defaults, and
+// exists: conditions (an optional "$v?" counts as a use of $v).
+func resolveUses(c *CLI) map[string]bool {
+	uses := map[string]bool{}
+	add := func(v string) { uses[strings.TrimSuffix(v, "?")] = true }
+	scanTemplate := func(tpl string) {
+		for _, m := range resolveVarRe.FindAllStringSubmatch(tpl, -1) {
+			add(m[1])
+		}
+	}
+	scanTemplate(c.BodyTemplate)
+	for _, v := range c.Query {
+		add(v)
+	}
+	for _, v := range c.Headers {
+		add(v)
+	}
+	for _, f := range c.Flags {
+		if s, ok := f.Default.(string); ok {
+			add(s)
+		}
+	}
+	for _, r := range c.Select {
+		if strings.HasPrefix(r.When, "exists:") {
+			add(strings.TrimPrefix(r.When, "exists:"))
+		}
+		scanTemplate(r.BodyTemplate)
+		for _, v := range r.Query {
+			add(v)
+		}
+	}
+	return uses
+}
+
 // headerNameOK rejects header destinations the descriptor may not claim: the identity
 // headers the engine fills (x-fp-identifier-*, which would silently win), and the
 // decompiler's dynamic header-map placeholder, which is not a header name.
 func headerNameOK(name string) error {
-	if strings.HasPrefix(name, "x-fp-identifier-") {
+	// HTTP header names are case-insensitive, and the client would replace the engine's
+	// lowercase identity header with a differently-cased duplicate — compare lowercased.
+	if strings.HasPrefix(strings.ToLower(name), "x-fp-identifier-") {
 		return fmt.Errorf("header %q is an identity header the engine fills from the target; it cannot be a flag or constant", name)
 	}
 	if strings.HasPrefix(name, "(") || strings.Contains(name, "@HeaderMap") {
@@ -524,12 +597,18 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		if _, dup := flagByName[f.Name]; dup {
 			return fmt.Errorf("flag --%s declared twice", f.Name)
 		}
+		if reservedFlagNames[f.Name] {
+			return fmt.Errorf("flag --%s: the name is reserved by the generated command (child, dry-run, confirm, allow-unpaired, json, help)", f.Name)
+		}
 		flagByName[f.Name] = f
 		if !cliFlagTypes[f.Type] {
 			return fmt.Errorf("flag --%s: type %q is not a known flag type", f.Name, f.Type)
 		}
 		if f.Type == "enum" && len(f.Enum) == 0 {
 			return fmt.Errorf("flag --%s: type enum needs an enum list", f.Name)
+		}
+		if f.Repeatable && f.Type != "string" && f.Type != "enum" {
+			return fmt.Errorf("flag --%s: repeatable is only defined for string and enum flags (the generated flag is a list of strings); use type list, or a string flag", f.Name)
 		}
 		if strings.TrimSpace(f.Help) == "" {
 			return fmt.Errorf("flag --%s: needs help text (every flag's help states its default and effect)", f.Name)
@@ -572,6 +651,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 		switch kind {
 		case "body":
+			if bv := strings.TrimPrefix(arg, "$"); looksResolve("$" + bv) {
+				return fmt.Errorf("flag --%s: body var $%s is a resolver name; a flag cannot shadow it", f.Name, bv)
+			}
 			if !strings.HasPrefix(arg, "$") {
 				return fmt.Errorf("flag --%s: body maps_to %q must be a $var", f.Name, f.MapsTo)
 			}
@@ -581,6 +663,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if prev, dup := bodyVarByFlag[v]; dup {
 				if !contains(prev.Excludes, f.Name) || !contains(f.Excludes, prev.Name) {
 					return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value unless each excludes the other)", f.Name, v, prev.Name)
+				}
+				// The template position is validated once, against the first flag, so every
+				// flag sharing the var must expand the same way (a scalar and a repeatable
+				// cannot both fill "$v").
+				if prev.Repeatable != f.Repeatable {
+					return fmt.Errorf("flag --%s: shares body var $%s with --%s but one is repeatable and the other is not; both must expand the same way", f.Name, v, prev.Name)
 				}
 			} else {
 				bodyVarByFlag[v] = f
@@ -623,6 +711,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			// the account dashboard; calls list --list), so it maps to no template or param.
 			if arg == "" {
 				return fmt.Errorf("flag --%s: filter maps_to needs a response field name", f.Name)
+			}
+			if f.Default != nil {
+				return fmt.Errorf("flag --%s: a filter: flag may not have a default (it acts only when given; a default would advertise filtering that never happens)", f.Name)
 			}
 		default:
 			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter", f.Name, kind)
@@ -753,6 +844,8 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
 			} else if strings.HasPrefix(g.MapsTo, "filter:") {
 				return fmt.Errorf("query[%s] references --%s, a filter: flag that never reaches the request", name, g.Name)
+			} else if len(g.SpreadsTo) > 0 {
+				return fmt.Errorf("query[%s] references --%s, a spreads_to flag whose structured value cannot render as one parameter", name, g.Name)
 			}
 		}
 	}
@@ -774,7 +867,10 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 	}
 	for _, req := range o.RequiredQuery {
-		_, fromFlag := queryFromFlag[req]
+		src, fromFlag := queryFromFlag[req]
+		if g := flagByName[src]; fromFlag && !g.Required && g.Default == nil {
+			return fmt.Errorf("required query param %q is fed by --%s, which is neither required nor defaulted, so the request could go out without it", req, src)
+		}
 		if _, ok := c.Query[req]; !ok && !fromFlag {
 			return fmt.Errorf("required query param %q has no source (no flag maps to it and it is not a query constant)", req)
 		}
@@ -813,6 +909,11 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	for v, f := range bodyVarByFlag {
 		if !seenVars[v] {
 			return fmt.Errorf("flag --%s maps to body var $%s, which the body_template never uses", f.Name, v)
+		}
+		// A non-optional "$v" must have a value at render time: the flag is required or
+		// defaulted, or the property is written "$v?" and omitted when the flag is absent.
+		if strings.Contains(c.BodyTemplate, "\"$"+v+"\"") && !f.Required && f.Default == nil {
+			return fmt.Errorf("flag --%s feeds the required template var $%s but is optional and has no default; make it required, give it a default, or write \"$%s?\"", f.Name, v, v)
 		}
 	}
 	return nil
