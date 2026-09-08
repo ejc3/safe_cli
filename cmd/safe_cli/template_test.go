@@ -101,3 +101,23 @@ func TestRenderQuery(t *testing.T) {
 		t.Errorf("empty query map must render nil, got %v", got)
 	}
 }
+
+// A repeatable variable inside a single-element array template clones that element once
+// per value — `website block --url a.com --url b.com` is two domain objects, never one
+// object holding a list (Codex #68: the renderer must expand, not substitute).
+func TestRenderTemplateRepeatExpands(t *testing.T) {
+	b, err := renderTemplateRepeat(`{"domains":[{"status":"b","url":"$url"}]}`, map[string]any{"url": []string{"a.com", "b.com"}}, map[string]bool{"url": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := string(b); !strings.Contains(s, `{"status":"b","url":"a.com"}`) || !strings.Contains(s, `{"status":"b","url":"b.com"}`) || strings.Contains(s, `["a.com"`) {
+		t.Errorf("want one object per value, got %s", s)
+	}
+	b, err = renderTemplateRepeat(`{"domains":[{"url":"$url?"}]}`, map[string]any{}, map[string]bool{"url": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"domains":[]`) {
+		t.Errorf("an absent repeatable value expands to an empty array, got %s", b)
+	}
+}
