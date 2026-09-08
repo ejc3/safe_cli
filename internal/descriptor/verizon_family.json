@@ -409,14 +409,14 @@
               "prereq": [
                 "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
               ],
-              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=app:name\",\"id\":\"$app\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getCategories:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=app:^id\"}}",
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:name\",\"id\":\"$app\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^id\"}}",
               "constants": {
                 "enabled": true
               },
               "resolve": [
-                "$lookup:content_filter.getCategories:id=app:name",
-                "$lookup:content_filter.getCategories:id=app:^categoryId",
-                "$lookup:content_filter.getCategories:id=app:^id"
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:name",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^id"
               ],
               "flags": [
                 {
@@ -437,14 +437,14 @@
               "prereq": [
                 "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
               ],
-              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=app:name\",\"id\":\"$app\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getCategories:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=app:^id\"}}",
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:name\",\"id\":\"$app\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^id\"}}",
               "constants": {
                 "enabled": false
               },
               "resolve": [
-                "$lookup:content_filter.getCategories:id=app:name",
-                "$lookup:content_filter.getCategories:id=app:^categoryId",
-                "$lookup:content_filter.getCategories:id=app:^id"
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:name",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^id"
               ],
               "flags": [
                 {

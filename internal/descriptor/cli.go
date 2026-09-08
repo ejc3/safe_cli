@@ -1329,9 +1329,9 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 		if strings.HasPrefix(field, "^") && keyEq == "" {
 			return fmt.Errorf("$lookup %q: a ^field reads the enclosing object of a keyed match; an unkeyed singleton read has none", v)
 		}
-		lo, ok := d.lookupOp(ref)
-		if !ok {
-			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
+		opRef, subtree, scoped := strings.Cut(ref, "/")
+		if scoped && (subtree == "" || strings.Contains(subtree, "/")) {
+			return fmt.Errorf("$lookup %q: the subtree after entity.op/ must be one top-level field name, got %q", v, subtree)
 		}
 		lo, ok := d.lookupOp(opRef)
 		if !ok {
