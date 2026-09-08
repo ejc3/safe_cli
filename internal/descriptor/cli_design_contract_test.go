@@ -44,6 +44,15 @@ func TestCLIDesignPinsSchemaContracts(t *testing.T) {
 		{"optional --child from branch targets", []string{"emits `--child` as OPTIONAL"}},
 		{"fixed header constants", []string{"`headers`: an explicit map"}},
 		{"enabling an unavailable op needs a mapping", []string{"adding (or un-dormanting) its mapping"}},
+		{"resolver vars in query maps", []string{"A value may also be a resolver variable (`{\"profileId\": \"$child.profileId\""}},
+		{"branch-declared query flags", []string{"declared by the verb's op or by any of its `select` branch ops"}},
+		{"resolver vars in headers", []string{"or resolver variables (`{\"timezone\": \"$local.timezone\"}`"}},
+		{"unkeyed singleton lookups", []string{"`$lookup:<entity>.<op>::<field>`"}},
+		{"defaults from lookups", []string{"an unkeyed lookup such as `$lookup:account.getAccountDetails::familyName`"}},
+		{"client-side filter destination", []string{"`filter:<field>` destination"}},
+		{"shared var under mutual excludes", []string{"only if each `excludes` the other"}},
+		{"path placeholder sources", []string{"Every `{placeholder}` in the op's path must have a source at Parse"}},
+		{"local timezone default", []string{"`$local.timezone`"}},
 		{"reject unclassified fields", []string{"**rejected** by the descriptor test", "sample `geofenceId` must be dropped"}},
 	}
 	for _, c := range checks {
