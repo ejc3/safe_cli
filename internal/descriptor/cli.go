@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -122,6 +123,9 @@ type SelectRule struct {
 // generating an untransformed body or dropping a guard. Flag, SelectRule and CLIBlocks
 // decode the same way.
 func (c *CLI) UnmarshalJSON(b []byte) error {
+	if err := rejectDuplicateKeys(b); err != nil {
+		return err
+	}
 	type plain CLI
 	var p plain
 	if err := strictDecode(b, &p); err != nil {
@@ -559,6 +563,50 @@ func requiresClosure(name string, flagByName map[string]Flag) []string {
 	return out
 }
 
+// rejectDuplicateKeys refuses a JSON value in which any object repeats a member: encoding/json
+// silently keeps the later value, so a repeated "live_emergency" or "flags" could quietly
+// replace a safety marker or a whole contract.
+func rejectDuplicateKeys(b []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	var stack []map[string]bool // one seen-set per open object; nil for an open array
+	expectKey := false
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch t := tok.(type) {
+		case json.Delim:
+			switch t {
+			case '{':
+				stack = append(stack, map[string]bool{})
+				expectKey = true
+			case '[':
+				stack = append(stack, nil)
+				expectKey = false
+			case '}', ']':
+				stack = stack[:len(stack)-1]
+				expectKey = len(stack) > 0 && stack[len(stack)-1] != nil
+			}
+		case string:
+			if expectKey && len(stack) > 0 && stack[len(stack)-1] != nil {
+				if stack[len(stack)-1][t] {
+					return fmt.Errorf("duplicate key %q in a cli object (the later value would silently win)", t)
+				}
+				stack[len(stack)-1][t] = true
+				expectKey = false
+				continue
+			}
+			expectKey = len(stack) > 0 && stack[len(stack)-1] != nil
+		default:
+			expectKey = len(stack) > 0 && stack[len(stack)-1] != nil
+		}
+	}
+}
+
 // lookupKeyFlag returns the flag a keyed $lookup is keyed by ("" for anything else).
 func lookupKeyFlag(v string) string {
 	if !strings.HasPrefix(v, "$lookup:") {
@@ -722,11 +770,16 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if in, known := cliTransformInputs[f.Transform]; known && !contains(in, f.Type) {
 				return fmt.Errorf("flag --%s: transform %s is defined for %v flags, not type %s", f.Name, f.Transform, in, f.Type)
 			}
-			if dom, closed := cliTransformDomains[f.Transform]; closed && f.Type == "enum" {
-				for _, e := range f.Enum {
-					if !contains(dom, strings.ToLower(e)) {
-						return fmt.Errorf("flag --%s: enum value %q is not one the transform %s accepts (%s accepts only %v)", f.Name, e, f.Transform, f.Transform, dom)
+			if dom, closed := cliTransformDomains[f.Transform]; closed {
+				if f.Type == "enum" {
+					for _, e := range f.Enum {
+						if !contains(dom, strings.ToLower(e)) {
+							return fmt.Errorf("flag --%s: enum value %q is not one the transform %s accepts (%s accepts only %v)", f.Name, e, f.Transform, f.Transform, dom)
+						}
 					}
+				}
+				if ds, isStr := f.Default.(string); isStr && !strings.HasPrefix(ds, "$") && !contains(dom, strings.ToLower(ds)) {
+					return fmt.Errorf("flag --%s: default %q is not one the transform %s accepts (%s accepts only %v)", f.Name, ds, f.Transform, f.Transform, dom)
 				}
 			}
 		}
@@ -1000,6 +1053,21 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				}
 			}
 		}
+		// Giving a group means giving every member and everything they require; none of
+		// those may exclude another, or the alternative could never be fully given.
+		for gi, grp := range c.OneOf {
+			set := append([]string{}, grp...)
+			for _, x := range grp {
+				set = append(set, requiresClosure(x, flagByName)...)
+			}
+			for _, a := range set {
+				for _, b := range set {
+					if a != b && contains(flagByName[a].Excludes, b) {
+						return fmt.Errorf("one_of[%d]: --%s and --%s exclude each other, so the alternative can never be fully given", gi, a, b)
+					}
+				}
+			}
+		}
 		// A group contained in another can never be the exactly-one group: giving the
 		// larger group satisfies both, so the verb would reject every invocation of it.
 		for i, a := range c.OneOf {
@@ -1163,6 +1231,9 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 		}
 		// The engine issues a lookup as the op's bare path with the target headers, so the
 		// op must need nothing else.
+		if lo.TakesBody || lo.Multipart {
+			return fmt.Errorf("$lookup %q: %s takes a body (or is multipart), which a lookup cannot send", v, ref)
+		}
 		if lo.Unavailable != "" {
 			return fmt.Errorf("$lookup %q names %s, which is marked unavailable (%s)", v, ref, lo.Unavailable)
 		}

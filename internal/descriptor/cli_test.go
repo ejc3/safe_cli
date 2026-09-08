@@ -19,6 +19,7 @@ func cliFixture(cli string, extra string) []byte {
 	  "withph":{"method":"GET","path":"/w/{id}"},
 	  "reqq":{"method":"GET","path":"/r","query":["a"],"required_query":["a"]},
 	  "gone":{"method":"GET","path":"/g","unavailable":"observed 403"},
+	  "getbody":{"method":"GET","path":"/gb","takes_body":true},
 	  "mp":{"method":"POST","path":"/mp","takes_body":true,"multipart":true},
 	  "goneverb":{"method":"POST","path":"/p","takes_body":true,"unavailable":"observed 403","cli":{"area":"gv","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}},
 	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}}}}}}`)
@@ -398,6 +399,15 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"list flag on a path placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"ids","type":"list","required":true,"maps_to":"path:deviceId","help":"h"}]}`, `"path":"/d/{deviceId}"`, "scalar"},
 		{"repeatable spreads_to flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"m\":[{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"}]}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"mode","type":"enum","enum":["block","alert"],"repeatable":true,"required":true,"spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"}]}`, "", "repeatable"},
 		{"lookup subtree that is not a plain field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other/a/b:id=x:name\"}","resolve":["$lookup:pause.other/a/b:id=x:name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "subtree"},
+		// Codex #70 round 12: a literal default is bound by a closed transform's domain even on a
+		// string flag; a one_of group cannot contain flags that exclude each other; a lookup op
+		// takes no body; output blocks decode strictly; strict objects have no duplicate keys.
+		{"string flag default outside a closed transform domain", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"f\":\"$f\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"f","type":"string","default":"nonsense","maps_to":"body:$f","transform":"pause_schedule","help":"h"}]}`, "", "pause_schedule accepts"},
+		{"one_of group whose members exclude each other", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["lat","lon"],["address"]],"flags":[{"name":"lat","type":"float","excludes":["lon"],"maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","excludes":["lat"],"maps_to":"query:lon","help":"h"},{"name":"address","type":"string","maps_to":"query:address","help":"h"}]}`, `"takes_body":false,"query":["lat","lon","address"]`, "exclude each other"},
+		{"lookup to a body-taking GET", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.getbody::name\"}","resolve":["$lookup:pause.getbody::name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "takes a body"},
+		{"output with an unknown field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","output":{"tables":["x"]},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unknown field"},
+		{"duplicate key in a cli object", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","live_emergency":true,"live_emergency":false,"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "duplicate"},
+		{"duplicate key in a nested flag object", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"required":false,"maps_to":"body:$x","help":"h"}]}`, "", "duplicate"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
