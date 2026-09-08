@@ -40,6 +40,10 @@ func TestCLIDesignPinsSchemaContracts(t *testing.T) {
 		{"dependent flag groups", []string{"`requires: [flags]`", "`one_of: [["}},
 		{"weekday_ints out of the registry", []string{"`weekday_ints` joins when postScheduleAlert"}},
 		{"schema closure rule", []string{"Closure: the schema is complete for a surface"}},
+		{"one op, several verbs", []string{"or a LIST of verb blocks"}},
+		{"optional --child from branch targets", []string{"emits `--child` as OPTIONAL"}},
+		{"fixed header constants", []string{"`headers`: an explicit map"}},
+		{"enabling an unavailable op needs a mapping", []string{"adding (or un-dormanting) its mapping"}},
 		{"reject unclassified fields", []string{"**rejected** by the descriptor test", "sample `geofenceId` must be dropped"}},
 	}
 	for _, c := range checks {
