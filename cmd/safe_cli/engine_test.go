@@ -269,6 +269,10 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
       "body_template":"{\"name\":\"$name\"}","resolve":["$lookup:t.acct::familyName"],
       "select":[{"when":"exists:$lookup:t.stget::screenTimeLimitId","op":"t.stput","body_template":"{\"name\":\"$name\",\"screenTimeLimitId\":\"$lookup:t.stget::screenTimeLimitId\"}","resolve":["$lookup:t.stget::screenTimeLimitId","$lookup:t.acct::familyName"]}],
       "flags":[{"name":"name","type":"string","default":"$lookup:t.acct::familyName","maps_to":"body:$name","help":"h"}]}},
+  "cats2":{"method":"GET","path":"/cats2","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"apps","priority":"core","target":"child","summary":"s",
+      "output":{"pick":"Apps & websites"},
+      "flags":[{"name":"find","type":"string","maps_to":"find:name","help":"h"}]}},
   "dash":{"method":"GET","path":"/dash","headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"dash","priority":"core","target":"account","summary":"s",
       "flags":[{"name":"member","type":"int","maps_to":"filter:serviceId","help":"h"}]}},
@@ -709,6 +713,33 @@ func TestInvokeOneReadPerLookupOp(t *testing.T) {
 	}
 	if reads != 1 {
 		t.Errorf("three lookups on one op must read it once, read %d times", reads)
+// output.pick projects the response to one top-level field, and a find: flag keeps only the
+// objects whose field contains the text (case-insensitive), pruning non-matching leaves but
+// keeping the groups that contain a match — `apps list --find tiktok` answers with the one
+// app under its category, never the whole categories document (Codex #72-1; probe T2).
+func TestInvokePickAndFind(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/cats2"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"categories":[{"name":"More","subCategories":[{"id":1,"name":"Downloads"}]}],"Apps & websites":[{"name":"Social Media","subCategories":[{"id":2,"name":"TikTok"},{"id":3,"name":"Reddit"}]},{"name":"Games","subCategories":[{"id":4,"name":"Ballz"}]}]}`))
+	}
+	d := engineDescriptor(t)
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, childCall("cats2", "apps", nil), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "Downloads") || !strings.Contains(out.String(), "Reddit") || !strings.Contains(out.String(), "Ballz") {
+		t.Errorf("pick must drop the other top-level lists and keep the picked one whole:\n%s", out.String())
+	}
+	out.Reset()
+	if err := invoke(context.Background(), fb.do(), d, childCall("cats2", "apps", map[string]any{"find": "tik"}), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "TikTok") || !strings.Contains(s, "Social Media") || strings.Contains(s, "Reddit") || strings.Contains(s, "Games") {
+		t.Errorf("find must keep the matching app under its group and prune the rest:\n%s", s)
+	}
+	if r := fb.seen["/cats2"]; strings.Contains(r.query, "find") {
+		t.Errorf("a find: flag never reaches the request: %q", r.query)
 	}
 }
 

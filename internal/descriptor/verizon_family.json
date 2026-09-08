@@ -1294,9 +1294,17 @@
             "verb": "show",
             "priority": "core",
             "target": "child",
-            "summary": "Show this child's content filter: the Objectionable categories (violence, drugs, pornography, hate, ...), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.",
+            "summary": "Show this child's content filter: Objectionable (Violence/weapons/self-harm/gore, Drugs/alcohol/gambling, Pornography, Sexual content, Nudity, Hate and racism, Hacking and cheating), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.",
             "prereq": [
               "Downloads, News, Shopping and the like, and every app, are listed by `filter categories` instead (same ids, same block/allow verbs)."
+            ],
+            "flags": [
+              {
+                "name": "find",
+                "type": "string",
+                "maps_to": "find:name",
+                "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
+              }
             ]
           }
         },
@@ -1424,6 +1432,12 @@
                   "default": false,
                   "maps_to": "query:include-safesearch",
                   "help": "Also include the app's safe-search entries (default: false)."
+                },
+                {
+                  "name": "find",
+                  "type": "string",
+                  "maps_to": "find:name",
+                  "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
                 }
               ]
             },
@@ -1432,7 +1446,7 @@
               "verb": "list",
               "priority": "core",
               "target": "child",
-              "summary": "List the apps the filter knows, grouped under Apps & websites, with each app's id and enabled=true where it is blocked now (the same read as `filter categories`).",
+              "summary": "List the apps the filter knows — the Apps & websites groups (Messaging, Social Media, Games, Videos, Music, Finance, Generative AI, Dating, Email, VoIP), each app with its id and enabled=true where it is blocked now.",
               "flags": [
                 {
                   "name": "search-engines",
@@ -1440,8 +1454,17 @@
                   "default": false,
                   "maps_to": "query:include-safesearch",
                   "help": "Also include the app's safe-search entries (default: false)."
+                },
+                {
+                  "name": "find",
+                  "type": "string",
+                  "maps_to": "find:name",
+                  "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
                 }
-              ]
+              ],
+              "output": {
+                "pick": "Apps & websites"
+              }
             }
           ]
         },
@@ -5817,7 +5840,15 @@
             "verb": "list",
             "priority": "core",
             "target": "child",
-            "summary": "List this child's blocked websites, trusted (allowed) websites — each with the profileDomainId that `website remove --entry-id` takes — and the safe-search state per search engine."
+            "summary": "List this child's blocked websites, trusted (allowed) websites — each with the profileDomainId that `website remove --entry-id` takes — and the safe-search state per search engine.",
+            "flags": [
+              {
+                "name": "find",
+                "type": "string",
+                "maps_to": "find:url",
+                "help": "Only entries whose url contains this text (case-insensitive)."
+              }
+            ]
           }
         }
       }

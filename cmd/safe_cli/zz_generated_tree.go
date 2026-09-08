@@ -15,7 +15,7 @@ type generatedAreas struct {
 type AppsArea struct {
 	Allow AppsAllowCmd `cmd:"" name:"allow" help:"Allow (unblock) an app for this child, by the id that 'filter categories' prints.\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
 	Block AppsBlockCmd `cmd:"" name:"block" help:"Block an app for this child, by the id that 'filter categories' prints (enabled=true in the app's filter).\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
-	List  AppsListCmd  `cmd:"" name:"list" help:"List the apps the filter knows, grouped under Apps & websites, with each app's id and enabled=true where it is blocked now (the same read as 'filter categories')."`
+	List  AppsListCmd  `cmd:"" name:"list" help:"List the apps the filter knows — the Apps & websites groups (Messaging, Social Media, Games, Videos, Music, Finance, Generative AI, Dating, Email, VoIP), each app with its id and enabled=true where it is blocked now."`
 }
 
 // AppsAllowCmd: apps  allow <- app_block.blockApp
@@ -52,6 +52,7 @@ func (c *AppsBlockCmd) Run(rc *runContext) error {
 type AppsListCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
+	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
@@ -59,6 +60,9 @@ func (c *AppsListCmd) Run(rc *runContext) error {
 	given := map[string]any{}
 	if c.SearchEngines != nil {
 		given["search-engines"] = *c.SearchEngines
+	}
+	if c.Find != nil {
+		given["find"] = *c.Find
 	}
 	return runVerb(rc, "content_filter", "getCategories", "apps", "", "list", given, deref(c.Child), c.DryRun, false, false)
 }
@@ -69,7 +73,7 @@ type FilterArea struct {
 	Block      FilterBlockCmd      `cmd:"" name:"block" help:"Block a content category for this child, by its id.\nPrerequisite: Ids come from 'filter show' (objectionable content, safe search, security threats) or 'filter categories' (Downloads, News, Shopping, ... and apps); the category's own fields are filled in for you."`
 	Categories FilterCategoriesCmd `cmd:"" name:"categories" help:"List the further content categories (Downloads, News, Search engines, Shopping, Sports, individual websites) and every app the filter knows, with the id to pass to 'filter block|allow --category' or 'apps block|allow --app', and enabled=true where it is blocked now. Objectionable content, safe search and security threats are in 'filter show'."`
 	Set        FilterSetCmd        `cmd:"" name:"set" help:"Apply an age-group preset to this child's content filter.\nPrerequisite: A preset REPLACES every per-category block/allow set by hand; run 'filter show' first if you may need to restore them."`
-	Show       FilterShowCmd       `cmd:"" name:"show" help:"Show this child's content filter: the Objectionable categories (violence, drugs, pornography, hate, ...), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.\nPrerequisite: Downloads, News, Shopping and the like, and every app, are listed by 'filter categories' instead (same ids, same block/allow verbs)."`
+	Show       FilterShowCmd       `cmd:"" name:"show" help:"Show this child's content filter: Objectionable (Violence/weapons/self-harm/gore, Drugs/alcohol/gambling, Pornography, Sexual content, Nudity, Hate and racism, Hacking and cheating), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.\nPrerequisite: Downloads, News, Shopping and the like, and every app, are listed by 'filter categories' instead (same ids, same block/allow verbs)."`
 	Presets    FilterPresetsCmd    `cmd:"" name:"presets" help:"List the age-group presets (none, young-child, child, teen) with their ages and description; apply one with 'filter set --preset'."`
 }
 
@@ -107,6 +111,7 @@ func (c *FilterBlockCmd) Run(rc *runContext) error {
 type FilterCategoriesCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
+	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
@@ -114,6 +119,9 @@ func (c *FilterCategoriesCmd) Run(rc *runContext) error {
 	given := map[string]any{}
 	if c.SearchEngines != nil {
 		given["search-engines"] = *c.SearchEngines
+	}
+	if c.Find != nil {
+		given["find"] = *c.Find
 	}
 	return runVerb(rc, "content_filter", "getCategories", "filter", "", "categories", given, deref(c.Child), c.DryRun, false, false)
 }
@@ -136,11 +144,15 @@ func (c *FilterSetCmd) Run(rc *runContext) error {
 // FilterShowCmd: filter  show <- content_filter.getFilterContent
 type FilterShowCmd struct {
 	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Find   *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
 func (c *FilterShowCmd) Run(rc *runContext) error {
 	given := map[string]any{}
+	if c.Find != nil {
+		given["find"] = *c.Find
+	}
 	return runVerb(rc, "content_filter", "getFilterContent", "filter", "", "show", given, deref(c.Child), c.DryRun, false, false)
 }
 
@@ -263,11 +275,15 @@ func (c *WebsiteBlockCmd) Run(rc *runContext) error {
 // WebsiteListCmd: website  list <- web_and_apps.getWebsites2
 type WebsiteListCmd struct {
 	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Find   *string `name:"find" help:"Only entries whose url contains this text (case-insensitive)."`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
 func (c *WebsiteListCmd) Run(rc *runContext) error {
 	given := map[string]any{}
+	if c.Find != nil {
+		given["find"] = *c.Find
+	}
 	return runVerb(rc, "web_and_apps", "getWebsites2", "website", "", "list", given, deref(c.Child), c.DryRun, false, false)
 }
 

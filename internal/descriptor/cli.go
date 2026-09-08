@@ -178,6 +178,10 @@ func strictDecode(b []byte, v any) error {
 // Output names the response fields the default table shows.
 type Output struct {
 	Table []string `json:"table,omitempty"`
+	// Pick projects the response to one top-level field before output (and before any
+	// filter:/find: flag applies): `apps list` answers with getCategories' "Apps & websites"
+	// list, not the whole categories document.
+	Pick string `json:"pick,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation
@@ -898,7 +902,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 		kind, arg, ok := strings.Cut(f.MapsTo, ":")
 		if !ok || arg == "" {
-			return fmt.Errorf("flag --%s: maps_to %q must be body:$var | query:<name> | header:<name> | path:<placeholder>", f.Name, f.MapsTo)
+			return fmt.Errorf("flag --%s: maps_to %q must be body:$var | query:<name> | header:<name> | path:<placeholder> | filter:<field> | find:<field>", f.Name, f.MapsTo)
 		}
 		switch kind {
 		case "body":
@@ -981,9 +985,17 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			if f.Default != nil {
 				return fmt.Errorf("flag --%s: a filter: flag may not have a default (it acts only when given; a default would advertise filtering that never happens)", f.Name)
+		case "find":
+			// A client-side search: keeps the objects whose field contains the text
+			// (case-insensitive), with the groups that contain them; never part of the request.
+			if arg == "" {
+				return fmt.Errorf("flag --%s: find maps_to needs a response field name", f.Name)
+			}
+			if f.Type != "string" {
+				return fmt.Errorf("flag --%s: a find: flag must be a string flag (a case-insensitive substring of the %s field)", f.Name, arg)
 			}
 		default:
-			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter", f.Name, kind)
+			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter|find", f.Name, kind)
 		}
 	}
 	// Every {placeholder} in the path has a Parse-time source: a path: flag, or one of the
@@ -1159,6 +1171,8 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				return fmt.Errorf("query[%s] references --%s, a filter: flag that never reaches the request", name, g.Name)
 			} else if len(g.SpreadsTo) > 0 {
 				return fmt.Errorf("query[%s] references --%s, a spreads_to flag whose structured value cannot render as one parameter", name, g.Name)
+			} else if strings.HasPrefix(g.MapsTo, "filter:") || strings.HasPrefix(g.MapsTo, "find:") {
+				return fmt.Errorf("query[%s] references --%s, a filter:/find: flag that never reaches the request", name, g.Name)
 			}
 		}
 	}

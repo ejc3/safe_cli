@@ -276,6 +276,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	userHeaders := map[string]string{}
 	repeat := map[string]bool{}
 	filters := map[string]any{}   // response field -> value, for filter: flags
+	finds := map[string]string{}  // response field -> text, for find: flags
 	effective := map[string]any{} // flag name -> its transformed value, given or defaulted, for "$flag" query refs
 	resolveDefault := func(spec string) (any, error) {
 		switch {
@@ -365,6 +366,10 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		case "filter":
 			if ok { // only an explicitly given selector filters
 				filters[arg] = tv
+			}
+		case "find":
+			if ok {
+				finds[arg] = fmt.Sprint(tv)
 			}
 		}
 	}
@@ -469,8 +474,16 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if vc.dryRun {
 		return writeDryRun(out, asJSON, resp, tgt)
 	}
-	if len(filters) > 0 && resp.Status < 400 {
-		resp.Body = filterResponse(resp.Body, filters)
+	if resp.Status < 400 {
+		if merged.Output != nil && merged.Output.Pick != "" {
+			resp.Body = pickField(resp.Body, merged.Output.Pick)
+		}
+		if len(filters) > 0 {
+			resp.Body = filterResponse(resp.Body, filters)
+		}
+		for field, text := range finds {
+			resp.Body = findResponse(resp.Body, field, text)
+		}
 	}
 	if resp.Status >= 400 {
 		for _, k := range merged.OKOn {
@@ -493,6 +506,81 @@ func withResolved(flagVals, vars map[string]any) map[string]any {
 		out[k] = v
 	}
 	return out
+}
+
+// pickField projects an object response to one top-level field, kept under its own key so
+// --json output still carries _meta; a response without the field is left untouched.
+func pickField(body []byte, field string) []byte {
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil {
+		return body
+	}
+	v, ok := m[field]
+	if !ok {
+		return body
+	}
+	out, err := json.Marshal(map[string]any{field: v})
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// findResponse keeps, in every array of objects, the elements whose field contains text
+// (case-insensitive) — an element that matches is kept whole, and an element that does not
+// is kept only if something nested inside it matches, pruned to that. Groups therefore
+// survive as containers of their matching members (`apps list --find tiktok` answers with
+// the one app under its category).
+func findResponse(body []byte, field, text string) []byte {
+	var doc any
+	if err := json.Unmarshal(body, &doc); err != nil {
+		return body
+	}
+	pruned, _ := findPrune(doc, field, strings.ToLower(text))
+	out, err := json.Marshal(pruned)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// findPrune returns the pruned node and whether it (or anything inside) matched.
+func findPrune(n any, field, text string) (any, bool) {
+	switch t := n.(type) {
+	case map[string]any:
+		if v, ok := t[field]; ok && strings.Contains(strings.ToLower(fmt.Sprint(v)), text) {
+			return t, true
+		}
+		out := make(map[string]any, len(t))
+		hit := false
+		for k, v := range t {
+			switch v.(type) {
+			case map[string]any, []any:
+				pv, h := findPrune(v, field, text)
+				out[k] = pv
+				hit = hit || h
+			default:
+				out[k] = v
+			}
+		}
+		return out, hit
+	case []any:
+		out := make([]any, 0, len(t))
+		hit := false
+		for _, el := range t {
+			if _, isObj := el.(map[string]any); !isObj {
+				out = append(out, el) // scalar arrays are not searchable; keep as is
+				continue
+			}
+			pv, h := findPrune(el, field, text)
+			if h {
+				out = append(out, pv)
+				hit = true
+			}
+		}
+		return out, hit
+	}
+	return n, false
 }
 
 // filterResponse applies filter: selectors client-side: every array of objects in the
