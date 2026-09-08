@@ -21,27 +21,23 @@ import (
 // pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
 // applied here), the target, and the global switches.
 type verbCall struct {
-	entity, op  string
-	area, verb  string         // which of the op's verb blocks this is
-	given       map[string]any // flag name -> parsed value, explicitly given flags only
-	child       string         // --child SERVICE-ID ("" when not given)
-	selfSvc     string         // the caller's own service id (from the id_token)
-	selfPid     string         // the caller's own profile id (from the id_token)
-	appUUID     string
-	sessionUUID string // the token set's own app-uuid, for body injection; never the install fallback
-	dryRun      bool
-	// dump, when set with dryRun, replaces do for the FINAL request only: the account read
-	// and lookups stay real (they resolve the ids the dump shows), the verb's own request
-	// is rendered and printed, never sent.
-	dump          doFunc
+	entity, op    string
+	area, verb    string         // which of the op's verb blocks this is
+	group         string         // the block's optional third level (`website safe-search enable`)
+	given         map[string]any // flag name -> parsed value, explicitly given flags only
+	child         string         // --child SERVICE-ID ("" when not given)
+	selfSvc       string         // the caller's own service id (from the id_token)
+	selfPid       string         // the caller's own profile id (from the id_token)
+	appUUID       string
+	dryRun        bool
 	confirm       bool
 	allowUnpaired bool
 }
 
 // findVerb returns the op's verb block for area/verb (an op may back several verbs).
-func findVerb(o descriptor.Operation, area, verb string) *descriptor.CLI {
+func findVerb(o descriptor.Operation, area, group, verb string) *descriptor.CLI {
 	for _, b := range o.CLI {
-		if b.Area == area && b.Verb == verb {
+		if b.Area == area && b.Group == group && b.Verb == verb {
 			return b
 		}
 	}
@@ -82,7 +78,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if err != nil {
 		return err
 	}
-	c := findVerb(o, vc.area, vc.verb)
+	c := findVerb(o, vc.area, vc.group, vc.verb)
 	if c == nil {
 		return fmt.Errorf("%s.%s has no generated verb %q %q; use `safe_cli call %s %s`", vc.entity, vc.op, vc.area, vc.verb, vc.entity, vc.op)
 	}
@@ -1101,7 +1097,7 @@ func writeOKOn(out io.Writer, asJSON bool, resp *client.Response, k descriptor.O
 // runVerb is the runtime behind every generated verb: load the session, take the caller's
 // own ids from the id_token, and hand the flags the user gave to invoke. --dry-run keeps the
 // account read real and dumps only the request the verb would send.
-func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool) error {
+func runVerb(rc *runContext, entity, op, area, group, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool) error {
 	st, ts, err := loadTokens()
 	if err != nil {
 		return err
@@ -1112,7 +1108,11 @@ func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any
 	}
 	claims := tokenstore.Claims(idt)
 	appUUID, _ := resolveAppUUID(ts)
-	vc := verbCallFor(entity, op, area, verb, given, child, dryRun, confirm, allowUnpaired, ts, claims, appUUID)
+	vc := verbCall{
+		entity: entity, op: op, area: area, group: group, verb: verb, given: given, child: child,
+		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
+		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
+	}
 	if dryRun {
 		vc.dump = dumpRequest(rc, idt)
 	}

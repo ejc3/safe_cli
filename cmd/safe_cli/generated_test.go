@@ -69,6 +69,17 @@ func TestGeneratedHelpIsDiscoverable(t *testing.T) {
 	if !strings.Contains(top, "pause-internet") {
 		t.Errorf("top-level --help must list the area:\n%s", top)
 	}
+	// A grouped verb is a third level with the group's own help from the areas map.
+	grp := helpFor(t, "website", "safe-search", "enable", "--help")
+	if !strings.Contains(grp, "Turn on enforced safe search") || !strings.Contains(grp, "--child=CHILD") {
+		t.Errorf("website safe-search enable --help must render the grouped verb:\n%s", grp)
+	}
+	if wh := helpFor(t, "website", "--help"); !strings.Contains(wh, "website safe-search enable") {
+		t.Errorf("website --help must list the grouped verbs:\n%s", wh)
+	}
+	if gh := helpFor(t, "website", "safe-search", "--help"); !strings.Contains(gh, "Enforced safe search") || !strings.Contains(gh, "disable") {
+		t.Errorf("website safe-search --help must carry the group's help and list its verbs:\n%s", gh)
+	}
 	areaHelp := helpFor(t, "pause-internet", "--help")
 	if !strings.Contains(areaHelp, "Pause or resume a child's internet") {
 		t.Errorf("pause-internet --help must carry the area's help:\n%s", areaHelp)

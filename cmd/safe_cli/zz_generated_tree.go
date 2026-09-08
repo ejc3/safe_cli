@@ -5,7 +5,154 @@ package main
 // generatedAreas is the subcommand tree docs/CLI-DESIGN.md describes: one area per
 // command group, one verb per cli block, every flag typed. It is embedded in CLI.
 type generatedAreas struct {
+	Apps          AppsArea          `cmd:"" name:"apps" help:"Block or allow individual apps on a child's phone, and list which are blocked."`
+	Filter        FilterArea        `cmd:"" name:"filter" help:"See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow."`
 	PauseInternet PauseInternetArea `cmd:"" name:"pause-internet" help:"Pause or resume a child's internet right now, and read the current pause state."`
+	Website       WebsiteArea       `cmd:"" name:"website" help:"A child's website block list, trusted (allowed) list, and safe search."`
+}
+
+// AppsArea groups the apps verbs (core verbs first).
+type AppsArea struct {
+	Allow AppsAllowCmd `cmd:"" name:"allow" help:"Allow (unblock) an app for this child, by the id that 'filter categories' prints.\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
+	Block AppsBlockCmd `cmd:"" name:"block" help:"Block an app for this child, by the id that 'filter categories' prints (enabled=true in the app's filter).\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
+	List  AppsListCmd  `cmd:"" name:"list" help:"List the apps the filter knows, grouped under Apps & websites, with each app's id and enabled=true where it is blocked now (the same read as 'filter categories')."`
+}
+
+// AppsAllowCmd: apps  allow <- app_block.blockApp
+type AppsAllowCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	App    *int64  `name:"app" help:"The app's id from 'filter categories' or 'apps list' (subCategories[].id under an Apps & websites group)." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *AppsAllowCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.App != nil {
+		given["app"] = *c.App
+	}
+	return runVerb(rc, "app_block", "blockApp", "apps", "", "allow", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// AppsBlockCmd: apps  block <- app_block.blockApp
+type AppsBlockCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	App    *int64  `name:"app" help:"The app's id from 'filter categories' or 'apps list' (subCategories[].id under an Apps & websites group)." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *AppsBlockCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.App != nil {
+		given["app"] = *c.App
+	}
+	return runVerb(rc, "app_block", "blockApp", "apps", "", "block", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// AppsListCmd: apps  list <- content_filter.getCategories
+type AppsListCmd struct {
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
+	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *AppsListCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.SearchEngines != nil {
+		given["search-engines"] = *c.SearchEngines
+	}
+	return runVerb(rc, "content_filter", "getCategories", "apps", "", "list", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterArea groups the filter verbs (core verbs first).
+type FilterArea struct {
+	Allow      FilterAllowCmd      `cmd:"" name:"allow" help:"Allow (unblock) a content category for this child, by its id.\nPrerequisite: Ids come from 'filter show' (objectionable content, safe search, security threats) or 'filter categories' (Downloads, News, Shopping, ... and apps); the category's own fields are filled in for you."`
+	Block      FilterBlockCmd      `cmd:"" name:"block" help:"Block a content category for this child, by its id.\nPrerequisite: Ids come from 'filter show' (objectionable content, safe search, security threats) or 'filter categories' (Downloads, News, Shopping, ... and apps); the category's own fields are filled in for you."`
+	Categories FilterCategoriesCmd `cmd:"" name:"categories" help:"List the further content categories (Downloads, News, Search engines, Shopping, Sports, individual websites) and every app the filter knows, with the id to pass to 'filter block|allow --category' or 'apps block|allow --app', and enabled=true where it is blocked now. Objectionable content, safe search and security threats are in 'filter show'."`
+	Set        FilterSetCmd        `cmd:"" name:"set" help:"Apply an age-group preset to this child's content filter.\nPrerequisite: A preset REPLACES every per-category block/allow set by hand; run 'filter show' first if you may need to restore them."`
+	Show       FilterShowCmd       `cmd:"" name:"show" help:"Show this child's content filter: the Objectionable categories (violence, drugs, pornography, hate, ...), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.\nPrerequisite: Downloads, News, Shopping and the like, and every app, are listed by 'filter categories' instead (same ids, same block/allow verbs)."`
+	Presets    FilterPresetsCmd    `cmd:"" name:"presets" help:"List the age-group presets (none, young-child, child, teen) with their ages and description; apply one with 'filter set --preset'."`
+}
+
+// FilterAllowCmd: filter  allow <- content_filter.updateSubcategory
+type FilterAllowCmd struct {
+	Child    *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Category *int64  `name:"category" help:"The subcategory id: subCategories[].id from 'filter show' (e.g. Drugs, alcohol, gambling) or 'filter categories' (e.g. Downloads). Apps use 'apps block|allow'." required:""`
+	DryRun   bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterAllowCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Category != nil {
+		given["category"] = *c.Category
+	}
+	return runVerb(rc, "content_filter", "updateSubcategory", "filter", "", "allow", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterBlockCmd: filter  block <- content_filter.updateSubcategory
+type FilterBlockCmd struct {
+	Child    *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Category *int64  `name:"category" help:"The subcategory id: subCategories[].id from 'filter show' (e.g. Drugs, alcohol, gambling) or 'filter categories' (e.g. Downloads). Apps use 'apps block|allow'." required:""`
+	DryRun   bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterBlockCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Category != nil {
+		given["category"] = *c.Category
+	}
+	return runVerb(rc, "content_filter", "updateSubcategory", "filter", "", "block", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterCategoriesCmd: filter  categories <- content_filter.getCategories
+type FilterCategoriesCmd struct {
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
+	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterCategoriesCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.SearchEngines != nil {
+		given["search-engines"] = *c.SearchEngines
+	}
+	return runVerb(rc, "content_filter", "getCategories", "filter", "", "categories", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterSetCmd: filter  set <- content_filter.createGroupPolicy
+type FilterSetCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Preset *string `name:"preset" help:"none (no content filters) | young-child (ages 5-7) | child (8-12) | teen (13-17); 'filter presets' describes each. One of none|young-child|child|teen." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterSetCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Preset != nil {
+		given["preset"] = *c.Preset
+	}
+	return runVerb(rc, "content_filter", "createGroupPolicy", "filter", "", "set", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterShowCmd: filter  show <- content_filter.getFilterContent
+type FilterShowCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterShowCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "content_filter", "getFilterContent", "filter", "", "show", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// FilterPresetsCmd: filter  presets <- content_filter.getAgeGroupMetaData
+type FilterPresetsCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *FilterPresetsCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "content_filter", "getAgeGroupMetaData", "filter", "", "presets", given, deref(c.Child), c.DryRun, false, false)
 }
 
 // PauseInternetArea groups the pause-internet verbs (core verbs first).
@@ -15,7 +162,7 @@ type PauseInternetArea struct {
 	Status PauseInternetStatusCmd `cmd:"" name:"status" help:"Show whether the child's internet is paused, how long is left, and the valid pause timings."`
 }
 
-// PauseInternetPauseCmd: pause-internet pause <- pause_internet.pauseInternet
+// PauseInternetPauseCmd: pause-internet  pause <- pause_internet.pauseInternet
 type PauseInternetPauseCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	For           *string `name:"for" help:"How long to pause: 30m|1h|2h|4h|until-morning (default: 30m). until-morning lifts the pause at the child's next morning. Ignored with --indefinite."`
@@ -40,10 +187,10 @@ func (c *PauseInternetPauseCmd) Run(rc *runContext) error {
 	if c.Timezone != nil {
 		given["timezone"] = *c.Timezone
 	}
-	return runVerb(rc, "pause_internet", "pauseInternet", "pause-internet", "pause", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+	return runVerb(rc, "pause_internet", "pauseInternet", "pause-internet", "", "pause", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
 }
 
-// PauseInternetResumeCmd: pause-internet resume <- pause_internet.unPauseInternet
+// PauseInternetResumeCmd: pause-internet  resume <- pause_internet.unPauseInternet
 type PauseInternetResumeCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
@@ -52,10 +199,10 @@ type PauseInternetResumeCmd struct {
 
 func (c *PauseInternetResumeCmd) Run(rc *runContext) error {
 	given := map[string]any{}
-	return runVerb(rc, "pause_internet", "unPauseInternet", "pause-internet", "resume", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+	return runVerb(rc, "pause_internet", "unPauseInternet", "pause-internet", "", "resume", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
 }
 
-// PauseInternetStatusCmd: pause-internet status <- pause_internet.getDevices
+// PauseInternetStatusCmd: pause-internet  status <- pause_internet.getDevices
 type PauseInternetStatusCmd struct {
 	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
@@ -63,5 +210,103 @@ type PauseInternetStatusCmd struct {
 
 func (c *PauseInternetStatusCmd) Run(rc *runContext) error {
 	given := map[string]any{}
-	return runVerb(rc, "pause_internet", "getDevices", "pause-internet", "status", given, deref(c.Child), c.DryRun, false, false)
+	return runVerb(rc, "pause_internet", "getDevices", "pause-internet", "", "status", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// WebsiteArea groups the website verbs (core verbs first).
+type WebsiteArea struct {
+	Allow      WebsiteAllowCmd        `cmd:"" name:"allow" help:"Add one or more websites to this child's trusted (always allowed) list.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nPrerequisite: Reverse with 'website remove --entry-id' (ids from 'website list').\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	Block      WebsiteBlockCmd        `cmd:"" name:"block" help:"Add one or more websites to this child's block list.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nPrerequisite: Reverse with 'website remove --entry-id' (ids from 'website list').\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	List       WebsiteListCmd         `cmd:"" name:"list" help:"List this child's blocked websites, trusted (allowed) websites — each with the profileDomainId that 'website remove --entry-id' takes — and the safe-search state per search engine."`
+	Remove     WebsiteRemoveCmd       `cmd:"" name:"remove" help:"Remove a website from this child's block or trusted list.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	SafeSearch WebsiteSafeSearchGroup `cmd:"" name:"safe-search" help:"Enforced safe search on the child's search engines (Google, Bing, DuckDuckGo, Yandex, YouTube)."`
+}
+
+// WebsiteSafeSearchGroup is the `website safe-search` subcommand.
+type WebsiteSafeSearchGroup struct {
+	Disable WebsiteSafeSearchDisableCmd `cmd:"" name:"disable" help:"Turn off enforced safe search for this child.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	Enable  WebsiteSafeSearchEnableCmd  `cmd:"" name:"enable" help:"Turn on enforced safe search on every search engine for this child.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+}
+
+// WebsiteAllowCmd: website  allow <- website.postWebsites
+type WebsiteAllowCmd struct {
+	Child         *string  `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable." sep:"none" required:""`
+	DryRun        bool     `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	AllowUnpaired bool     `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
+}
+
+func (c *WebsiteAllowCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Url != nil {
+		given["url"] = c.Url
+	}
+	return runVerb(rc, "website", "postWebsites", "website", "", "allow", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+}
+
+// WebsiteBlockCmd: website  block <- website.postWebsites
+type WebsiteBlockCmd struct {
+	Child         *string  `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable." sep:"none" required:""`
+	DryRun        bool     `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	AllowUnpaired bool     `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
+}
+
+func (c *WebsiteBlockCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Url != nil {
+		given["url"] = c.Url
+	}
+	return runVerb(rc, "website", "postWebsites", "website", "", "block", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+}
+
+// WebsiteListCmd: website  list <- web_and_apps.getWebsites2
+type WebsiteListCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *WebsiteListCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "web_and_apps", "getWebsites2", "website", "", "list", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// WebsiteSafeSearchDisableCmd: website safe-search disable <- website.disableSafeSearch
+type WebsiteSafeSearchDisableCmd struct {
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
+}
+
+func (c *WebsiteSafeSearchDisableCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "website", "disableSafeSearch", "website", "safe-search", "disable", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+}
+
+// WebsiteSafeSearchEnableCmd: website safe-search enable <- website.enableSafeSearch
+type WebsiteSafeSearchEnableCmd struct {
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
+}
+
+func (c *WebsiteSafeSearchEnableCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "website", "enableSafeSearch", "website", "safe-search", "enable", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
+}
+
+// WebsiteRemoveCmd: website  remove <- website.deleteWebsite
+type WebsiteRemoveCmd struct {
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	EntryId       *int64  `name:"entry-id" help:"The entry's profileDomainId from 'website list'." required:""`
+	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
+}
+
+func (c *WebsiteRemoveCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.EntryId != nil {
+		given["entry-id"] = *c.EntryId
+	}
+	return runVerb(rc, "website", "deleteWebsite", "website", "", "remove", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
 }

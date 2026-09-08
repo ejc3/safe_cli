@@ -23,6 +23,7 @@ import (
 type verb struct {
 	entity, op string
 	area, name string
+	group      string // optional third level: `website safe-search enable`
 	block      *descriptor.CLI
 	childFlag  bool // takes --child (target child/device, or a select branch does)
 	device     bool // target device: offers --allow-unpaired
@@ -49,13 +50,15 @@ func Source(d *descriptor.Descriptor) ([]byte, error) {
 					if b.Verb == "" {
 						continue
 					}
-					if b.Group != "" {
-						return fmt.Errorf("%s.%s: a third level (group %q) is not generated yet", ename, oname, b.Group)
-					}
 					if _, ok := d.Areas[b.Area]; !ok {
 						return fmt.Errorf("%s.%s: area %q has no help text in the descriptor's areas map", ename, oname, b.Area)
 					}
-					v := verb{entity: ename, op: oname, area: b.Area, name: b.Verb, block: b, confirm: o.Destructive || b.LiveEmergency}
+					if b.Group != "" {
+						if _, ok := d.Areas[b.Area+" "+b.Group]; !ok {
+							return fmt.Errorf("%s.%s: group %q has no help text in the descriptor's areas map (key %q)", ename, oname, b.Group, b.Area+" "+b.Group)
+						}
+					}
+					v := verb{entity: ename, op: oname, area: b.Area, group: b.Group, name: b.Verb, block: b, confirm: o.Destructive || b.LiveEmergency}
 					v.childFlag = b.Target == "child" || b.Target == "device"
 					v.device = b.Target == "device"
 					for _, r := range b.Select {
@@ -108,12 +111,34 @@ func Source(d *descriptor.Descriptor) ([]byte, error) {
 			}
 			return vs[i].name < vs[j].name
 		})
+		// Direct verbs first (core first), then each group as its own subcommand.
+		groups := map[string][]verb{}
+		var groupNames []string
 		fmt.Fprintf(&w, "// %sArea groups the %s verbs (core verbs first).\n", ident(a), a)
 		fmt.Fprintf(&w, "type %sArea struct {\n", ident(a))
 		for _, v := range vs {
+			if v.group != "" {
+				if _, seen := groups[v.group]; !seen {
+					groupNames = append(groupNames, v.group)
+				}
+				groups[v.group] = append(groups[v.group], v)
+				continue
+			}
 			fmt.Fprintf(&w, "\t%s %s `cmd:\"\" name:%s help:%s`\n", ident(v.name), structName(v), tagQuote(v.name), tagQuote(verbHelp(v)))
 		}
+		sort.Strings(groupNames)
+		for _, g := range groupNames {
+			fmt.Fprintf(&w, "\t%s %s `cmd:\"\" name:%s help:%s`\n", ident(g), ident(a)+ident(g)+"Group", tagQuote(g), tagQuote(d.Areas[a+" "+g]))
+		}
 		w.WriteString("}\n\n")
+		for _, g := range groupNames {
+			fmt.Fprintf(&w, "// %s%sGroup is the `%s %s` subcommand.\n", ident(a), ident(g), a, g)
+			fmt.Fprintf(&w, "type %s%sGroup struct {\n", ident(a), ident(g))
+			for _, v := range groups[g] {
+				fmt.Fprintf(&w, "\t%s %s `cmd:\"\" name:%s help:%s`\n", ident(v.name), structName(v), tagQuote(v.name), tagQuote(verbHelp(v)))
+			}
+			w.WriteString("}\n\n")
+		}
 		for _, v := range vs {
 			if err := writeVerb(&w, v); err != nil {
 				return nil, err
@@ -137,13 +162,13 @@ func priorityRank(p string) int {
 	return 2
 }
 
-func structName(v verb) string { return ident(v.area) + ident(v.name) + "Cmd" }
+func structName(v verb) string { return ident(v.area) + ident(v.group) + ident(v.name) + "Cmd" }
 
 // writeVerb emits one verb's struct (flags as pointer fields), its help, and a Run that
 // gathers the flags the user gave and hands them to runVerb.
 func writeVerb(w *bytes.Buffer, v verb) error {
 	b := v.block
-	fmt.Fprintf(w, "// %s: %s %s <- %s.%s\n", structName(v), v.area, v.name, v.entity, v.op)
+	fmt.Fprintf(w, "// %s: %s <- %s.%s\n", structName(v), strings.TrimSpace(v.area+" "+v.group+" "+v.name), v.entity, v.op)
 	fmt.Fprintf(w, "type %s struct {\n", structName(v))
 	if v.childFlag {
 		req, tag := "Required.", ` required:""`
@@ -207,7 +232,7 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 	if v.device {
 		allow = "c.AllowUnpaired"
 	}
-	fmt.Fprintf(w, "\treturn runVerb(rc, %q, %q, %q, %q, given, %s, c.DryRun, %s, %s)\n}\n\n", v.entity, v.op, v.area, v.name, child, confirm, allow)
+	fmt.Fprintf(w, "\treturn runVerb(rc, %q, %q, %q, %q, %q, given, %s, c.DryRun, %s, %s)\n}\n\n", v.entity, v.op, v.area, v.group, v.name, child, confirm, allow)
 	return nil
 }
 
