@@ -203,6 +203,19 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
+	// cliTransformInputs lists the flag types each transform is defined for; a transform on
+	// any other type could never produce the wire form and is a descriptor error.
+	cliTransformInputs = map[string][]string{
+		"pause_schedule":   {"enum", "string"},
+		"tz_short":         {"tz", "string"},
+		"iso_micro":        {"datetime", "date", "duration", "string"},
+		"epoch_ms":         {"datetime", "date", "duration", "int", "string"},
+		"day3_lower":       {"list", "string"},
+		"day3_title":       {"list", "string"},
+		"bool01":           {"bool"},
+		"allow_block_ab":   {"enum", "string"},
+		"mode_block_alert": {"enum", "string"},
+	}
 	// cliStructuredTransforms fill a FIXED set of body vars each; a flag's spreads_to must
 	// name exactly that set (mode_block_alert -> blockContent + alertOn, the wire-verified
 	// exclusive pair), so the engine's returned keys always have a destination.
@@ -411,6 +424,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		if !ok {
 			return fmt.Errorf("select[%d]: op %q does not name an existing entity.op", i, r.Op)
 		}
+		if bo.Unavailable != "" {
+			return fmt.Errorf("select[%d]: op %q is marked unavailable (%s); a verb cannot branch onto it", i, r.Op, bo.Unavailable)
+		}
 		if err := d.validateContract(bo, c.withOverrides(r)); err != nil {
 			return fmt.Errorf("select[%d] (%s): %w", i, r.Op, err)
 		}
@@ -607,6 +623,11 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		if f.Type == "enum" && len(f.Enum) == 0 {
 			return fmt.Errorf("flag --%s: type enum needs an enum list", f.Name)
 		}
+		if f.Transform != "" {
+			if in, known := cliTransformInputs[f.Transform]; known && !contains(in, f.Type) {
+				return fmt.Errorf("flag --%s: transform %s is defined for %v flags, not type %s", f.Name, f.Transform, in, f.Type)
+			}
+		}
 		if f.Repeatable && f.Type != "string" && f.Type != "enum" {
 			return fmt.Errorf("flag --%s: repeatable is only defined for string and enum flags (the generated flag is a list of strings); use type list, or a string flag", f.Name)
 		}
@@ -690,6 +711,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			if !contains(headerNames, arg) {
 				return fmt.Errorf("flag --%s: header %q is not one of the op's declared headers %v", f.Name, arg, headerNames)
+			}
+			if _, fixed := o.HeaderValues[arg]; fixed {
+				return fmt.Errorf("flag --%s: header %q has a fixed value the op always sends (header_values); it cannot be a flag", f.Name, arg)
 			}
 			if !contains(o.Headers, arg) && !d.branchSelects(c, f, "header", arg) {
 				return fmt.Errorf("flag --%s: header %q is declared only by a select branch that --%s does not select; make it the branch's flag: condition, give it requires: [<the selector flag>], or select on child", f.Name, arg, f.Name)
@@ -862,6 +886,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 		if from, dup := headerFromFlag[name]; dup {
 			return fmt.Errorf("headers[%s] is declared as a constant and also mapped from --%s (one header, one source)", name, from)
+		}
+		if fv, fixed := o.HeaderValues[name]; fixed {
+			return fmt.Errorf("headers[%s] has a fixed value the op always sends (header_values: %q); a verb cannot override it", name, fv)
 		}
 		if strings.HasPrefix(v, "$") { // a resolver variable ($local.timezone for a contextual header)
 			if err := d.checkResolveVar(v, flagByName); err != nil {
