@@ -260,6 +260,10 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
       "body_template":"{\"kmsiEnabled\":\"$on\",\"app_uuid\":\"<device-uuid>\",\"triggeredBy\":\"user\"}",
       "constants":{"app_uuid":"<device-uuid>","triggeredBy":"user"},
       "flags":[{"name":"on","type":"bool","default":true,"maps_to":"body:$on","help":"h"}]}},
+  "exk":{"method":"GET","path":"/exk","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"exk","priority":"core","target":"child","summary":"s",
+      "select":[{"when":"exists:$lookup:t.cats:id=cat:name","op":"t.listA"}],
+      "flags":[{"name":"cat","type":"int","maps_to":"filter:role","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -637,6 +641,22 @@ func TestInvokeFalseBoolDoesNotNull(t *testing.T) {
 	}
 	if b := fb.seen[pausePath].body; !strings.Contains(b, `"pauseSchedule":"1_hour"`) || !strings.Contains(b, `"untilIUnpause":false`) {
 		t.Errorf("--indefinite=false --for 1h must send a timed pause: %s", b)
+	}
+}
+
+// An exists: condition keyed by an optional flag that was not given is simply not met: the
+// base op runs and no lookup is attempted (Codex #70 round 7, engine side).
+func TestInvokeExistsKeyedByAbsentFlagIsNotMet(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("exk", "exk", nil), &strings.Builder{}, true); err != nil {
+		t.Fatalf("an absent key flag must not be an error: %v", err)
+	}
+	if _, base := fb.seen["/exk"]; !base {
+		t.Error("the base op must run when the exists: key flag is absent")
+	}
+	if _, looked := fb.seen["/cats"]; looked {
+		t.Error("no lookup may be attempted without its key")
 	}
 }
 

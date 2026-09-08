@@ -594,7 +594,13 @@ func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *des
 				return r, true, nil
 			}
 		case strings.HasPrefix(r.When, "exists:"):
-			_, found, err := runLookup(ctx, do, d, strings.TrimPrefix(r.When, "exists:"), given, idHeaders, lookups)
+			spec := strings.TrimPrefix(r.When, "exists:")
+			if key := lookupKeyFlag(spec); key != "" {
+				if _, ok := given[key]; !ok {
+					continue // keyed by a flag that was not given: the record cannot exist for us
+				}
+			}
+			_, found, err := runLookup(ctx, do, d, spec, given, idHeaders, lookups)
 			if err != nil {
 				return descriptor.SelectRule{}, false, err
 			}
@@ -719,6 +725,16 @@ func singletonRecord(doc any, field string) map[string]any {
 		}
 	}
 	return nil
+}
+
+// lookupKeyFlag returns the flag a keyed $lookup spec is keyed by ("" when unkeyed).
+func lookupKeyFlag(spec string) string {
+	parts := strings.Split(strings.TrimPrefix(spec, "$lookup:"), ":")
+	if len(parts) != 3 || parts[1] == "" {
+		return ""
+	}
+	_, flag, _ := strings.Cut(parts[1], "=")
+	return flag
 }
 
 // checkEnum refuses a value (or, for a repeatable enum, any element) outside the flag's enum.
