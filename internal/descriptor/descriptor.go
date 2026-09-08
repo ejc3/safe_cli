@@ -73,6 +73,11 @@ type Operation struct {
 	// op stays in the descriptor (auditable, re-enable by clearing this) — it is disabled, not
 	// deleted. See docs/unavailable-endpoints.md.
 	Unavailable string `json:"unavailable,omitempty"`
+	// CLI is the op's ergonomic surface (docs/CLI-DESIGN.md §4): the area/verb/flags the
+	// generated `safe_cli <area> <verb>` tree exposes for it, an alias to the op that does,
+	// or an explicit call-only reason. Validated at Parse (see cli.go); nil means the op is
+	// not yet classified and is reachable only through the generic `call`.
+	CLI *CLI `json:"cli,omitempty"`
 }
 
 // Available reports whether the op can be called (not a confirmed dead end).
@@ -152,6 +157,9 @@ func Parse(b []byte) (*Descriptor, error) {
 		return nil, fmt.Errorf("descriptor %q declares no entities", d.Name)
 	}
 	if err := d.validateRequiredQuery(); err != nil {
+		return nil, err
+	}
+	if err := d.validateCLIBlocks(); err != nil {
 		return nil, err
 	}
 	return &d, nil
