@@ -48,8 +48,11 @@ type CLI struct {
 	// deviceId|pairing, $self.serviceId|profileId, $account.id, $local.timezone, $now.epochMs, $uuid,
 	// and $lookup:<entity>.<op>:<key>=<flag>:<field> for enrichment reads.
 	Resolve []string `json:"resolve,omitempty"`
-	// Variants picks the op by whether --child is given ({"account": "x.y", "child": "x.z"}).
-	Variants map[string]string `json:"variants,omitempty"`
+	// Select picks the operation by how the verb is invoked: an ordered list of {when, op};
+	// the first matching condition wins and the block's own op is the default. Conditions:
+	// "child" (--child was given), "flag:<name>" (the flag was explicitly given — `calls log
+	// --number`), "exists:$lookup:..." (a lookup found a record — `screen-time set` PUT vs POST).
+	Select []SelectRule `json:"select,omitempty"`
 	// AtLeastOne requires at least one of the named optional flags (`account set
 	// [--family-name] [--timezone]`); validated to name declared, non-required flags.
 	AtLeastOne    []string `json:"at_least_one,omitempty"`
@@ -70,10 +73,21 @@ type Flag struct {
 	Repeatable bool     `json:"repeatable,omitempty"`
 	Excludes   []string `json:"excludes,omitempty"` // flags that may not be combined with this one
 	Nulls      []string `json:"nulls,omitempty"`    // flags whose variable this one unsets (their "$x?" property is omitted)
-	// MapsTo is body:$var | query:<name> | header:<name> | path:<placeholder>.
-	MapsTo    string `json:"maps_to"`
-	Transform string `json:"transform,omitempty"`
-	Help      string `json:"help"`
+	// MapsTo is body:$var | query:<name> | header:<name> | path:<placeholder>. A flag has
+	// exactly one of MapsTo or SpreadsTo.
+	MapsTo string `json:"maps_to,omitempty"`
+	// SpreadsTo lets one semantic flag populate several body vars through a STRUCTURED
+	// transform that returns one value per destination (`--mode block|alert` ->
+	// blockContent + alertOn via mode_block_alert, a wire-verified exclusive pair).
+	SpreadsTo []string `json:"spreads_to,omitempty"`
+	Transform string   `json:"transform,omitempty"`
+	Help      string   `json:"help"`
+}
+
+// SelectRule is one {when, op} entry of CLI.Select.
+type SelectRule struct {
+	When string `json:"when"`
+	Op   string `json:"op"`
 }
 
 // Output names the response fields the default table shows.
@@ -93,6 +107,8 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
+	// cliStructuredTransforms return one value per spreads_to destination.
+	cliStructuredTransforms = set("mode_block_alert")
 	// cliResolveNames is the EXACT vocabulary of resolved variables the engine can fill
 	// (plus the structured $lookup form checked by checkResolveVar). Exact, not a prefix:
 	// a typo like $child.profielId must fail at load, not reach the engine.
@@ -201,12 +217,6 @@ func (d *Descriptor) validateCLI(o Operation) error {
 	if !cliAuths[c.Auth] {
 		return fmt.Errorf("auth %q must be id_token|spc_token", c.Auth)
 	}
-	for k, ref := range c.Variants {
-		if !d.opExists(ref) {
-			return fmt.Errorf("variants[%s] %q does not name an existing entity.op", k, ref)
-		}
-	}
-
 	// Flags: unique names, known types, well-formed maps_to.
 	flagByName := make(map[string]Flag, len(c.Flags))
 	bodyVarByFlag := make(map[string]Flag) // body var name -> flag
@@ -225,11 +235,33 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		if f.Type == "enum" && len(f.Enum) == 0 {
 			return fmt.Errorf("flag --%s: type enum needs an enum list", f.Name)
 		}
-		if !cliTransforms[f.Transform] {
-			return fmt.Errorf("flag --%s: transform %q is not in the engine's registry", f.Name, f.Transform)
-		}
 		if strings.TrimSpace(f.Help) == "" {
 			return fmt.Errorf("flag --%s: needs help text (every flag's help states its default and effect)", f.Name)
+		}
+		// Exactly one destination form: maps_to (one destination, scalar transform) or
+		// spreads_to (several body vars, structured transform).
+		if (f.MapsTo == "") == (len(f.SpreadsTo) == 0) {
+			return fmt.Errorf("flag --%s: needs exactly one of maps_to or spreads_to", f.Name)
+		}
+		if len(f.SpreadsTo) > 0 {
+			if !cliStructuredTransforms[f.Transform] {
+				return fmt.Errorf("flag --%s: spreads_to needs a structured transform (one of %s), got %q", f.Name, joinSet(cliStructuredTransforms), f.Transform)
+			}
+			for _, dest := range f.SpreadsTo {
+				kind, arg, ok := strings.Cut(dest, ":")
+				if !ok || kind != "body" || !strings.HasPrefix(arg, "$") {
+					return fmt.Errorf("flag --%s: spreads_to destination %q must be body:$var", f.Name, dest)
+				}
+				v := strings.TrimPrefix(arg, "$")
+				if prev, dup := bodyVarByFlag[v]; dup {
+					return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value)", f.Name, v, prev.Name)
+				}
+				bodyVarByFlag[v] = f
+			}
+			continue
+		}
+		if !cliTransforms[f.Transform] {
+			return fmt.Errorf("flag --%s: transform %q is not in the engine's registry", f.Name, f.Transform)
 		}
 		kind, arg, ok := strings.Cut(f.MapsTo, ":")
 		if !ok || arg == "" {
@@ -297,6 +329,27 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		}
 	}
 
+	// select: conditional operation choice, declared and checked — every op exists, every
+	// flag: names a declared flag, every exists: is a valid lookup.
+	for i, r := range c.Select {
+		if !d.opExists(r.Op) {
+			return fmt.Errorf("select[%d]: op %q does not name an existing entity.op", i, r.Op)
+		}
+		switch {
+		case r.When == "child":
+		case strings.HasPrefix(r.When, "flag:"):
+			if _, ok := flagByName[strings.TrimPrefix(r.When, "flag:")]; !ok {
+				return fmt.Errorf("select[%d]: condition %q names unknown flag %q", i, r.When, strings.TrimPrefix(r.When, "flag:"))
+			}
+		case strings.HasPrefix(r.When, "exists:"):
+			if err := d.checkResolveVar(strings.TrimPrefix(r.When, "exists:"), flagByName); err != nil {
+				return fmt.Errorf("select[%d]: %w", i, err)
+			}
+		default:
+			return fmt.Errorf("select[%d]: condition %q must be child | flag:<name> | exists:$lookup:<entity>.<op>:<key>=<flag>:<field>", i, r.When)
+		}
+	}
+
 	// Query map: every key is a declared query name; "$x" values name a flag; each required
 	// query param has exactly one source.
 	for name, v := range c.Query {
@@ -337,7 +390,7 @@ func (d *Descriptor) validateCLI(o Operation) error {
 	}
 	resolveOK := func(v string) error { return d.checkResolveVar(v, flagByName) }
 	seenVars := make(map[string]bool)
-	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK); err != nil {
+	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK, false); err != nil {
 		return err
 	}
 	for v, f := range bodyVarByFlag {
@@ -387,8 +440,10 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 
 // walkTemplate classifies every leaf of the template: "$name"/"$name?" must be a flag's body
 // var or a resolve entry (and "?" only on a flag that can be unset); any other scalar, or
-// array of scalars, must sit under a key declared in Constants.
-func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error) error {
+// array of scalars, must sit under a key declared in Constants. inArray reports that the
+// node sits inside a SINGLE-element array — the only place a repeatable flag's var may
+// live, because the engine expands that element once per value.
+func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool) error {
 	switch t := v.(type) {
 	case map[string]any:
 		keys := make([]string, 0, len(t))
@@ -397,21 +452,22 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen, resolveOK); err != nil {
+			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen, resolveOK, inArray); err != nil {
 				return err
 			}
 		}
 		return nil
 	case []any:
+		single := len(t) == 1
 		for _, el := range t {
 			if _, isObj := el.(map[string]any); isObj {
-				if err := walkTemplate(key, el, c, bodyVarByFlag, seen, resolveOK); err != nil {
+				if err := walkTemplate(key, el, c, bodyVarByFlag, seen, resolveOK, single); err != nil {
 					return err
 				}
 				continue
 			}
 			if s, ok := el.(string); ok && strings.HasPrefix(s, "$") {
-				if err := classifyVar(s, c, bodyVarByFlag, seen, resolveOK); err != nil {
+				if err := classifyVar(s, c, bodyVarByFlag, seen, resolveOK, single); err != nil {
 					return err
 				}
 				continue
@@ -423,7 +479,7 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 		return nil
 	case string:
 		if strings.HasPrefix(t, "$") {
-			return classifyVar(t, c, bodyVarByFlag, seen, resolveOK)
+			return classifyVar(t, c, bodyVarByFlag, seen, resolveOK, inArray)
 		}
 	}
 	// A literal scalar leaf.
@@ -433,11 +489,14 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 	return nil
 }
 
-func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error) error {
+func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool) error {
 	optional := strings.HasSuffix(s, "?")
 	name := strings.TrimSuffix(strings.TrimPrefix(s, "$"), "?")
 	if f, ok := bodyVarByFlag[name]; ok {
 		seen[name] = true
+		if f.Repeatable && !inArray {
+			return fmt.Errorf("flag --%s is repeatable, so its var $%s must be inside a single-element array template (the element expands once per value)", f.Name, name)
+		}
 		if optional && f.Required && !nulledBySomeFlag(f.Name, c) {
 			return fmt.Errorf("body var $%s? is optional but flag --%s is required and nothing nulls it", name, f.Name)
 		}
@@ -476,6 +535,15 @@ func looksResolve(v string) bool {
 		}
 	}
 	return false
+}
+
+func joinSet(m map[string]bool) string {
+	names := make([]string, 0, len(m))
+	for n := range m {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return strings.Join(names, " ")
 }
 
 func contains(xs []string, x string) bool {

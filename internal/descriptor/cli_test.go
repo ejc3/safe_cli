@@ -90,6 +90,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"malformed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:nope\"}","resolve":["$lookup:nope"]}`, "", "malformed $lookup"},
 		{"lookup to missing op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.nope:id=x:name\",\"x\":\"$x\"}","resolve":["$lookup:pause.nope:id=x:name"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "does not name an existing"},
 		{"lookup keyed by unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other:id=ghost:name\"}","resolve":["$lookup:pause.other:id=ghost:name"]}`, "", "unknown flag"},
+		// Codex #66 round 3: conditional op selection is declared, and everything it names is
+		// checked — the op, the flag, the lookup, and the condition vocabulary itself.
+		{"select op missing", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.nope"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "does not name an existing"},
+		{"select unknown condition", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"moon","op":"pause.other"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "condition"},
+		{"select flag not declared", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:ghost","op":"pause.other"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
+		{"select malformed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"exists:$lookup:nope","op":"pause.other"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "malformed $lookup"},
+		// Codex #66 round 3: one flag, several fields — only via a structured transform.
+		{"spreads_to with maps_to too", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"maps_to":"body:$a","spreads_to":["body:$a","body:$b"],"transform":"mode_block_alert","help":"h"}]}`, "", "exactly one of maps_to or spreads_to"},
+		{"spreads_to without structured transform", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"spreads_to":["body:$a","body:$b"],"help":"h"}]}`, "", "structured transform"},
+		{"spreads_to destination unused by template", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"spreads_to":["body:$a","body:$zz"],"transform":"mode_block_alert","help":"h"}]}`, "", "never uses"},
+		// Codex #66 round 3: a repeatable flag's var must live in a single-element array.
+		{"repeatable var outside an array", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"url\":\"$url\"}","flags":[{"name":"url","type":"string","repeatable":true,"maps_to":"body:$url","help":"h"}]}`, "", "single-element array"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,6 +154,23 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	  "flags":[{"name":"cat","type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
+	}
+}
+
+// The three round-3 mechanisms in their valid shapes must parse: a select list over an
+// existing op keyed by a declared flag and a valid lookup; a spreads_to pair through the
+// structured mode_block_alert transform; a repeatable var inside a single-element array.
+func TestCLISelectSpreadsAndRepeatableAccepted(t *testing.T) {
+	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	  "body_template":"{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\",\"domains\":[{\"status\":\"$status\",\"url\":\"$url\"}],\"n\":\"$n?\"}",
+	  "select":[{"when":"flag:n","op":"pause.other"},{"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other"},{"when":"child","op":"pause.other"}],
+	  "flags":[
+	    {"name":"mode","type":"enum","enum":["block","alert"],"default":"block","spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"},
+	    {"name":"status","type":"enum","enum":["allow","block"],"default":"block","maps_to":"body:$status","transform":"allow_block_ab","help":"h"},
+	    {"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"},
+	    {"name":"n","type":"string","maps_to":"body:$n","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, "")); err != nil {
+		t.Fatalf("select + spreads_to + repeatable-in-array must be accepted: %v", err)
 	}
 }
 
