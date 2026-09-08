@@ -88,15 +88,25 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if given == nil {
 		given = map[string]any{}
 	}
+	// Presence rules (requires, excludes, one_of, at_least_one, select flag:, nulls) see a
+	// flag as given only when it carries a value: --flag=false is the flag's absence, so a
+	// bool never asserts anything by being spelled out. Values still render from `given`.
+	present := map[string]any{}
+	for name, v := range given {
+		if b, isBool := v.(bool); isBool && !b {
+			continue
+		}
+		present[name] = v
+	}
 	// Dependent-flag contract, on explicitly given flags, before any request.
-	for name := range given {
+	for name := range present {
 		for _, req := range flagByName[name].Requires {
-			if _, ok := given[req]; !ok {
+			if _, ok := present[req]; !ok {
 				return fmt.Errorf("--%s requires --%s", name, req)
 			}
 		}
 		for _, x := range flagByName[name].Excludes {
-			if _, ok := given[x]; ok {
+			if _, ok := present[x]; ok {
 				return fmt.Errorf("--%s and --%s cannot be combined", name, x)
 			}
 		}
@@ -107,7 +117,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		for _, grp := range c.OneOf {
 			all := true
 			for _, x := range grp {
-				if _, ok := given[x]; !ok {
+				if _, ok := present[x]; !ok {
 					all = false
 				}
 			}
@@ -118,6 +128,24 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		}
 		if full != 1 {
 			return fmt.Errorf("%s %s needs exactly one of: %s", c.Area, c.Verb, strings.Join(groups, " | "))
+		}
+	}
+	// Enum values and at_least_one are structural too: refuse them here, before the
+	// account read, rather than after a network round trip.
+	for name, v := range given {
+		if err := checkEnum(flagByName[name], v); err != nil {
+			return err
+		}
+	}
+	if len(c.AtLeastOne) > 0 {
+		oneGiven := false
+		for _, x := range c.AtLeastOne {
+			if _, ok := present[x]; ok {
+				oneGiven = true
+			}
+		}
+		if !oneGiven {
+			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(c.AtLeastOne, ", --"))
 		}
 	}
 
@@ -145,7 +173,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// Conditional op selection, declared in the descriptor; the branch's contract applies.
 	op, entity, merged := o, vc.entity, c
 	lookups := lookupCache{} // one read per lookup per invocation: select and render share a snapshot
-	if rule, ok, err := selectRule(ctx, do, d, c, given, childGiven, idHeaders, lookups); err != nil {
+	if rule, ok, err := selectRule(ctx, do, d, c, present, childGiven, idHeaders, lookups); err != nil {
 		return err
 	} else if ok {
 		ent, name, _ := strings.Cut(rule.Op, ".")
@@ -211,8 +239,8 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if v == nil {
 			continue
 		}
-		if f.Type == "enum" && !containsStr(f.Enum, fmt.Sprint(v)) {
-			return fmt.Errorf("--%s %v is not one of %s", f.Name, v, strings.Join(f.Enum, "|"))
+		if err := checkEnum(f, v); err != nil {
+			return err
 		}
 		tv, err := applyTransform(f.Transform, v)
 		if err != nil {
@@ -245,7 +273,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		case "query":
 			if !containsStr(op.Query, arg) {
 				if ok { // explicitly given: never silently drop it
-					return fmt.Errorf("--%s is only accepted with %s", f.Name, branchCondition(d, c, arg))
+					return fmt.Errorf("--%s is only accepted with %s", f.Name, branchCondition(d, c, "query", arg))
 				}
 				continue // a default for another branch's op
 			}
@@ -255,9 +283,15 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			}
 			queryVals.Set(arg, s)
 		case "path":
-			pathVals[arg] = fmt.Sprint(tv)
+			pathVals[arg] = fmt.Sprint(normalizeNum(tv))
 		case "header":
-			userHeaders[arg] = fmt.Sprint(tv)
+			if !containsStr(op.Headers, arg) {
+				if ok { // explicitly given: never silently drop it
+					return fmt.Errorf("--%s is only accepted with %s", f.Name, branchCondition(d, c, "header", arg))
+				}
+				continue // a default for another branch's op
+			}
+			userHeaders[arg] = fmt.Sprint(normalizeNum(tv))
 		case "filter":
 			if ok { // only an explicitly given selector filters
 				filters[arg] = tv
@@ -271,17 +305,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			if _, arg, _ := strings.Cut(flagByName[x].MapsTo, ":"); arg != "" {
 				delete(vars, strings.TrimPrefix(arg, "$"))
 			}
-		}
-	}
-	if len(merged.AtLeastOne) > 0 {
-		oneGiven := false
-		for _, x := range merged.AtLeastOne {
-			if _, ok := given[x]; ok {
-				oneGiven = true
-			}
-		}
-		if !oneGiven {
-			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(merged.AtLeastOne, ", --"))
+			delete(effective, x)
 		}
 	}
 
@@ -564,40 +588,62 @@ func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *des
 	return descriptor.SelectRule{}, false, nil
 }
 
-// lookupCache memoizes runLookup within one invocation, keyed by the lookup spec and the
-// target it was read for, so an exists: condition and the resolve entry that names the
-// same lookup select and render from one snapshot rather than two reads that may differ.
-type lookupCache map[string]lookupHit
-
-type lookupHit struct {
-	v     any
-	found bool
-}
+// lookupCache memoizes the decoded document of every lookup op read during one invocation,
+// keyed by the op and the target it was read for, so an exists: condition and however many
+// resolve entries name the same op share one read (and one snapshot).
+type lookupCache map[string]any
 
 // runLookup performs a $lookup:<entity>.<op>:<key>=<flag>:<field> enrichment read: GET the
-// op with the target headers, find the first object whose <key> equals the flag's value,
-// and return its <field>. found=false when no record matches.
+// op with the target headers (once per invocation), find the first object whose <key>
+// equals the flag's value, and return its <field>. found=false when no record matches.
 func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec string, given map[string]any, idHeaders map[string]string, lookups lookupCache) (any, bool, error) {
-	cacheKey := spec + "\x00" + idHeaders["x-fp-identifier-target-serviceid"]
-	if hit, ok := lookups[cacheKey]; ok {
-		return hit.v, hit.found, nil
-	}
-	v, found, err := doLookup(ctx, do, d, spec, given, idHeaders)
-	if err != nil {
-		return nil, false, err
-	}
-	if lookups != nil {
-		lookups[cacheKey] = lookupHit{v: v, found: found}
-	}
-	return v, found, nil
-}
-
-func doLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec string, given map[string]any, idHeaders map[string]string) (any, bool, error) {
 	parts := strings.Split(strings.TrimPrefix(spec, "$lookup:"), ":")
 	if len(parts) != 3 {
 		return nil, false, fmt.Errorf("malformed lookup %q", spec)
 	}
 	ref, keyEq, field := parts[0], parts[1], parts[2]
+	cacheKey := ref + "\x00" + idHeaders["x-fp-identifier-target-serviceid"]
+	doc, ok := lookups[cacheKey]
+	if !ok {
+		var err error
+		doc, err = readLookupDoc(ctx, do, d, ref, idHeaders)
+		if err != nil {
+			return nil, false, err
+		}
+		if lookups != nil {
+			lookups[cacheKey] = doc
+		}
+	}
+	return extractLookup(doc, ref, keyEq, field, given)
+}
+
+// readLookupDoc issues the lookup op's bare GET with the target headers and decodes it.
+func readLookupDoc(ctx context.Context, do doFunc, d *descriptor.Descriptor, ref string, idHeaders map[string]string) (any, error) {
+	ent, name, _ := strings.Cut(ref, ".")
+	op, err := resolveOp(d, ent, name)
+	if err != nil {
+		return nil, err
+	}
+	headers, _, err := assembleHeaders(op, idHeaders, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := do(ctx, op.Method, op.Path, nil, headers)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Status >= 400 {
+		return nil, fmt.Errorf("lookup %s: HTTP %d: %s", ref, resp.Status, strings.TrimSpace(string(resp.Body)))
+	}
+	var doc any
+	if err := json.Unmarshal(resp.Body, &doc); err != nil {
+		return nil, fmt.Errorf("lookup %s: %w", ref, err)
+	}
+	return doc, nil
+}
+
+// extractLookup finds the record a lookup spec names inside a decoded document.
+func extractLookup(doc any, ref, keyEq, field string, given map[string]any) (any, bool, error) {
 	var key, flag string
 	var want any
 	keyed := keyEq != ""
@@ -608,26 +654,6 @@ func doLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec str
 		if !ok {
 			return nil, false, fmt.Errorf("lookup %s needs --%s", ref, flag)
 		}
-	}
-	ent, name, _ := strings.Cut(ref, ".")
-	op, err := resolveOp(d, ent, name)
-	if err != nil {
-		return nil, false, err
-	}
-	headers, _, err := assembleHeaders(op, idHeaders, nil)
-	if err != nil {
-		return nil, false, err
-	}
-	resp, err := do(ctx, op.Method, op.Path, nil, headers)
-	if err != nil {
-		return nil, false, err
-	}
-	if resp.Status >= 400 {
-		return nil, false, fmt.Errorf("lookup %s: HTTP %d: %s", ref, resp.Status, strings.TrimSpace(string(resp.Body)))
-	}
-	var doc any
-	if err := json.Unmarshal(resp.Body, &doc); err != nil {
-		return nil, false, fmt.Errorf("lookup %s: %w", ref, err)
 	}
 	var rec map[string]any
 	if keyed {
@@ -677,14 +703,45 @@ func singletonRecord(doc any, field string) map[string]any {
 	return nil
 }
 
+// checkEnum refuses a value (or, for a repeatable enum, any element) outside the flag's enum.
+func checkEnum(f descriptor.Flag, v any) error {
+	if f.Type != "enum" {
+		return nil
+	}
+	vals := []string{}
+	switch t := v.(type) {
+	case []string:
+		vals = t
+	case []any:
+		for _, el := range t {
+			vals = append(vals, fmt.Sprint(el))
+		}
+	default:
+		vals = append(vals, fmt.Sprint(v))
+	}
+	for _, s := range vals {
+		if !containsStr(f.Enum, s) {
+			return fmt.Errorf("--%s %v is not one of %s", f.Name, s, strings.Join(f.Enum, "|"))
+		}
+	}
+	return nil
+}
+
 // branchCondition names, for an error, what selects a branch whose op takes query param
 // arg: "--child", "--flag", or "an existing entity.op record".
-func branchCondition(d *descriptor.Descriptor, c *descriptor.CLI, arg string) string {
+func branchCondition(d *descriptor.Descriptor, c *descriptor.CLI, kind, arg string) string {
 	var conds []string
 	for _, r := range c.Select {
 		ent, name, _ := strings.Cut(r.Op, ".")
 		bo, err := resolveOp(d, ent, name)
-		if err != nil || !containsStr(bo.Query, arg) {
+		if err != nil {
+			continue
+		}
+		declared := bo.Query
+		if kind == "header" {
+			declared = bo.Headers
+		}
+		if !containsStr(declared, arg) {
 			continue
 		}
 		switch {

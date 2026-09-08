@@ -248,6 +248,18 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"stime","priority":"core","target":"child","summary":"s",
       "body_template":"{\"mon\":\"$mon?\"}",
       "flags":[{"name":"weekdays","type":"int","excludes":["mon"],"maps_to":"body:$mon","help":"h"},{"name":"mon","type":"int","excludes":["weekdays"],"maps_to":"body:$mon","help":"h"}]}},
+  "hdr":{"method":"GET","path":"/hdr","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"hdr","priority":"core","target":"account","summary":"s",
+      "select":[{"when":"child","op":"t.hdrb","target":"child"}],
+      "flags":[{"name":"acc","type":"string","maps_to":"header:accept-x","help":"h"},{"name":"accd","type":"string","default":"x","maps_to":"header:x-accd","help":"h"}]}},
+  "hdrb":{"method":"GET","path":"/hdrb","headers":["accept-x","x-accd","x-fp-identifier-target-serviceid"]},
+  "numq":{"method":"GET","path":"/numq","query":["limit","kind"],
+    "cli":{"area":"t","verb":"numq","priority":"core","target":"account","summary":"s",
+      "flags":[{"name":"limit","type":"int","default":1000000,"maps_to":"query:limit","help":"h"},{"name":"kind","type":"enum","enum":["a","b"],"repeatable":true,"maps_to":"query:kind","help":"h"}]}},
+  "nq":{"method":"POST","path":"/nq","takes_body":true,"query":["mode"],
+    "cli":{"area":"t","verb":"nq","priority":"core","target":"account","summary":"s",
+      "body_template":"{\"for\":\"$for?\",\"inf\":\"$inf\"}","query":{"mode":"$for"},
+      "flags":[{"name":"for","type":"string","default":"30m","maps_to":"body:$for","help":"h"},{"name":"inf","type":"bool","default":false,"maps_to":"body:$inf","nulls":["for"],"help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -500,6 +512,119 @@ func TestInvokeFilterFlagOnAccountVerb(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"A"`) || strings.Contains(out.String(), `"S"`) {
 		t.Errorf("response should be filtered to serviceId 2000001:\n%s", out.String())
+	}
+}
+
+// Closure batch (verification sweep, engine):
+//   - a header flag the chosen op does not declare is refused when given (naming the selector)
+//     and dropped when it is only a default — the twin of the query guard;
+//   - a bool given as false is absent for every presence rule (select flag:, excludes,
+//     requires, one_of, at_least_one), as it already was for nulls;
+//   - structural refusals (enum, at_least_one) happen before the account read;
+//   - an int default renders as an integer in query/path/header, a repeatable enum is checked
+//     per element, nulls also clears the flag's effective value, and one lookup op is read
+//     once per invocation however many fields it feeds.
+func TestInvokeHeaderGuardTwin(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	noChild := verbCall{entity: "t", op: "hdr", area: "t", verb: "hdr", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"acc": "y"}}
+	err := invoke(context.Background(), fb.do(), d, noChild, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "--acc") || !strings.Contains(err.Error(), "--child") {
+		t.Fatalf("an explicitly given header flag the chosen op does not take must be refused naming the selector, got %v", err)
+	}
+	if _, sent := fb.seen["/hdr"]; sent {
+		t.Error("nothing may be sent after the refusal")
+	}
+	noChild.given = nil
+	if err := invoke(context.Background(), fb.do(), d, noChild, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r := fb.seen["/hdr"]; r.headers.Get("x-accd") != "" {
+		t.Errorf("a defaulted header for another branch's op must be dropped on the base op, got %v", r.headers)
+	}
+	if err := invoke(context.Background(), fb.do(), d, childCall("hdr", "hdr", map[string]any{"acc": "y"}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r := fb.seen["/hdrb"]; r.headers.Get("accept-x") != "y" || r.headers.Get("x-accd") != "x" {
+		t.Errorf("with --child the branch op must receive both headers: %v", r.headers)
+	}
+}
+
+func TestInvokeFalseBoolIsAbsentForPresenceRules(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	// excludes: --weekdays with --mon=false is not a conflict (a false bool is not "given").
+	if err := invoke(context.Background(), fb.do(), d, childCall("stime", "stime", map[string]any{"weekdays": int64(60), "mon": false}), &strings.Builder{}, true); err != nil {
+		t.Errorf("a false bool must not trigger excludes: %v", err)
+	}
+	// select flag:alt with --alt=false selects the base op.
+	base := verbCall{entity: "t", op: "log", area: "t", verb: "log", child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"q": "x", "alt": false}}
+	if err := invoke(context.Background(), fb.do(), d, base, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := fb.seen["/b"]; ok {
+		t.Error("--alt=false must not select the alt branch")
+	}
+}
+
+func TestInvokeStructuralRefusalsBeforeAccountRead(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	err := invoke(context.Background(), fb.do(), d, pauseCall(map[string]any{"for": "45m"}, "2000001"), &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "30m|1h|2h|4h|until-morning") {
+		t.Fatalf("want the enum refusal, got %v", err)
+	}
+	for path := range fb.seen {
+		if strings.Contains(path, "userprofiles") {
+			t.Errorf("an enum miss must be refused before the account read (saw %s)", path)
+		}
+	}
+}
+
+func TestInvokeIntDefaultAndRepeatableEnumInQuery(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "numq", area: "t", verb: "numq", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"kind": []string{"a", "b"}}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatalf("a repeatable enum must be checked per element: %v", err)
+	}
+	q := fb.seen["/numq"].query
+	// list values join with commas (the betaProviders=RCS,GIZMO convention of renderQuery)
+	if !strings.Contains(q, "limit=1000000") || strings.Contains(q, "e%2B06") || !strings.Contains(q, "kind=a%2Cb") {
+		t.Errorf("query = %q (want an integer limit and the comma-joined kinds)", q)
+	}
+	vc.given = map[string]any{"kind": []string{"a", "zzz"}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err == nil || !strings.Contains(err.Error(), "zzz") {
+		t.Errorf("a bad element of a repeatable enum must be refused naming it, got %v", err)
+	}
+}
+
+func TestInvokeNullsClearsEffectiveValue(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "nq", area: "t", verb: "nq", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"inf": true}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	r := fb.seen["/nq"]
+	if strings.Contains(r.body, `"for"`) || strings.Contains(r.query, "mode=") {
+		t.Errorf("a nulled flag must vanish from the body AND the query map: body=%s query=%q", r.body, r.query)
+	}
+}
+
+func TestInvokeOneReadPerLookupOp(t *testing.T) {
+	fb := newFakeBackend(t)
+	reads := 0
+	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
+		reads++
+		_, _ = w.Write([]byte(`{"categories":[{"id":"GAM","categoryId":1001,"subCategories":[{"id":10003,"name":"8 Ball"}]}]}`))
+	}
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("post", "do", map[string]any{"url": []string{"a.com"}, "cat": int64(10003)}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if reads != 1 {
+		t.Errorf("three lookups on one op must read it once, read %d times", reads)
 	}
 }
 
