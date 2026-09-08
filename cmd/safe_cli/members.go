@@ -85,6 +85,8 @@ func (c *membersCmd) Run(rc *runContext) error {
 		return err
 	}
 	_, err = fmt.Fprintf(rc.Out, membersFooter, membersOrder)
+	_, err = fmt.Fprintf(rc.Out, "\nOrder: %s. Pass a child's SERVICE-ID as --child to child-scoped verbs "+
+		"(as --service-id to `call`). Device-scoped verbs (pause, contacts, websites) need a PAIRED device.\n", membersOrder)
 	return err
 }
 
