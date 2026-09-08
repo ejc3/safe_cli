@@ -505,9 +505,11 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			v := strings.TrimPrefix(arg, "$")
 			// Two flags may share one template value only if each excludes the other, so
 			// the value never has two live sources (screen-time set --weekdays vs --mon).
-			if prev, dup := bodyVarByFlag[v]; dup && !(contains(prev.Excludes, f.Name) && contains(f.Excludes, prev.Name)) {
-				return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value unless each excludes the other)", f.Name, v, prev.Name)
-			} else if !dup {
+			if prev, dup := bodyVarByFlag[v]; dup {
+				if !contains(prev.Excludes, f.Name) || !contains(f.Excludes, prev.Name) {
+					return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value unless each excludes the other)", f.Name, v, prev.Name)
+				}
+			} else {
 				bodyVarByFlag[v] = f
 			}
 		case "query":
