@@ -20,14 +20,15 @@ import (
 // pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
 // applied here), the target, and the global switches.
 type verbCall struct {
-	entity, op string
-	area, verb string         // which of the op's verb blocks this is
-	given      map[string]any // flag name -> parsed value, explicitly given flags only
-	child      string         // --child SERVICE-ID ("" when not given)
-	selfSvc    string         // the caller's own service id (from the id_token)
-	selfPid    string         // the caller's own profile id (from the id_token)
-	appUUID    string
-	dryRun     bool
+	entity, op  string
+	area, verb  string         // which of the op's verb blocks this is
+	given       map[string]any // flag name -> parsed value, explicitly given flags only
+	child       string         // --child SERVICE-ID ("" when not given)
+	selfSvc     string         // the caller's own service id (from the id_token)
+	selfPid     string         // the caller's own profile id (from the id_token)
+	appUUID     string
+	sessionUUID string // the token set's own app-uuid, for body injection; never the install fallback
+	dryRun      bool
 	// dump, when set with dryRun, replaces do for the FINAL request only: the account read
 	// and lookups stay real (they resolve the ids the dump shows), the verb's own request
 	// is rendered and printed, never sent.
@@ -92,15 +93,17 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if given == nil {
 		given = map[string]any{}
 	}
-	// Presence rules (requires, excludes, one_of, at_least_one, select flag:, nulls) see a
-	// flag as given only when it carries a value: --flag=false is the flag's absence, so a
-	// bool never asserts anything by being spelled out. Values still render from `given`.
-	present := map[string]any{}
+	// Two notions of presence. A value contract (requires, excludes, one_of, at_least_one)
+	// sees every explicitly given flag, --flag=false included: a value-style bool such as
+	// --objectionable-alerts=false IS the setting. A switch (select flag:, nulls) fires only
+	// when the flag is asserted: --flag=false is the switch's absence.
+	present := given
+	asserted := map[string]any{}
 	for name, v := range given {
 		if b, isBool := v.(bool); isBool && !b {
 			continue
 		}
-		present[name] = v
+		asserted[name] = v
 	}
 	// Dependent-flag contract, on explicitly given flags, before any request.
 	for name := range present {
@@ -132,6 +135,28 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		}
 		if full != 1 {
 			return fmt.Errorf("%s %s needs exactly one of: %s", c.Area, c.Verb, strings.Join(groups, " | "))
+		}
+		// The one complete group is the choice; a stray member of another alternative would
+		// silently mix two request shapes.
+		var chosen []string
+		for _, grp := range c.OneOf {
+			all := true
+			for _, x := range grp {
+				if _, ok := present[x]; !ok {
+					all = false
+				}
+			}
+			if all {
+				chosen = grp
+			}
+		}
+		for gi, grp := range c.OneOf {
+			for _, x := range grp {
+				if _, ok := present[x]; ok && !containsStr(chosen, x) {
+					return fmt.Errorf("--%s belongs to the %s alternative, not to the one given (--%s); pass one alternative only", x, "--"+strings.Join(grp, " --"), strings.Join(chosen, " --"))
+				}
+			}
+			_ = gi
 		}
 	}
 	// Enum values and at_least_one are structural too: refuse them here, before the
@@ -177,7 +202,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// Conditional op selection, declared in the descriptor; the branch's contract applies.
 	op, entity, merged := o, vc.entity, c
 	lookups := lookupCache{} // one read per lookup per invocation: select and render share a snapshot
-	if rule, ok, err := selectRule(ctx, do, d, c, present, childGiven, idHeaders, lookups); err != nil {
+	if rule, ok, err := selectRule(ctx, do, d, c, asserted, childGiven, idHeaders, lookups); err != nil {
 		return err
 	} else if ok {
 		ent, name, _ := strings.Cut(rule.Op, ".")
@@ -304,7 +329,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	}
 	// nulls: an explicitly given flag unsets the variables of the flags it nulls, so their
 	// "$var?" properties are omitted (pause --indefinite drops pauseSchedule).
-	for name := range present { // a false bool is absent here too: it nulls nothing
+	for name := range asserted { // a false bool is a switch not thrown: it nulls nothing
 		for _, x := range flagByName[name].Nulls {
 			if _, arg, _ := strings.Cut(flagByName[x].MapsTo, ":"); arg != "" {
 				delete(vars, strings.TrimPrefix(arg, "$"))
@@ -360,6 +385,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			q.Add(k, v)
 		}
 	}
+	if missing := missingRequiredQuery(op.RequiredQuery, q); len(missing) > 0 {
+		return fmt.Errorf("%s %s: required query param(s) %v have no value (an empty flag, or a lookup that found nothing); nothing was sent", c.Area, c.Verb, missing)
+	}
 	path = appendQuery(path, q)
 	// Body.
 	var body []byte
@@ -369,7 +397,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			return err
 		}
 		if op.InjectCallerAppUUID { // the caller's own session uuid, as `call` injects it
-			if body, err = injectAppUUID(body, vc.appUUID); err != nil {
+			if body, err = injectAppUUID(body, vc.sessionUUID); err != nil {
 				return err
 			}
 		}
@@ -884,23 +912,67 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 		return err
 	}
 	if c.Output != nil && len(c.Output.Table) > 0 {
-		var m map[string]any
-		if err := json.Unmarshal(resp.Body, &m); err == nil {
-			row := make([]string, 0, len(c.Output.Table))
+		var doc any
+		if err := json.Unmarshal(resp.Body, &doc); err == nil {
+			var rows [][]string
 			hit := false
-			for _, col := range c.Output.Table {
-				v := digField(m, col)
-				if v != nil {
-					hit = true
+			for _, rec := range tableRecords(doc) {
+				row := make([]string, 0, len(c.Output.Table))
+				for _, col := range c.Output.Table {
+					v := digField(rec, col)
+					if v != nil {
+						hit = true
+					}
+					row = append(row, fmt.Sprint(nilToDash(v)))
 				}
-				row = append(row, fmt.Sprint(nilToDash(v)))
+				rows = append(rows, row)
 			}
 			if hit {
-				return outfmt.Table(out, upper(c.Output.Table), [][]string{row})
+				return outfmt.Table(out, upper(c.Output.Table), rows)
 			}
 		}
 	}
 	return writeAPIResponse(out, false, resp)
+}
+
+// tableRecords picks the objects a table row stands for: the elements of a top-level
+// array, the elements of an object's one array-of-objects field (a wrapped listing such
+// as {"devices":[...]}), or else the object itself.
+func tableRecords(doc any) []map[string]any {
+	switch t := doc.(type) {
+	case []any:
+		var recs []map[string]any
+		for _, el := range t {
+			if m, ok := el.(map[string]any); ok {
+				recs = append(recs, m)
+			}
+		}
+		if len(recs) > 0 {
+			return recs
+		}
+	case map[string]any:
+		var listFields [][]map[string]any
+		for _, v := range t {
+			arr, ok := v.([]any)
+			if !ok || len(arr) == 0 {
+				continue
+			}
+			var recs []map[string]any
+			for _, el := range arr {
+				if m, ok := el.(map[string]any); ok {
+					recs = append(recs, m)
+				}
+			}
+			if len(recs) == len(arr) {
+				listFields = append(listFields, recs)
+			}
+		}
+		if len(listFields) == 1 {
+			return listFields[0]
+		}
+		return []map[string]any{t}
+	}
+	return nil
 }
 
 // digField finds a named field at the top level or one level down (e.g. devices[0].status).

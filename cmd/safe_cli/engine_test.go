@@ -264,6 +264,19 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"exk","priority":"core","target":"child","summary":"s",
       "select":[{"when":"exists:$lookup:t.cats:id=cat:name","op":"t.listA"}],
       "flags":[{"name":"cat","type":"int","maps_to":"filter:role","help":"h"}]}},
+  "rq":{"method":"GET","path":"/rq","query":["a"],"required_query":["a"],
+    "cli":{"area":"t","verb":"rq","priority":"core","target":"account","summary":"s",
+      "flags":[{"name":"a","type":"string","required":true,"maps_to":"query:a","help":"h"}]}},
+  "tbl":{"method":"GET","path":"/tbl","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"tbl","priority":"core","target":"child","summary":"s","output":{"table":["name","status"]}}},
+  "alo":{"method":"POST","path":"/alo","takes_body":true,
+    "cli":{"area":"t","verb":"alo","priority":"core","target":"account","summary":"s",
+      "body_template":"{\"on\":\"$on?\",\"name\":\"$name?\"}","at_least_one":["on","name"],
+      "flags":[{"name":"on","type":"bool","maps_to":"body:$on","help":"h"},{"name":"name","type":"string","maps_to":"body:$name","help":"h"}]}},
+  "where2":{"method":"GET","path":"/w2","query":["lat","lon","address"],
+    "cli":{"area":"t","verb":"where2","priority":"core","target":"account","summary":"s",
+      "one_of":[["lat","lon"],["address"]],
+      "flags":[{"name":"lat","type":"float","maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","maps_to":"query:lon","help":"h"},{"name":"address","type":"string","maps_to":"query:address","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -557,11 +570,7 @@ func TestInvokeHeaderGuardTwin(t *testing.T) {
 func TestInvokeFalseBoolIsAbsentForPresenceRules(t *testing.T) {
 	fb := newFakeBackend(t)
 	d := engineDescriptor(t)
-	// excludes: --weekdays with --mon=false is not a conflict (a false bool is not "given").
-	if err := invoke(context.Background(), fb.do(), d, childCall("stime", "stime", map[string]any{"weekdays": int64(60), "mon": false}), &strings.Builder{}, true); err != nil {
-		t.Errorf("a false bool must not trigger excludes: %v", err)
-	}
-	// select flag:alt with --alt=false selects the base op.
+	// select flag:alt with --alt=false selects the base op (switch semantics).
 	base := verbCall{entity: "t", op: "log", area: "t", verb: "log", child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"q": "x", "alt": false}}
 	if err := invoke(context.Background(), fb.do(), d, base, &strings.Builder{}, true); err != nil {
 		t.Fatal(err)
@@ -660,6 +669,72 @@ func TestInvokeExistsKeyedByAbsentFlagIsNotMet(t *testing.T) {
 	}
 }
 
+// Codex #69 round 4:
+//   - a required query param that renders empty (explicit "" or a lookup miss) is refused
+//     before sending, as `call` already does;
+//   - output.table renders one row per object of a listing response;
+//   - an explicit --flag=false counts as provided for requires/excludes/one_of/at_least_one
+//     (a value-style bool: --objectionable-alerts=false is a setting), while select flag:
+//     and nulls keep switch semantics (false is absent);
+//   - members of an unselected one_of alternative are refused, not silently mixed in;
+//   - the caller's session uuid for body injection is separate from the header uuid.
+func TestInvokeRefusesEmptyRequiredQuery(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "rq", area: "t", verb: "rq", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"a": ""}}
+	err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "a") {
+		t.Fatalf("an empty required query value must be refused naming it, got %v", err)
+	}
+	if _, sent := fb.seen["/rq"]; sent {
+		t.Error("nothing may be sent with a required query param missing")
+	}
+}
+
+func TestInvokeTableRendersEveryRow(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/tbl"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"devices":[{"name":"A","status":"Paused"},{"name":"B","status":"Unpaused"}]}`))
+	}
+	d := engineDescriptor(t)
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, childCall("tbl", "tbl", nil), &out, false); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Paused") || !strings.Contains(out.String(), "Unpaused") || !strings.Contains(out.String(), "B") {
+		t.Errorf("every object of the listing must be a row:\n%s", out.String())
+	}
+}
+
+func TestInvokeExplicitFalseCountsForAtLeastOne(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "alo", area: "t", verb: "alo", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"on": false}}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatalf("--on=false is a provided setting: %v", err)
+	}
+	if b := fb.seen["/alo"].body; !strings.Contains(b, `"on":false`) {
+		t.Errorf("the explicit false must reach the body: %s", b)
+	}
+	vc.given = map[string]any{}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err == nil || !strings.Contains(err.Error(), "at least one") {
+		t.Errorf("nothing given must still be refused, got %v", err)
+	}
+}
+
+func TestInvokeOneOfRefusesMembersOfOtherGroups(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "where2", area: "t", verb: "where2", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"address": "x", "lat": 1.0}}
+	err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "--lat") {
+		t.Fatalf("a member of an unselected alternative must be refused naming it, got %v", err)
+	}
+	if _, sent := fb.seen["/w2"]; sent {
+		t.Error("nothing may be sent with mixed alternatives")
+	}
+}
+
 // Codex #69 round 3:
 //   - --dry-run with no request dumper must never fall through to the live sender;
 //   - a JSON null body still gets _meta under --json instead of a nil-map panic;
@@ -695,12 +770,21 @@ func TestInvokeJSONNullBodyGetsMeta(t *testing.T) {
 func TestInvokeInjectsCallerAppUUID(t *testing.T) {
 	fb := newFakeBackend(t)
 	d := engineDescriptor(t)
-	vc := verbCall{entity: "t", op: "kmsi", area: "t", verb: "kmsi", selfSvc: "1000001", selfPid: "1000002", appUUID: "11111111-2222-3333-4444-555555555555"}
+	// The header uuid (install fallback) is not the session uuid: only the latter is injected.
+	vc := verbCall{entity: "t", op: "kmsi", area: "t", verb: "kmsi", selfSvc: "1000001", selfPid: "1000002", appUUID: "99999999-9999-9999-9999-999999999999"}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	// (json.Marshal escapes "<" in the untouched placeholder)
+	if b := fb.seen["/kmsi"].body; strings.Contains(b, "99999999") || (!strings.Contains(b, "<device-uuid>") && !strings.Contains(b, `\u003cdevice-uuid\u003e`)) {
+		t.Errorf("without a session uuid the placeholder must stay (never the header fallback): %s", b)
+	}
+	vc.sessionUUID = "11111111-2222-3333-4444-555555555555"
 	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
 		t.Fatal(err)
 	}
 	if b := fb.seen["/kmsi"].body; !strings.Contains(b, `"app_uuid":"11111111-2222-3333-4444-555555555555"`) || strings.Contains(b, "<device-uuid>") {
-		t.Errorf("the caller's app-uuid must replace the placeholder: %s", b)
+		t.Errorf("the caller's session uuid must replace the placeholder: %s", b)
 	}
 }
 
