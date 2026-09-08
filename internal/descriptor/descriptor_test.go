@@ -753,6 +753,64 @@ func TestParseRejectsNoEntities(t *testing.T) {
 	}
 }
 
+// Parse rejects a descriptor whose op names a required_query param that is not in its query
+// list: `describe` lists query, and `call` demands required_query, so a required name absent
+// from query would be undocumented — a descriptor bug caught at load rather than confusing a
+// caller at runtime.
+func TestParseRejectsRequiredQueryNotInQuery(t *testing.T) {
+	js := `{"name":"x","base_url":"https://h","entities":{"a":{"id_field":"","operations":` +
+		`{"getX":{"method":"GET","path":"/x","query":["startDate"],"required_query":["endDate"]}}}}}`
+	_, err := Parse([]byte(js))
+	if err == nil || !strings.Contains(err.Error(), "required_query") {
+		t.Fatalf("want a required_query-not-in-query error, got %v", err)
+	}
+	// A required_query that IS a subset of query loads fine.
+	ok := `{"name":"x","base_url":"https://h","entities":{"a":{"id_field":"","operations":` +
+		`{"getX":{"method":"GET","path":"/x","query":["startDate","endDate"],"required_query":["startDate"]}}}}}`
+	if _, err := Parse([]byte(ok)); err != nil {
+		t.Fatalf("valid required_query subset should load: %v", err)
+	}
+}
+
+// The calls_and_texts activity family's required_query is pinned to what was verified against
+// the live API (each op 400s "<field> is empty" for a missing required param), so it is not
+// silently dropped or widened to unverified params. Notably getTopContactListByActivityV7's
+// profileId/deviceId are NOT required (dates-only returns 404 not-found, not a 400), so they
+// must stay out of required_query — a good guard against guessing "ids are always required".
+func TestCallTextActivityRequiredQuery(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, _ := d.Entity("calls_and_texts")
+	want := map[string][]string{
+		"getCallAndTextActivityListV7":                {"startDate", "endDate"},
+		"getCallAndTextProfileSummaryListV7":          {"startDate", "endDate"},
+		"getCallAndTextSpecificContactActivityListV7": {"otherPartyMdn", "startDate", "endDate"},
+		"getTopContactListByActivityV7":               {"startDate", "endDate"},
+	}
+	for opName, wantReq := range want {
+		op := e.Operations[opName]
+		got := map[string]bool{}
+		for _, r := range op.RequiredQuery {
+			got[r] = true
+		}
+		if len(op.RequiredQuery) != len(wantReq) {
+			t.Errorf("%s required_query = %v, want %v", opName, op.RequiredQuery, wantReq)
+			continue
+		}
+		for _, r := range wantReq {
+			if !got[r] {
+				t.Errorf("%s required_query = %v, missing %q (want %v)", opName, op.RequiredQuery, r, wantReq)
+			}
+		}
+		// Documented-optional params must never be marked required.
+		if got["betaProviders"] || got["summaryOnly"] || got["profileId"] || got["deviceId"] {
+			t.Errorf("%s marks an optional param required: %v", opName, op.RequiredQuery)
+		}
+	}
+}
+
 func TestNamesAreSorted(t *testing.T) {
 	d, err := Default()
 	if err != nil {

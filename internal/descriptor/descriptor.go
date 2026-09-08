@@ -38,8 +38,15 @@ type Operation struct {
 	// the same name overrides. Contextual headers (ETag, timezone) are NOT listed here.
 	HeaderValues map[string]string `json:"header_values,omitempty"`
 	Query        []string          `json:"query,omitempty"`
-	Placeholders []string          `json:"placeholders,omitempty"`
-	Confirmed    bool              `json:"confirmed"`
+	// RequiredQuery is the subset of Query the caller MUST supply — parameters the backend
+	// rejects the request without (verified against the live API, e.g. startDate/endDate on
+	// the call/text activity list). `call` refuses locally, on --dry-run too, when one is
+	// missing; the rest of Query is optional. Only populate a name here once its being
+	// required is observed on the wire, never guessed — an over-strict entry blocks a valid
+	// call. Every entry must also appear in Query (enforced by Parse).
+	RequiredQuery []string `json:"required_query,omitempty"`
+	Placeholders  []string `json:"placeholders,omitempty"`
+	Confirmed     bool     `json:"confirmed"`
 	// Destructive marks a catastrophic, effectively irreversible op (deleting a user,
 	// device, or subscription; wiping messages). `call` refuses these without --confirm.
 	Destructive bool `json:"destructive,omitempty"`
@@ -144,7 +151,39 @@ func Parse(b []byte) (*Descriptor, error) {
 	if len(d.Entities) == 0 {
 		return nil, fmt.Errorf("descriptor %q declares no entities", d.Name)
 	}
+	if err := d.validateRequiredQuery(); err != nil {
+		return nil, err
+	}
 	return &d, nil
+}
+
+// validateRequiredQuery enforces that every op's required_query names are also declared in
+// query — a required param the CLI would demand but never document in `describe` (which lists
+// Query) is a descriptor bug, so fail loudly at load rather than confuse a caller at runtime.
+func (d *Descriptor) validateRequiredQuery() error {
+	for ename, e := range d.Entities {
+		check := func(group string, ops map[string]Operation) error {
+			for oname, o := range ops {
+				declared := make(map[string]bool, len(o.Query))
+				for _, q := range o.Query {
+					declared[q] = true
+				}
+				for _, r := range o.RequiredQuery {
+					if !declared[r] {
+						return fmt.Errorf("%s.%s (%s): required_query %q is not in query %v", ename, oname, group, r, o.Query)
+					}
+				}
+			}
+			return nil
+		}
+		if err := check("operations", e.Operations); err != nil {
+			return err
+		}
+		if err := check("actions", e.Actions); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // EntityNames returns the entity keys in stable, sorted order.

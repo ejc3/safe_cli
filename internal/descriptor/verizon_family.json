@@ -691,7 +691,11 @@
             "summaryOnly",
             "betaProviders"
           ],
-          "description": "List call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', summaryOnly=true|false, betaProviders=RCS|RCS,GIZMO (optional)."
+          "required_query": [
+            "startDate",
+            "endDate"
+          ],
+          "description": "List call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (both required — the API 400s an empty start/end date), summaryOnly=true|false, betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getCallAndTextProfileSummaryListV7": {
           "method": "GET",
@@ -705,7 +709,11 @@
             "endDate",
             "betaProviders"
           ],
-          "description": "Per-profile call/text summary (v7). Fixed (baked): summaryOnly=true, activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
+          "required_query": [
+            "startDate",
+            "endDate"
+          ],
+          "description": "Per-profile call/text summary (v7). Fixed (baked): summaryOnly=true, activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (both required — the API 400s an empty start/end date), betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getCallAndTextSpecificContactActivityListV7": {
           "method": "GET",
@@ -720,7 +728,12 @@
             "endDate",
             "betaProviders"
           ],
-          "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's MDN, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
+          "required_query": [
+            "otherPartyMdn",
+            "startDate",
+            "endDate"
+          ],
+          "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's MDN, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (all three required — the API 400s an empty other-party mdn / start / end date), betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getSchedulesRequest": {
           "method": "GET",
@@ -745,7 +758,11 @@
             "endDate",
             "betaProviders"
           ],
-          "description": "Top contacts by call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: profileId, deviceId (member's ids), startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z', betaProviders=RCS|RCS,GIZMO (optional)."
+          "required_query": [
+            "startDate",
+            "endDate"
+          ],
+          "description": "Top contacts by call/text activity (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (both required — the API 400s an empty start/end date). profileId, deviceId (member's ids) are NOT server-required (dates-only returns 404 not-found, not a 400), betaProviders=RCS|RCS,GIZMO (optional)."
         }
       }
     },

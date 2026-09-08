@@ -458,13 +458,17 @@ func TestRunCallGuardsDestructive(t *testing.T) {
 	}
 }
 
-// --dry-run prints the exact request without sending it, bypassing the guards.
+// --dry-run prints the exact request without sending it, bypassing only the destructive
+// --confirm guard (a confirmation, not a structural fact) — a properly structured request
+// (here the service-id deleteProfile declares) still assembles and dumps. Structural guards
+// are NOT bypassed; see TestRunCallDryRunEnforcesStructure.
 func TestRunCallDryRun(t *testing.T) {
 	d, _ := descriptor.Default()
 	var out strings.Builder
 	do := dumpRequest(&runContext{D: d, G: &Globals{}}, "THE.ID.TOKEN")
 	if err := runCall(context.Background(), do, d,
-		callArgs{entity: "account", op: "deleteProfile", dryRun: true}, &out, false); err != nil {
+		callArgs{entity: "account", op: "deleteProfile", dryRun: true,
+			idHeaders: map[string]string{"x-fp-identifier-target-serviceid": "svc"}}, &out, false); err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
 	s := out.String()
@@ -516,6 +520,116 @@ func TestRunCallRequiresBodyWithExample(t *testing.T) {
 	}
 	if !hit {
 		t.Error("with --data the request should have been sent")
+	}
+}
+
+// missingRequiredQuery treats an absent key and a present-but-empty value the same — the
+// backend rejects both (the call/text activity op 400s "start date is empty").
+func TestMissingRequiredQuery(t *testing.T) {
+	req := []string{"startDate", "endDate"}
+	// both absent
+	if got := missingRequiredQuery(req, url.Values{}); len(got) != 2 {
+		t.Errorf("both absent: %v", got)
+	}
+	// one present, one empty -> the empty one is missing
+	q := url.Values{}
+	q.Set("startDate", "2026-01-01T00:00:00.000000Z")
+	q.Set("endDate", "")
+	if got := missingRequiredQuery(req, q); len(got) != 1 || got[0] != "endDate" {
+		t.Errorf("present-but-empty not caught: %v", got)
+	}
+	// both present, non-empty -> none missing
+	q.Set("endDate", "2026-02-01T00:00:00.000000Z")
+	if got := missingRequiredQuery(req, q); len(got) != 0 {
+		t.Errorf("both present: %v", got)
+	}
+	// no required params declared -> never missing
+	if got := missingRequiredQuery(nil, url.Values{}); len(got) != 0 {
+		t.Errorf("nil required: %v", got)
+	}
+}
+
+// An op that declares required_query (calls_and_texts.getCallAndTextActivityListV7 needs
+// startDate+endDate, verified against the live API's 400) is refused up front when a required
+// param is missing, naming which — rather than sending a request the backend would 400. With
+// them supplied it sends. RED against the pre-fix CLI, which only declared these in Query
+// (optional) and let the server reject the call.
+func TestRunCallRequiresRequiredQuery(t *testing.T) {
+	d, _ := descriptor.Default()
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	// missing both: no server wired, must fail before any request, naming both params.
+	err := runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: "calls_and_texts", op: "getCallAndTextActivityListV7", idHeaders: idh}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "startDate") || !strings.Contains(err.Error(), "endDate") {
+		t.Errorf("want a required-query error naming startDate and endDate, got %v", err)
+	}
+	// present-but-empty counts as missing (server 400s an empty start date).
+	q := url.Values{}
+	q.Set("startDate", "")
+	q.Set("endDate", "2026-02-01T00:00:00.000000Z")
+	err = runCall(context.Background(), client.New("T").DoH, d,
+		callArgs{entity: "calls_and_texts", op: "getCallAndTextActivityListV7", idHeaders: idh, query: q}, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "startDate") || strings.Contains(err.Error(), "endDate") {
+		t.Errorf("want an error naming only startDate, got %v", err)
+	}
+	// both supplied: the request is sent, and both land on the URL.
+	var gotURI string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotURI = r.URL.RequestURI()
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	cl := client.New("T")
+	cl.BaseURL = srv.URL
+	q2 := url.Values{}
+	q2.Set("startDate", "2026-01-01T00:00:00.000000Z")
+	q2.Set("endDate", "2026-02-01T00:00:00.000000Z")
+	if err := runCall(context.Background(), cl.DoH, d,
+		callArgs{entity: "calls_and_texts", op: "getCallAndTextActivityListV7", idHeaders: idh, query: q2}, &strings.Builder{}, true); err != nil {
+		t.Fatalf("runCall with both dates: %v", err)
+	}
+	if !strings.Contains(gotURI, "startDate=") || !strings.Contains(gotURI, "endDate=") {
+		t.Errorf("dates not on URL: %q", gotURI)
+	}
+}
+
+// --dry-run enforces structural correctness (it does NOT bypass structure): a request missing
+// its service-id, body, or a required query param is malformed and not worth diffing, so
+// dry-run refuses it with the same guidance a live call would. RED against the pre-fix guards,
+// which carried `&& !a.dryRun` and let dry-run assemble a structurally-incomplete request.
+func TestRunCallDryRunEnforcesStructure(t *testing.T) {
+	d, _ := descriptor.Default()
+	do := dumpRequest(&runContext{D: d, G: &Globals{}}, "TOK")
+	idh := map[string]string{"x-fp-identifier-target-serviceid": "svc"}
+	cases := []struct {
+		name         string
+		args         callArgs
+		wantContains string
+	}{
+		{
+			name:         "missing service-id",
+			args:         callArgs{entity: "content_filter", op: "getFilterContent", dryRun: true},
+			wantContains: "service-id",
+		},
+		{
+			name:         "missing body",
+			args:         callArgs{entity: "content_filter", op: "updateSubcategory", idHeaders: idh, dryRun: true},
+			wantContains: "needs a JSON body",
+		},
+		{
+			name:         "missing required query",
+			args:         callArgs{entity: "calls_and_texts", op: "getCallAndTextActivityListV7", idHeaders: idh, dryRun: true},
+			wantContains: "startDate",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := runCall(context.Background(), do, d, tc.args, &strings.Builder{}, false)
+			if err == nil || !strings.Contains(err.Error(), tc.wantContains) {
+				t.Errorf("dry-run %s: want error containing %q, got %v", tc.name, tc.wantContains, err)
+			}
+		})
 	}
 }
 

@@ -34,6 +34,30 @@ func TestDescribeShowsQueryParams(t *testing.T) {
 	}
 }
 
+// describe marks a required query param with a trailing "*" so a caller can see at a glance
+// which --query params `call` refuses to run without, and the legend explains the marker.
+// calls_and_texts.getCallAndTextActivityListV7 requires startDate+endDate (live-verified) but
+// not summaryOnly/betaProviders.
+func TestDescribeMarksRequiredQueryParams(t *testing.T) {
+	d, err := descriptor.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	rc := &runContext{D: d, G: &Globals{}, Out: &out}
+	if err := (&describeCmd{Entity: "calls_and_texts"}).Run(rc); err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "query=startDate*,endDate*,summaryOnly,betaProviders") {
+		t.Errorf("describe FLAGS should mark required params with * (query=startDate*,endDate*,...):\n%s", s)
+	}
+	// The legend must explain the marker so it isn't a mystery glyph.
+	if !strings.Contains(s, "* marks a required param") {
+		t.Errorf("describe legend should explain the * marker:\n%s", s)
+	}
+}
+
 // describe must name the exact --header and --path args too, and must NOT leak the decompiler's
 // dynamic-@HeaderMap artifacts as if they were header names (Codex #28).
 func TestDescribeShowsHeaderAndPathNames(t *testing.T) {
