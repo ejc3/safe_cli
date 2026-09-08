@@ -408,6 +408,16 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 			return fmt.Errorf("select[%d]: condition %q repeats select[%d] (first match wins, so this branch is unreachable)", i, r.When, j)
 		}
 		seenWhen[r.When] = i
+		if strings.HasPrefix(r.When, "flag:") {
+			// Every valid use of this selector also carries whatever it requires; if any of
+			// those is an earlier flag: selector, first-match makes this branch unreachable.
+			sel := strings.TrimPrefix(r.When, "flag:")
+			for _, req := range requiresClosure(sel, flagByName) {
+				if j, earlier := seenWhen["flag:"+req]; earlier && j < i {
+					return fmt.Errorf("select[%d]: condition %q is unreachable: --%s requires --%s, whose branch select[%d] matches first", i, r.When, sel, req, j)
+				}
+			}
+		}
 		switch {
 		case r.When == "child":
 			// --child selects this branch, so the branch must end on a contract that has a
@@ -522,6 +532,25 @@ func resolveUses(c *CLI) map[string]bool {
 		}
 	}
 	return uses
+}
+
+// requiresClosure returns every flag that giving name transitively requires.
+func requiresClosure(name string, flagByName map[string]Flag) []string {
+	seen := map[string]bool{name: true}
+	var out []string
+	queue := []string{name}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, req := range flagByName[cur].Requires {
+			if !seen[req] {
+				seen[req] = true
+				out = append(out, req)
+				queue = append(queue, req)
+			}
+		}
+	}
+	return out
 }
 
 // lookupKeyFlag returns the flag a keyed $lookup is keyed by ("" for anything else).
@@ -724,9 +753,24 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				}
 				v := strings.TrimPrefix(arg, "$")
 				if prev, dup := bodyVarByFlag[v]; dup {
-					return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value)", f.Name, v, prev.Name)
+					// A spread and another producer may share the var only under mutual
+					// exclusion (downtime add --mode vs a scalar --block-content), and a
+					// spread value is never a list.
+					if !contains(prev.Excludes, f.Name) || !contains(f.Excludes, prev.Name) {
+						return fmt.Errorf("flag --%s: body var $%s is already mapped from --%s (two flags cannot compete for one template value unless each excludes the other)", f.Name, v, prev.Name)
+					}
+					if prev.Repeatable {
+						return fmt.Errorf("flag --%s: shares body var $%s with repeatable --%s, but a spread value is a single value", f.Name, v, prev.Name)
+					}
+					for _, other := range bodyVarFlags[v] {
+						if !contains(other.Excludes, f.Name) || !contains(f.Excludes, other.Name) {
+							return fmt.Errorf("flag --%s: shares body var $%s with --%s but they are not pairwise exclusive; every producer of one template value must exclude every other", f.Name, v, other.Name)
+						}
+					}
+				} else {
+					bodyVarByFlag[v] = f
 				}
-				bodyVarByFlag[v] = f
+				bodyVarFlags[v] = append(bodyVarFlags[v], f)
 			}
 			continue
 		}
@@ -872,6 +916,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !ok {
 				return fmt.Errorf("flag --%s: requires unknown flag %q", f.Name, x)
 			}
+			if contains(f.Excludes, x) {
+				return fmt.Errorf("flag --%s: requires --%s and also excludes it — contradictory edges, no invocation could use --%s", f.Name, x, f.Name)
+			}
 			if g.Default != nil {
 				return fmt.Errorf("flag --%s: requires --%s, which has a default (a defaulted flag is always populated, so its presence proves nothing — neither a dependency nor a select branch); require an undefaulted flag", f.Name, x)
 			}
@@ -995,6 +1042,11 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	// Resolve entries are checked for every verb, bodyless ones included — a path, query or
 	// header can resolve too, and a typo must fail here, not at invocation.
 	resolveOK := func(v string) error { return d.checkResolveVar(v, flagByName) }
+	for _, f := range c.Flags {
+		if s, ok := f.Default.(string); ok && strings.HasPrefix(s, "$") && !contains(c.Resolve, s) {
+			return fmt.Errorf("flag --%s: default %s is a resolved value but is not listed in resolve (the runtime's resolution plan)", f.Name, s)
+		}
+	}
 	for _, r := range c.Resolve {
 		if err := resolveOK(r); err != nil {
 			return fmt.Errorf("resolve entry: %w", err)

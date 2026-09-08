@@ -98,6 +98,19 @@ func TestCLIOptionalLookupKeyConfinedToItsBranch(t *testing.T) {
 	}
 }
 
+// Codex #70 round 9 (positive): a scalar flag and a spreads_to flag may share a body var when
+// each excludes the other, whichever is declared first.
+func TestCLISharedVarScalarAndSpreadEitherOrder(t *testing.T) {
+	scalar := `{"name":"bc","type":"bool","excludes":["mode"],"maps_to":"body:$blockContent","help":"h"}`
+	spread := `{"name":"mode","type":"enum","enum":["block","alert"],"excludes":["bc"],"spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"}`
+	for name, flags := range map[string]string{"scalar first": scalar + "," + spread, "spread first": spread + "," + scalar} {
+		cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"blockContent\":\"$blockContent?\",\"alertOn\":\"$alertOn?\"}","flags":[` + flags + `]}`
+		if _, err := Parse(cliFixture(cli, "")); err != nil {
+			t.Errorf("%s: must be accepted: %v", name, err)
+		}
+	}
+}
+
 // Codex #70-2 (positive): one op may back `a g1 show` and `a g2 show` — the group is part
 // of the command path, so the per-op duplicate check must include it.
 func TestCLIGroupDistinguishesVerbsOnOneOp(t *testing.T) {
@@ -341,6 +354,13 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"three producers not pairwise exclusive", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"v\":\"$v?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","excludes":["b","c"],"maps_to":"body:$v","help":"h"},{"name":"b","type":"string","excludes":["a"],"maps_to":"body:$v","help":"h"},{"name":"c","type":"string","excludes":["a"],"maps_to":"body:$v","help":"h"}]}`, "", "pairwise"},
 		{"optional flag excluding a required one", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"o\":\"$o?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"o","type":"string","excludes":["x"],"maps_to":"body:$o","help":"h"}]}`, "", "required"},
 		{"at_least_one member with a literal default", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b?\"}","at_least_one":["a","b"],"flags":[{"name":"a","type":"string","default":"lit","maps_to":"body:$a","help":"h"},{"name":"b","type":"string","maps_to":"body:$b","help":"h"}]}`, "", "default"},
+		// Codex #70 round 9: a later flag: selector whose flag requires (transitively) an earlier
+		// selector can never be reached; a resolver-backed default is part of the resolve plan;
+		// a flag cannot both require and exclude the same flag.
+		{"selector shadowed by the flag it requires", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:a","op":"pause.other2"},{"when":"flag:b","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","maps_to":"filter:role","help":"h"},{"name":"b","type":"string","maps_to":"filter:role","help":"h","requires":["a"]}]}`, "", "unreachable"},
+		{"selector shadowed transitively", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:a","op":"pause.other2"},{"when":"flag:c","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","maps_to":"filter:role","help":"h"},{"name":"b","type":"string","maps_to":"filter:role","help":"h","requires":["a"]},{"name":"c","type":"string","maps_to":"filter:role","help":"h","requires":["b"]}]}`, "", "unreachable"},
+		{"resolver default not listed in resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"t\":\"$t\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"tz","default":"$local.timezone","maps_to":"body:$t","help":"h"}]}`, "", "not listed in resolve"},
+		{"flag both requiring and excluding another", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"a\":\"$a?\",\"b\":\"$b?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","requires":["b"],"excludes":["b"],"maps_to":"body:$a","help":"h"},{"name":"b","type":"string","excludes":["a"],"maps_to":"body:$b","help":"h"}]}`, "", "contradict"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -471,7 +491,7 @@ func TestCLIExpressivenessSweepAccepted(t *testing.T) {
 	  "body_template":"{\"mon\":\"$mon?\",\"name\":\"$name\",\"limitId\":\"$lookup:pause.other::screenTimeLimitId\"}",
 	  "query":{"lat":"$child.profileId"},
 	  "headers":{"timezone":"$local.timezone"},
-	  "resolve":["$child.profileId","$local.timezone","$lookup:pause.other::screenTimeLimitId"],
+	  "resolve":["$child.profileId","$local.timezone","$lookup:pause.other::screenTimeLimitId","$lookup:pause.other::familyName"],
 	  "select":[{"when":"exists:$lookup:pause.other::screenTimeLimitId","op":"pause.other2"},{"when":"flag:alt","op":"pause.other2"}],
 	  "flags":[
 	    {"name":"weekdays","type":"int","excludes":["mon"],"maps_to":"body:$mon","help":"h"},
