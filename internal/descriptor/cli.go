@@ -228,6 +228,14 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab", "preset_group")
+	// cliTransformDomains lists the input values a closed transform accepts (lowercased);
+	// an enum flag using one may only offer those values.
+	cliTransformDomains = map[string][]string{
+		"pause_schedule":   {"30m", "1h", "2h", "4h", "until-morning"},
+		"allow_block_ab":   {"allow", "block", "a", "b"},
+		"mode_block_alert": {"block", "alert"},
+		"preset_group":     {"none", "young-child", "child", "teen"},
+	}
 	// cliTransformInputs lists the flag types each transform is defined for; a transform on
 	// any other type could never produce the wire form and is a descriptor error.
 	cliTransformInputs = map[string][]string{
