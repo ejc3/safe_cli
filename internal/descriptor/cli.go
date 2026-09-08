@@ -196,7 +196,7 @@ var (
 	cliTargets    = set("account", "self", "child", "device")
 	cliAuths      = set("", "id_token", "spc_token")
 	// reservedFlagNames are the flags the generator or the CLI itself owns on every verb.
-	reservedFlagNames = set("child", "dry-run", "confirm", "allow-unpaired", "json", "help")
+	reservedFlagNames = set("child", "dry-run", "confirm", "allow-unpaired", "json", "help", "plain", "service-id", "profile-id", "device-id", "force")
 	cliFlagTypes      = set("string", "int", "float", "bool", "enum", "duration", "date", "datetime", "tz", "list")
 	// cliTransforms is the engine's fixed registry (docs/CLI-DESIGN.md §4); the engine is the
 	// only place that implements them, this list only rejects an unknown name early.
@@ -598,7 +598,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			return fmt.Errorf("flag --%s declared twice", f.Name)
 		}
 		if reservedFlagNames[f.Name] {
-			return fmt.Errorf("flag --%s: the name is reserved by the generated command (child, dry-run, confirm, allow-unpaired, json, help)", f.Name)
+			return fmt.Errorf("flag --%s: the name is reserved by the generated command or its global flags (child, dry-run, confirm, allow-unpaired, json, help, plain, service-id, profile-id, device-id, force)", f.Name)
 		}
 		flagByName[f.Name] = f
 		if !cliFlagTypes[f.Type] {
@@ -810,6 +810,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				if g.Default != nil {
 					return fmt.Errorf("one_of[%d] names --%s, which has a default (a defaulted flag is always populated, so exactly-one cannot be decided)", gi, x)
 				}
+				if g.Required {
+					return fmt.Errorf("one_of[%d] names --%s, which is required (an always-present member makes every other alternative unreachable)", gi, x)
+				}
 			}
 		}
 		// A group contained in another can never be the exactly-one group: giving the
@@ -857,6 +860,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		if !contains(o.Headers, name) {
 			return fmt.Errorf("headers[%s] is not one of the op's declared headers %v", name, o.Headers)
 		}
+		if from, dup := headerFromFlag[name]; dup {
+			return fmt.Errorf("headers[%s] is declared as a constant and also mapped from --%s (one header, one source)", name, from)
+		}
 		if strings.HasPrefix(v, "$") { // a resolver variable ($local.timezone for a contextual header)
 			if err := d.checkResolveVar(v, flagByName); err != nil {
 				return fmt.Errorf("headers[%s]: %w", name, err)
@@ -868,6 +874,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	}
 	for _, req := range o.RequiredQuery {
 		src, fromFlag := queryFromFlag[req]
+		if v, viaMap := c.Query[req]; viaMap && strings.HasPrefix(v, "$") && !looksResolve(v) {
+			src, fromFlag = strings.TrimPrefix(v, "$"), true // a "$flag" query-map value
+		}
 		if g := flagByName[src]; fromFlag && !g.Required && g.Default == nil {
 			return fmt.Errorf("required query param %q is fed by --%s, which is neither required nor defaulted, so the request could go out without it", req, src)
 		}

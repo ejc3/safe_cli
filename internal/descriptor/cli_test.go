@@ -224,7 +224,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// decided by map iteration or engine precedence.
 		{"duplicate body var mapping", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"y","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "already mapped"},
 		// Codex #67: a path mapping must name a real {placeholder} of the op's path.
-		{"path flag to unknown placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"device-id","type":"string","maps_to":"path:device-id","help":"h"}]}`, `"takes_body":false,"path":"/d/{deviceId}"`, "not a {placeholder}"},
+		{"path flag to unknown placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"dev-id","type":"string","maps_to":"path:device-id","help":"h"}]}`, `"takes_body":false,"path":"/d/{deviceId}"`, "not a {placeholder}"},
 		// Codex #67: a template on an op that declares no body is a classification typo.
 		{"template on a body-less op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, `"takes_body":false`, "declares no body"},
 		// Codex #67: resolved variables are an exact vocabulary, not a prefix match.
@@ -263,7 +263,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// dependent flag groups name declared flags and need real alternatives.
 		{"requires unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","requires":["ghost"],"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		{"one_of with one group", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"]],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
-		{"one_of unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"],["ghost"]],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
+		{"one_of unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["ghost"],["x"]],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		// Codex #66 round 5: one op, several verbs — `cli` may be a list; alias/call_only stay single.
 		{"cli list mixing alias and verb", `[{"alias_of":"pause.other"},{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}]`, "", "only entry"},
 		{"cli list duplicate verb", `[{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]},{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}]`, "", "declared twice"},
@@ -289,6 +289,17 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"default that is an unknown resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","default":"$ghost.value","maps_to":"body:$x","help":"h"}]}`, "", "not a supported resolved variable"},
 		{"placeholder with no source", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}/{thing}"`, "{thing} has no source"},
 		{"target id placeholder on an account verb", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}"`, "{deviceId} has no source"},
+		// Codex #70 round 5: a required query param fed through the query map needs an always-
+		// present flag too; a required flag cannot be a one_of alternative; a header has one
+		// source (constant or flag); every inherited global flag name is reserved.
+		{"required query fed through the query map by an optional flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"a":"$x"},"flags":[{"name":"x","type":"string","maps_to":"query:b","help":"h"}]}`, `"takes_body":false,"query":["a","b"],"required_query":["a"]`, "neither required nor defaulted"},
+		{"one_of member that is required", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["a"],["b"]],"flags":[{"name":"a","type":"string","required":true,"maps_to":"query:a","help":"h"},{"name":"b","type":"string","maps_to":"query:b","help":"h"}]}`, `"takes_body":false,"query":["a","b"]`, "required"},
+		{"header constant competing with a flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"x-h":"1"},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"h","type":"string","maps_to":"header:x-h","help":"h"}]}`, `"headers":["x-h"]`, "also mapped from"},
+		{"reserved flag name plain", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"plain","type":"string","maps_to":"filter:role","help":"h"}]}`, "", "reserved"},
+		{"reserved flag name service-id", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"service-id","type":"string","maps_to":"filter:role","help":"h"}]}`, "", "reserved"},
+		{"reserved flag name profile-id", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"profile-id","type":"string","maps_to":"filter:role","help":"h"}]}`, "", "reserved"},
+		{"reserved flag name device-id", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"device-id","type":"string","maps_to":"filter:role","help":"h"}]}`, "", "reserved"},
+		{"reserved flag name force", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"force","type":"string","maps_to":"filter:role","help":"h"}]}`, "", "reserved"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -338,7 +349,7 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
 	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
 	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
-	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
+	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
 	}
