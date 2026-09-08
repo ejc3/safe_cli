@@ -261,6 +261,12 @@ func (d *Descriptor) validateCLIBlocks() error {
 	paths := map[string]string{} // "area group verb" -> the one entity.op that generates it
 	for _, ename := range d.EntityNames() {
 		e := d.Entities[ename]
+		// "entity.op" must name one thing: an operation and an action cannot share a name.
+		for name := range e.Operations {
+			if _, dup := e.Actions[name]; dup {
+				return fmt.Errorf("entity %s has an operation and an action with the same name %q; entity.op could not tell them apart", ename, name)
+			}
+		}
 		check := func(ops map[string]Operation) error {
 			names := make([]string, 0, len(ops))
 			for k := range ops {
@@ -323,7 +329,7 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		// silently ignored — reject it rather than let a half-written verb hide.
 		if len(c.Flags) > 0 || c.BodyTemplate != "" || len(c.Select) > 0 || len(c.Resolve) > 0 || len(c.Query) > 0 ||
 			len(c.Headers) > 0 || len(c.Constants) > 0 || c.Output != nil || len(c.AtLeastOne) > 0 || len(c.OneOf) > 0 ||
-			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" {
+			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" || c.LiveEmergency {
 			if c.CallOnly {
 				return fmt.Errorf("a call_only block carries nothing but call_only, reason and summary; remove the verb/request fields or make it a verb")
 			}
@@ -489,7 +495,7 @@ func (d *Descriptor) branchSelects(c *CLI, f Flag, kind, arg string) bool {
 		switch {
 		case r.When == "child", r.When == "flag:"+f.Name:
 			return true
-		case strings.HasPrefix(r.When, "flag:") && contains(f.Requires, strings.TrimPrefix(r.When, "flag:")):
+		case strings.HasPrefix(r.When, "flag:") && contains(requiresClosure(f.Name, flagIndex(c.Flags)), strings.TrimPrefix(r.When, "flag:")):
 			return true
 		}
 	}
@@ -739,6 +745,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			return fmt.Errorf("flag --%s: needs exactly one of maps_to or spreads_to", f.Name)
 		}
 		if len(f.SpreadsTo) > 0 {
+			if f.Repeatable {
+				return fmt.Errorf("flag --%s: a spreads_to flag cannot be repeatable (a structured value has no defined expansion)", f.Name)
+			}
 			want, structured := cliStructuredTransforms[f.Transform]
 			if !structured {
 				return fmt.Errorf("flag --%s: spreads_to needs a structured transform (one of %s), got %q", f.Name, joinKeys(cliStructuredTransforms), f.Transform)
@@ -847,6 +856,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !f.Required && f.Default == nil {
 				return fmt.Errorf("flag --%s: fills path placeholder {%s} but is optional and has no default; a placeholder's source must be always present", f.Name, arg)
 			}
+			if f.Repeatable || f.Type == "list" {
+				return fmt.Errorf("flag --%s: a path placeholder takes a scalar flag, not a repeatable or list one", f.Name)
+			}
 			if prev, dup := pathFromFlag[arg]; dup {
 				return fmt.Errorf("flag --%s: path %q is already mapped from --%s (one request slot, one source)", f.Name, arg, prev)
 			}
@@ -926,6 +938,18 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				return fmt.Errorf("flag --%s: requires --%s, which has a default (a defaulted flag is always populated, so its presence proves nothing — neither a dependency nor a select branch); require an undefaulted flag", f.Name, x)
 			}
 		}
+		// Every valid use of f carries its whole required closure, so no two flags in it may
+		// exclude each other.
+		if len(f.Requires) > 0 {
+			set := append([]string{f.Name}, requiresClosure(f.Name, flagByName)...)
+			for _, a := range set {
+				for _, b := range set {
+					if a != b && contains(flagByName[a].Excludes, b) {
+						return fmt.Errorf("flag --%s: its required set includes --%s and --%s, which exclude each other — contradictory edges, no invocation could use --%s", f.Name, a, b, f.Name)
+					}
+				}
+			}
+		}
 	}
 	// at_least_one: a verb-level "one of these optional flags must be given" (account set
 	// --family-name|--timezone). Names must be declared, and requiring one of a set only
@@ -966,6 +990,13 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				}
 				if g.Required {
 					return fmt.Errorf("one_of[%d] names --%s, which is required (an always-present member makes every other alternative unreachable)", gi, x)
+				}
+				for _, req := range requiresClosure(x, flagByName) {
+					for oi, other := range c.OneOf {
+						if oi != gi && contains(other, req) {
+							return fmt.Errorf("one_of[%d] is unreachable: --%s requires --%s, a member of one_of[%d], so giving it satisfies two alternatives", gi, x, req, oi)
+						}
+					}
 				}
 			}
 		}
@@ -1116,10 +1147,15 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 		if field == "" {
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
 		}
-		lo, ok := d.lookupOp(ref)
-		if !ok {
-			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
+		opRef, subtree, scoped := strings.Cut(ref, "/")
+		if scoped && (subtree == "" || strings.Contains(subtree, "/")) {
+			return fmt.Errorf("$lookup %q: the subtree after entity.op/ must be one top-level field name, got %q", v, subtree)
 		}
+		lo, ok := d.lookupOp(opRef)
+		if !ok {
+			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, opRef)
+		}
+		ref = opRef
 		// A lookup runs before the verb's own --confirm guard, so it may only ever name a
 		// read-only GET; a typo pointing at a mutating or destructive op must not ship.
 		if lo.Method != http.MethodGet || lo.Destructive {

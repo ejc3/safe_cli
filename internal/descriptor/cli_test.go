@@ -111,6 +111,25 @@ func TestCLISharedVarScalarAndSpreadEitherOrder(t *testing.T) {
 	}
 }
 
+// Codex #70 round 11 (positive): a branch-only param whose flag reaches the branch selector
+// through a chain of requires is accepted; a lookup may name a top-level subtree of the
+// read to search ("entity.op/field"); an entity may not carry an operation and an action of
+// the same name.
+func TestCLIRoundElevenShapes(t *testing.T) {
+	transitive := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"mid","type":"string","requires":["sel"],"maps_to":"filter:role","help":"h"},{"name":"alt","type":"string","requires":["mid"],"maps_to":"query:alt","help":"h"}]}`
+	if _, err := Parse(cliFixture(transitive, "")); err != nil {
+		t.Errorf("a transitive requires chain to the selector must be accepted: %v", err)
+	}
+	subtree := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other/Apps & websites:id=x:name\"}","resolve":["$lookup:pause.other/Apps & websites:id=x:name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`
+	if _, err := Parse(cliFixture(subtree, "")); err != nil {
+		t.Errorf("a lookup scoped to a top-level subtree must be accepted: %v", err)
+	}
+	clash := []byte(`{"name":"t","base_url":"https://h","entities":{"e":{"id_field":"","operations":{"foo":{"method":"GET","path":"/a"}},"actions":{"foo":{"method":"POST","path":"/b"}}}}}`)
+	if _, err := Parse(clash); err == nil || !strings.Contains(err.Error(), "same name") {
+		t.Errorf("an operation and an action with the same name must be rejected, got %v", err)
+	}
+}
+
 // Codex #70-2 (positive): one op may back `a g1 show` and `a g2 show` — the group is part
 // of the command path, so the per-op duplicate check must include it.
 func TestCLIGroupDistinguishesVerbsOnOneOp(t *testing.T) {
@@ -367,6 +386,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"path placeholder from an optional undefaulted flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"dev","type":"string","maps_to":"path:deviceId","help":"h"}]}`, `"path":"/d/{deviceId}"`, "always present"},
 		{"requires a flag that excludes it back", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"a\":\"$a?\",\"b\":\"$b?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","requires":["b"],"maps_to":"body:$a","help":"h"},{"name":"b","type":"string","excludes":["a"],"maps_to":"body:$b","help":"h"}]}`, "", "contradict"},
 		{"lookup key flag defaulted by a lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}","resolve":["$lookup:pause.other:id=cat:name","$lookup:pause.other::defaultCat"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"cat","type":"int","default":"$lookup:pause.other::defaultCat","maps_to":"body:$cat","help":"h"}]}`, "", "resolved default"},
+		// Codex #70 round 11 (+ #69): a required closure cannot contain mutually exclusive flags;
+		// a one_of alternative whose closure reaches another group is unreachable; live_emergency
+		// is a verb-only field; path placeholders take scalar flags; a spreads_to flag is never
+		// repeatable; a lookup's optional subtree is one top-level field name.
+		{"requires closure with an internal exclusion", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"a\":\"$a?\",\"b\":\"$b?\",\"c\":\"$c?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","requires":["b","c"],"maps_to":"body:$a","help":"h"},{"name":"b","type":"string","excludes":["c"],"maps_to":"body:$b","help":"h"},{"name":"c","type":"string","excludes":["b"],"maps_to":"body:$c","help":"h"}]}`, "", "contradict"},
+		{"one_of alternative forced into another group", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["a"],["b"]],"flags":[{"name":"a","type":"string","requires":["b"],"maps_to":"query:lat","help":"h"},{"name":"b","type":"string","maps_to":"query:lon","help":"h"}]}`, `"takes_body":false,"query":["lat","lon"]`, "unreachable"},
+		{"live_emergency on an alias block", `{"alias_of":"pause.twin","live_emergency":true}`, "", "alias_of"},
+		{"live_emergency on a call_only block", `{"call_only":true,"reason":"r","live_emergency":true}`, "", "call_only"},
+		{"repeatable flag on a path placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"ids","type":"string","repeatable":true,"required":true,"maps_to":"path:deviceId","help":"h"}]}`, `"path":"/d/{deviceId}"`, "scalar"},
+		{"list flag on a path placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"ids","type":"list","required":true,"maps_to":"path:deviceId","help":"h"}]}`, `"path":"/d/{deviceId}"`, "scalar"},
+		{"repeatable spreads_to flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"m\":[{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"}]}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"mode","type":"enum","enum":["block","alert"],"repeatable":true,"required":true,"spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"}]}`, "", "repeatable"},
+		{"lookup subtree that is not a plain field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other/a/b:id=x:name\"}","resolve":["$lookup:pause.other/a/b:id=x:name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "subtree"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
