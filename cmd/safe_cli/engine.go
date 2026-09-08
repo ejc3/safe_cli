@@ -21,15 +21,19 @@ import (
 // pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
 // applied here), the target, and the global switches.
 type verbCall struct {
-	entity, op    string
-	area, verb    string         // which of the op's verb blocks this is
-	group         string         // the block's optional third level (`website safe-search enable`)
-	given         map[string]any // flag name -> parsed value, explicitly given flags only
-	child         string         // --child SERVICE-ID ("" when not given)
-	selfSvc       string         // the caller's own service id (from the id_token)
-	selfPid       string         // the caller's own profile id (from the id_token)
-	appUUID       string
-	dryRun        bool
+	entity, op string
+	area, verb string         // which of the op's verb blocks this is
+	group      string         // the block's optional third level (`website safe-search enable`)
+	given      map[string]any // flag name -> parsed value, explicitly given flags only
+	child      string         // --child SERVICE-ID ("" when not given)
+	selfSvc    string         // the caller's own service id (from the id_token)
+	selfPid    string         // the caller's own profile id (from the id_token)
+	appUUID    string
+	dryRun     bool
+	// dump, when set with dryRun, replaces do for the FINAL request only: the account read
+	// and lookups stay real (they resolve the ids the dump shows), the verb's own request
+	// is rendered and printed, never sent.
+	dump          doFunc
 	confirm       bool
 	allowUnpaired bool
 }

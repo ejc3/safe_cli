@@ -228,6 +228,20 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab", "preset_group")
+	// cliTransformInputs lists the flag types each transform is defined for; a transform on
+	// any other type could never produce the wire form and is a descriptor error.
+	cliTransformInputs = map[string][]string{
+		"pause_schedule":   {"enum", "string"},
+		"tz_short":         {"tz", "string"},
+		"iso_micro":        {"datetime", "date", "duration", "string"},
+		"epoch_ms":         {"datetime", "date", "duration", "int", "string"},
+		"day3_lower":       {"list", "string"},
+		"day3_title":       {"list", "string"},
+		"bool01":           {"bool"},
+		"allow_block_ab":   {"enum", "string"},
+		"preset_group":     {"enum", "string"},
+		"mode_block_alert": {"enum", "string"},
+	}
 	// cliStructuredTransforms fill a FIXED set of body vars each; a flag's spreads_to must
 	// name exactly that set (mode_block_alert -> blockContent + alertOn, the wire-verified
 	// exclusive pair), so the engine's returned keys always have a destination.
