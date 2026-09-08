@@ -15,14 +15,15 @@ import (
 	"github.com/ejc3/safe_cli/internal/outfmt"
 )
 
-// verbCall is what a generated verb hands to invoke (docs/CLI-DESIGN.md §4): the op it was
-// generated from, the flags the user EXPLICITLY gave (the generator emits pointer fields
-// with no kong defaults, so absence is knowable — descriptor defaults are applied here),
-// the target, and the global switches.
+// verbCall is what a generated verb hands to invoke (docs/CLI-DESIGN.md §4): the op and
+// the verb it was generated from, the flags the user EXPLICITLY gave (the generator emits
+// pointer fields with no kong defaults, so absence is knowable — descriptor defaults are
+// applied here), the target, and the global switches.
 type verbCall struct {
 	entity, op    string
+	area, verb    string         // which of the op's verb blocks this is
 	given         map[string]any // flag name -> parsed value, explicitly given flags only
-	child         string         // --child SERVICE-ID ("" for account/self verbs)
+	child         string         // --child SERVICE-ID ("" when not given)
 	selfSvc       string         // the caller's own service id (from the id_token)
 	selfPid       string         // the caller's own profile id (from the id_token)
 	appUUID       string
@@ -31,20 +32,53 @@ type verbCall struct {
 	allowUnpaired bool
 }
 
-// invoke is the one engine behind every generated verb: select the op, resolve the target
-// (one cached account read), guard an unpaired device, assemble the variables (given flags,
-// descriptor defaults, transforms, nulls, spreads, resolved values, lookups), render the
-// body/query/path/headers from the descriptor's templates, then --dry-run or send and
-// render the output. Every request-shaping decision comes from the descriptor; nothing
-// here special-cases an op.
+// findVerb returns the op's verb block for area/verb (an op may back several verbs).
+func findVerb(o descriptor.Operation, area, verb string) *descriptor.CLI {
+	for _, b := range o.CLI {
+		if b.Area == area && b.Verb == verb {
+			return b
+		}
+	}
+	return nil
+}
+
+// applyBranch returns a select branch's request contract: the verb with the branch's
+// non-empty overrides (target, body_template, query, constants, resolve, headers) applied.
+func applyBranch(c *descriptor.CLI, r descriptor.SelectRule) *descriptor.CLI {
+	m := *c
+	m.Select = nil
+	if r.Target != "" {
+		m.Target = r.Target
+	}
+	if r.BodyTemplate != "" {
+		m.BodyTemplate = r.BodyTemplate
+	}
+	if r.Query != nil {
+		m.Query = r.Query
+	}
+	if r.Constants != nil {
+		m.Constants = r.Constants
+	}
+	if r.Resolve != nil {
+		m.Resolve = r.Resolve
+	}
+	return &m
+}
+
+// invoke is the one engine behind every generated verb: enforce the flag contract, resolve
+// the target (one cached account read), pick the op by declared condition, guard an unpaired
+// device, assemble the variables (given flags, descriptor defaults, transforms, spreads,
+// nulls, resolved values, lookups), render the body/query/path/headers from the descriptor's
+// templates, then --dry-run or send and render the output. Every request-shaping decision
+// comes from the descriptor; nothing here special-cases an op.
 func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCall, out io.Writer, asJSON bool) error {
 	o, err := resolveOp(d, vc.entity, vc.op)
 	if err != nil {
 		return err
 	}
-	c := o.CLI
-	if c == nil || c.Area == "" {
-		return fmt.Errorf("%s.%s has no generated verb; use `safe_cli call %s %s`", vc.entity, vc.op, vc.entity, vc.op)
+	c := findVerb(o, vc.area, vc.verb)
+	if c == nil {
+		return fmt.Errorf("%s.%s has no generated verb %q %q; use `safe_cli call %s %s`", vc.entity, vc.op, vc.area, vc.verb, vc.entity, vc.op)
 	}
 	flagByName := make(map[string]descriptor.Flag, len(c.Flags))
 	for _, f := range c.Flags {
@@ -54,16 +88,42 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if given == nil {
 		given = map[string]any{}
 	}
+	// Dependent-flag contract, on explicitly given flags, before any request.
+	for name := range given {
+		for _, req := range flagByName[name].Requires {
+			if _, ok := given[req]; !ok {
+				return fmt.Errorf("--%s requires --%s", name, req)
+			}
+		}
+	}
+	if len(c.OneOf) > 0 {
+		full := 0
+		groups := make([]string, 0, len(c.OneOf))
+		for _, grp := range c.OneOf {
+			all := true
+			for _, x := range grp {
+				if _, ok := given[x]; !ok {
+					all = false
+				}
+			}
+			if all {
+				full++
+			}
+			groups = append(groups, "--"+strings.Join(grp, " --"))
+		}
+		if full != 1 {
+			return fmt.Errorf("%s %s needs exactly one of: %s", c.Area, c.Verb, strings.Join(groups, " | "))
+		}
+	}
 
-	// Target: child/device verbs need --child and the family read; account/self verbs act
-	// on the caller's own service.
+	// Target: resolve --child whenever it was given (child/device verbs need it; a branch
+	// may need it; exists: lookups run under it). The chosen contract decides whether it
+	// was required.
+	childGiven := strings.TrimSpace(vc.child) != ""
 	var tgt *member
 	var acct *account
 	targetSvc := vc.selfSvc
-	if c.Target == "child" || c.Target == "device" {
-		if strings.TrimSpace(vc.child) == "" {
-			return fmt.Errorf("%s %s needs --child <SERVICE-ID> (run `safe_cli members`)", c.Area, c.Verb)
-		}
+	if childGiven {
 		acct, err = fetchAccount(ctx, do, d, vc.selfSvc, vc.appUUID)
 		if err != nil {
 			return err
@@ -74,23 +134,52 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		}
 		tgt = &m
 		targetSvc = fmt.Sprintf("%d", m.ServiceID)
-		if c.Target == "device" && !m.paired() && !vc.allowUnpaired {
-			return fmt.Errorf("member %d (%s) is %s: %s %s has no effect until the child's phone is paired (safe_cli pairing show --child %d). Pass --allow-unpaired to send anyway",
-				m.ServiceID, m.Name, strings.ToUpper(nonEmpty(m.Pairing, "UNPAIRED")), c.Area, c.Verb, m.ServiceID)
-		}
 	}
 	idHeaders := identityHeadersFrom(targetSvc, vc.selfPid, vc.appUUID, tgt, c.Target)
+
+	// Conditional op selection, declared in the descriptor; the branch's contract applies.
+	op, entity, merged := o, vc.entity, c
+	if rule, ok, err := selectRule(ctx, do, d, c, given, childGiven, idHeaders); err != nil {
+		return err
+	} else if ok {
+		ent, name, _ := strings.Cut(rule.Op, ".")
+		op, err = resolveOp(d, ent, name)
+		if err != nil {
+			return err
+		}
+		entity = ent
+		merged = applyBranch(c, rule)
+	}
+	if merged.Target == "child" || merged.Target == "device" {
+		if tgt == nil {
+			return fmt.Errorf("%s %s needs --child <SERVICE-ID> (run `safe_cli members`)", c.Area, c.Verb)
+		}
+		if merged.Target == "device" && !tgt.paired() && !vc.allowUnpaired {
+			return fmt.Errorf("member %d (%s) is %s: %s %s has no effect until the child's phone is paired (safe_cli pairing show --child %d). Pass --allow-unpaired to send anyway",
+				tgt.ServiceID, tgt.Name, strings.ToUpper(nonEmpty(tgt.Pairing, "UNPAIRED")), c.Area, c.Verb, tgt.ServiceID)
+		}
+	}
+	idHeaders = identityHeadersFrom(targetSvc, vc.selfPid, vc.appUUID, tgt, merged.Target)
+	if op.Destructive && !vc.confirm && !vc.dryRun {
+		return fmt.Errorf("%s %s is catastrophic and effectively irreversible — re-run with --confirm", c.Area, c.Verb)
+	}
+	if merged.LiveEmergency && !vc.confirm && !vc.dryRun {
+		return fmt.Errorf("%s %s triggers a LIVE emergency/dispatch flow on a real account — re-run with --confirm only if you mean it", c.Area, c.Verb)
+	}
 
 	// Variables: descriptor defaults under explicit values, transformed, spread, nulled.
 	vars := make(map[string]any)
 	queryVals := url.Values{}
 	pathVals := map[string]string{}
 	userHeaders := map[string]string{}
+	for k, v := range merged.Headers { // fixed header constants first; flag headers override
+		userHeaders[k] = v
+	}
 	repeat := map[string]bool{}
-	for _, f := range c.Flags {
+	for _, f := range merged.Flags {
 		v, ok := given[f.Name]
 		if !ok {
-			v, err = defaultFor(f, tgt, acct)
+			v, err = defaultFor(f)
 			if err != nil {
 				return err
 			}
@@ -129,6 +218,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 				repeat[name] = true
 			}
 		case "query":
+			if !containsStr(op.Query, arg) {
+				continue // declared for another branch's op only
+			}
 			s, err := queryString(tv)
 			if err != nil {
 				return fmt.Errorf("--%s: %w", f.Name, err)
@@ -144,49 +236,26 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// "$var?" properties are omitted (pause --indefinite drops pauseSchedule).
 	for name := range given {
 		for _, x := range flagByName[name].Nulls {
-			g := flagByName[x]
-			if kind, arg, _ := strings.Cut(g.MapsTo, ":"); kind == "body" {
+			if _, arg, _ := strings.Cut(flagByName[x].MapsTo, ":"); arg != "" {
 				delete(vars, strings.TrimPrefix(arg, "$"))
-			} else if kind == "query" {
-				queryVals.Del(arg)
 			}
 		}
 	}
-	if len(c.AtLeastOne) > 0 {
+	if len(merged.AtLeastOne) > 0 {
 		oneGiven := false
-		for _, x := range c.AtLeastOne {
+		for _, x := range merged.AtLeastOne {
 			if _, ok := given[x]; ok {
 				oneGiven = true
 			}
 		}
 		if !oneGiven {
-			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(c.AtLeastOne, ", --"))
+			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(merged.AtLeastOne, ", --"))
 		}
 	}
 
 	// Resolved values the user never types.
-	if err := fillResolved(ctx, do, d, c, vars, tgt, acct, vc, idHeaders, given); err != nil {
+	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, given); err != nil {
 		return err
-	}
-
-	// Conditional op selection, declared in the descriptor.
-	op := o
-	entity := vc.entity
-	if ref, ok, err := selectOp(ctx, do, d, c, given, vc.child != "", tgt, idHeaders); err != nil {
-		return err
-	} else if ok {
-		ent, name, _ := strings.Cut(ref, ".")
-		op, err = resolveOp(d, ent, name)
-		if err != nil {
-			return err
-		}
-		entity = ent
-	}
-	if op.Destructive && !vc.confirm && !vc.dryRun {
-		return fmt.Errorf("%s %s is catastrophic and effectively irreversible — re-run with --confirm", c.Area, c.Verb)
-	}
-	if c.LiveEmergency && !vc.confirm && !vc.dryRun {
-		return fmt.Errorf("%s %s triggers a LIVE emergency/dispatch flow on a real account — re-run with --confirm only if you mean it", c.Area, c.Verb)
 	}
 
 	// Path: placeholders from flags, then the target's ids for {deviceId}/{profileId}/{serviceId}.
@@ -203,7 +272,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		return err
 	}
 	// Query: declared constants/"$flag" values plus flag-mapped params.
-	q, err := renderQuery(c.Query, flagValues(vars, given, flagByName))
+	q, err := renderQuery(merged.Query, flagValues(given, flagByName))
 	if err != nil {
 		return err
 	}
@@ -218,8 +287,8 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	path = appendQuery(path, q)
 	// Body.
 	var body []byte
-	if c.BodyTemplate != "" {
-		body, err = renderTemplateRepeat(c.BodyTemplate, vars, repeat)
+	if merged.BodyTemplate != "" {
+		body, err = renderTemplateRepeat(merged.BodyTemplate, vars, repeat)
 		if err != nil {
 			return err
 		}
@@ -238,7 +307,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if vc.dryRun {
 		return writeDryRun(out, asJSON, resp, tgt)
 	}
-	return writeVerbResponse(out, asJSON, resp, c, tgt)
+	return writeVerbResponse(out, asJSON, resp, merged, tgt)
 }
 
 func nonEmpty(s, alt string) string {
@@ -270,7 +339,7 @@ func identityHeadersFrom(targetSvc, selfPid, appUUID string, tgt *member, target
 
 // defaultFor applies a flag's descriptor default. A literal is used as-is; a "$..." default
 // is a resolved value (only $local.timezone is a defaultable resolved value today).
-func defaultFor(f descriptor.Flag, tgt *member, acct *account) (any, error) {
+func defaultFor(f descriptor.Flag) (any, error) {
 	if f.Default == nil {
 		return nil, nil
 	}
@@ -360,29 +429,29 @@ func jsonNumber(s string) any {
 	return s
 }
 
-// selectOp evaluates cli.select in order and returns the chosen op ref, if any.
-func selectOp(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given map[string]any, childGiven bool, tgt *member, idHeaders map[string]string) (string, bool, error) {
+// selectRule evaluates cli.select in order and returns the first matching rule, if any.
+func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given map[string]any, childGiven bool, idHeaders map[string]string) (descriptor.SelectRule, bool, error) {
 	for _, r := range c.Select {
 		switch {
 		case r.When == "child":
 			if childGiven {
-				return r.Op, true, nil
+				return r, true, nil
 			}
 		case strings.HasPrefix(r.When, "flag:"):
 			if _, ok := given[strings.TrimPrefix(r.When, "flag:")]; ok {
-				return r.Op, true, nil
+				return r, true, nil
 			}
 		case strings.HasPrefix(r.When, "exists:"):
 			_, found, err := runLookup(ctx, do, d, strings.TrimPrefix(r.When, "exists:"), given, idHeaders)
 			if err != nil {
-				return "", false, err
+				return descriptor.SelectRule{}, false, err
 			}
 			if found {
-				return r.Op, true, nil
+				return r, true, nil
 			}
 		}
 	}
-	return "", false, nil
+	return descriptor.SelectRule{}, false, nil
 }
 
 // runLookup performs a $lookup:<entity>.<op>:<key>=<flag>:<field> enrichment read: GET the
@@ -477,7 +546,7 @@ func lookupMiss(spec string, given map[string]any) error {
 
 // flagValues exposes flag values by FLAG name for renderQuery's "$flag" references (vars is
 // keyed by body var name, which may differ).
-func flagValues(vars map[string]any, given map[string]any, flagByName map[string]descriptor.Flag) map[string]any {
+func flagValues(given map[string]any, flagByName map[string]descriptor.Flag) map[string]any {
 	out := make(map[string]any, len(given))
 	for name, f := range flagByName {
 		if v, ok := given[name]; ok {
