@@ -713,6 +713,9 @@ func TestInvokeOneReadPerLookupOp(t *testing.T) {
 	}
 	if reads != 1 {
 		t.Errorf("three lookups on one op must read it once, read %d times", reads)
+	}
+}
+
 // output.pick projects the response to one top-level field, and a find: flag keeps only the
 // objects whose field contains the text (case-insensitive), pruning non-matching leaves but
 // keeping the groups that contain a match — `apps list --find tiktok` answers with the one

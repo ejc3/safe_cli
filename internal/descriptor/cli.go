@@ -985,7 +985,11 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			if f.Default != nil {
 				return fmt.Errorf("flag --%s: a filter: flag may not have a default (it acts only when given; a default would advertise filtering that never happens)", f.Name)
+			}
 		case "find":
+			if f.Default != nil {
+				return fmt.Errorf("flag --%s: a find: flag may not have a default (it acts only when given)", f.Name)
+			}
 			// A client-side search: keeps the objects whose field contains the text
 			// (case-insensitive), with the groups that contain them; never part of the request.
 			if arg == "" {
@@ -1167,12 +1171,10 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				}
 			} else if g, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
-			} else if strings.HasPrefix(g.MapsTo, "filter:") {
-				return fmt.Errorf("query[%s] references --%s, a filter: flag that never reaches the request", name, g.Name)
-			} else if len(g.SpreadsTo) > 0 {
-				return fmt.Errorf("query[%s] references --%s, a spreads_to flag whose structured value cannot render as one parameter", name, g.Name)
 			} else if strings.HasPrefix(g.MapsTo, "filter:") || strings.HasPrefix(g.MapsTo, "find:") {
 				return fmt.Errorf("query[%s] references --%s, a filter:/find: flag that never reaches the request", name, g.Name)
+			} else if len(g.SpreadsTo) > 0 {
+				return fmt.Errorf("query[%s] references --%s, a spreads_to flag whose structured value cannot render as one parameter", name, g.Name)
 			}
 		}
 	}

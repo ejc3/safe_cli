@@ -48,7 +48,7 @@
     "filter": "See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow.",
     "apps": "Block or allow individual apps on a child's phone, and list which are blocked.",
     "website": "A child's website block list, trusted (allowed) list, and safe search.",
-    "website safe-search": "Enforced safe search on the child's search engines (Google, Bing, DuckDuckGo, Yandex, YouTube)."
+    "website safe-search": "Enforced safe search for the child's browsing — one switch for every search engine; `website list` shows the resulting per-engine state (safeSearch.domains[].enabled)."
   },
   "entities": {
     "accessibility_pin": {
@@ -405,9 +405,9 @@
               "verb": "block",
               "priority": "core",
               "target": "child",
-              "summary": "Block an app for this child, by the id that `filter categories` prints (enabled=true in the app's filter).",
+              "summary": "Block an app for this child, by the id that `apps list` prints (enabled=true means blocked).",
               "prereq": [
-                "Find the id with `safe_cli filter categories --child <SERVICE-ID>` (subCategories[].id); the enclosing category's fields are filled in for you."
+                "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
               ],
               "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=app:name\",\"id\":\"$app\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getCategories:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=app:^id\"}}",
               "constants": {
@@ -433,9 +433,9 @@
               "verb": "allow",
               "priority": "core",
               "target": "child",
-              "summary": "Allow (unblock) an app for this child, by the id that `filter categories` prints.",
+              "summary": "Allow (unblock) an app for this child, by the id that `apps list` prints.",
               "prereq": [
-                "Find the id with `safe_cli filter categories --child <SERVICE-ID>` (subCategories[].id); the enclosing category's fields are filled in for you."
+                "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
               ],
               "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=app:name\",\"id\":\"$app\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getCategories:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=app:^id\"}}",
               "constants": {
@@ -1303,7 +1303,7 @@
                 "name": "find",
                 "type": "string",
                 "maps_to": "find:name",
-                "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
+                "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
               }
             ]
           }
@@ -1437,7 +1437,7 @@
                   "name": "find",
                   "type": "string",
                   "maps_to": "find:name",
-                  "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
+                  "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
                 }
               ]
             },
@@ -1459,7 +1459,7 @@
                   "name": "find",
                   "type": "string",
                   "maps_to": "find:name",
-                  "help": "Only entries whose name contains this text (case-insensitive), kept under their category."
+                  "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
                 }
               ],
               "output": {
@@ -5846,7 +5846,7 @@
                 "name": "find",
                 "type": "string",
                 "maps_to": "find:url",
-                "help": "Only entries whose url contains this text (case-insensitive)."
+                "help": "Only entries whose url contains this text (case-insensitive); their enclosing groups are kept."
               }
             ]
           }

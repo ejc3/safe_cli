@@ -13,8 +13,8 @@ type generatedAreas struct {
 
 // AppsArea groups the apps verbs (core verbs first).
 type AppsArea struct {
-	Allow AppsAllowCmd `cmd:"" name:"allow" help:"Allow (unblock) an app for this child, by the id that 'filter categories' prints.\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
-	Block AppsBlockCmd `cmd:"" name:"block" help:"Block an app for this child, by the id that 'filter categories' prints (enabled=true in the app's filter).\nPrerequisite: Find the id with 'safe_cli filter categories --child <SERVICE-ID>' (subCategories[].id); the enclosing category's fields are filled in for you."`
+	Allow AppsAllowCmd `cmd:"" name:"allow" help:"Allow (unblock) an app for this child, by the id that 'apps list' prints.\nPrerequisite: Find the app's id with 'safe_cli apps list --child <SERVICE-ID> --find <name>' (subCategories[].id); the app's category fields are filled in for you."`
+	Block AppsBlockCmd `cmd:"" name:"block" help:"Block an app for this child, by the id that 'apps list' prints (enabled=true means blocked).\nPrerequisite: Find the app's id with 'safe_cli apps list --child <SERVICE-ID> --find <name>' (subCategories[].id); the app's category fields are filled in for you."`
 	List  AppsListCmd  `cmd:"" name:"list" help:"List the apps the filter knows — the Apps & websites groups (Messaging, Social Media, Games, Videos, Music, Finance, Generative AI, Dating, Email, VoIP), each app with its id and enabled=true where it is blocked now."`
 }
 
@@ -52,7 +52,7 @@ func (c *AppsBlockCmd) Run(rc *runContext) error {
 type AppsListCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
-	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
+	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
@@ -111,7 +111,7 @@ func (c *FilterBlockCmd) Run(rc *runContext) error {
 type FilterCategoriesCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	SearchEngines *bool   `name:"search-engines" help:"Also include the app's safe-search entries (default: false)."`
-	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
+	Find          *string `name:"find" help:"Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
@@ -144,7 +144,7 @@ func (c *FilterSetCmd) Run(rc *runContext) error {
 // FilterShowCmd: filter  show <- content_filter.getFilterContent
 type FilterShowCmd struct {
 	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
-	Find   *string `name:"find" help:"Only entries whose name contains this text (case-insensitive), kept under their category."`
+	Find   *string `name:"find" help:"Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
@@ -231,7 +231,7 @@ type WebsiteArea struct {
 	Block      WebsiteBlockCmd        `cmd:"" name:"block" help:"Add one or more websites to this child's block list.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nPrerequisite: Reverse with 'website remove --entry-id' (ids from 'website list').\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
 	List       WebsiteListCmd         `cmd:"" name:"list" help:"List this child's blocked websites, trusted (allowed) websites — each with the profileDomainId that 'website remove --entry-id' takes — and the safe-search state per search engine."`
 	Remove     WebsiteRemoveCmd       `cmd:"" name:"remove" help:"Remove a website from this child's block or trusted list.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
-	SafeSearch WebsiteSafeSearchGroup `cmd:"" name:"safe-search" help:"Enforced safe search on the child's search engines (Google, Bing, DuckDuckGo, Yandex, YouTube)."`
+	SafeSearch WebsiteSafeSearchGroup `cmd:"" name:"safe-search" help:"Enforced safe search for the child's browsing — one switch for every search engine; 'website list' shows the resulting per-engine state (safeSearch.domains[].enabled)."`
 }
 
 // WebsiteSafeSearchGroup is the `website safe-search` subcommand.
@@ -243,7 +243,7 @@ type WebsiteSafeSearchGroup struct {
 // WebsiteAllowCmd: website  allow <- website.postWebsites
 type WebsiteAllowCmd struct {
 	Child         *string  `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
-	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable." sep:"none" required:""`
+	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable (pass the flag once per value)." sep:"none" required:""`
 	DryRun        bool     `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 	AllowUnpaired bool     `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
 }
@@ -259,7 +259,7 @@ func (c *WebsiteAllowCmd) Run(rc *runContext) error {
 // WebsiteBlockCmd: website  block <- website.postWebsites
 type WebsiteBlockCmd struct {
 	Child         *string  `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
-	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable." sep:"none" required:""`
+	Url           []string `name:"url" help:"A bare domain such as example.com (no scheme). Repeat --url for several. Repeatable (pass the flag once per value)." sep:"none" required:""`
 	DryRun        bool     `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 	AllowUnpaired bool     `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
 }
@@ -275,7 +275,7 @@ func (c *WebsiteBlockCmd) Run(rc *runContext) error {
 // WebsiteListCmd: website  list <- web_and_apps.getWebsites2
 type WebsiteListCmd struct {
 	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
-	Find   *string `name:"find" help:"Only entries whose url contains this text (case-insensitive)."`
+	Find   *string `name:"find" help:"Only entries whose url contains this text (case-insensitive); their enclosing groups are kept."`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
