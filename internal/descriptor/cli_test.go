@@ -15,6 +15,7 @@ func cliFixture(cli string, extra string) []byte {
 	  "pauseIt":{"method":"POST","path":"/p","takes_body":true` + extra + `,"cli":` + cli + `},
 	  "other":{"method":"GET","path":"/o"},
 	  "other2":{"method":"POST","path":"/o2","takes_body":true,"query":["lat","lon","address","alt"],"headers":["timezone"]},
+	  "purge":{"method":"GET","path":"/purge","destructive":true},
 	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}}}}}}`)
 }
 
@@ -33,6 +34,35 @@ const validPause = `{
   "resolve":["$child.profileId","$child.serviceId","$child.deviceId","$local.timezone"]
 }`
 
+// Codex #70-1 (positive): the branch-only query flag is fine when it is the branch's own
+// flag: condition, when it requires the flag that is, or when the branch is the child one
+// (the engine names the missing selector at run time).
+func TestCLIBranchOnlyQueryFlagReachableAccepted(t *testing.T) {
+	for name, cli := range map[string]string{
+		"own selector":          `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:alt","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`,
+		"requires the selector": `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","requires":["x"],"maps_to":"query:alt","help":"h"}]}`,
+		"child branch":          `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2","target":"child"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`,
+	} {
+		if _, err := Parse(cliFixture(cli, "")); err != nil {
+			t.Errorf("%s: a reachable branch-only query flag must be accepted: %v", name, err)
+		}
+	}
+}
+
+// Codex #70-2 (positive): one op may back `a g1 show` and `a g2 show` — the group is part
+// of the command path, so the per-op duplicate check must include it.
+func TestCLIGroupDistinguishesVerbsOnOneOp(t *testing.T) {
+	verb := func(group string) string {
+		return `{"area":"a","group":"` + group + `","verb":"show","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`
+	}
+	if _, err := Parse(cliFixture("["+verb("g1")+","+verb("g2")+"]", "")); err != nil {
+		t.Fatalf("distinct groups are distinct command paths: %v", err)
+	}
+	if _, err := Parse(cliFixture("["+verb("g1")+","+verb("g1")+"]", "")); err == nil || !strings.Contains(err.Error(), "declared twice") {
+		t.Fatalf("the same group+verb twice on one op must still be rejected, got %v", err)
+	}
+}
+
 func TestCLIValidVerbParses(t *testing.T) {
 	if _, err := Parse(cliFixture(validPause, "")); err != nil {
 		t.Fatalf("a valid verb must parse: %v", err)
@@ -47,6 +77,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		name, cli, extra, want string
 	}{
 		{"two shapes", `{"area":"a","verb":"v","call_only":true,"reason":"x"}`, "", "exactly one of"},
+		// Codex #70-3: a null list entry is a load error, never a nil dereference.
+		{"null cli entry", `[null]`, "", "null"},
+		// Codex #69-1: a lookup runs BEFORE --confirm, so it may only name a read-only GET.
+		{"lookup to a mutating op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.twin::x\"}","resolve":["$lookup:pause.twin::x"]}`, "", "read-only GET"},
+		{"lookup to a destructive read", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.purge::x\"}","resolve":["$lookup:pause.purge::x"]}`, "", "read-only GET"},
+		{"exists lookup to a mutating op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"exists:$lookup:pause.twin::x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "read-only GET"},
+		// Codex #70-1: a query param only a branch op declares must be reachable whenever its
+		// flag is given — the flag selects that branch itself, requires the flag that does,
+		// or the branch is the --child one; otherwise --alt alone selects the base op and
+		// the engine would have to drop the value.
+		{"branch-only query flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`, "", "does not select"},
+		{"branch-only query flag under an exists branch only", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"exists:$lookup:pause.other::id","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`, "", "does not select"},
 		{"alias to missing op", `{"alias_of":"pause.nope"}`, "", "does not name an existing"},
 		{"call_only without reason", `{"call_only":true}`, "", "needs a reason"},
 		{"bad priority", `{"area":"a","verb":"v","priority":"urgent","target":"child","summary":"s"}`, "", "priority"},

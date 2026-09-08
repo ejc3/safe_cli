@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"regexp"
 	"sort"
@@ -172,6 +173,11 @@ func (b *CLIBlocks) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(trimmed, &list); err != nil {
 			return err
 		}
+		for i, c := range list {
+			if c == nil {
+				return fmt.Errorf("cli[%d] is null", i)
+			}
+		}
 		*b = list
 		return nil
 	}
@@ -242,14 +248,15 @@ func (d *Descriptor) validateCLIBlocks() error {
 						return fmt.Errorf("%s.%s cli[%d]: alias_of or call_only must be the only entry of an op's cli list", ename, oname, i)
 					}
 					if c.Verb != "" {
-						key := c.Area + " " + c.Verb
-						if seenVerb[key] {
-							return fmt.Errorf("%s.%s cli[%d]: verb %s declared twice on this op", ename, oname, i, key)
+						// The group is part of the command path, so one op may back
+						// `area g1 show` and `area g2 show`.
+						full := strings.TrimSpace(c.Area + " " + c.Group + " " + c.Verb)
+						if seenVerb[full] {
+							return fmt.Errorf("%s.%s cli[%d]: verb %s declared twice on this op", ename, oname, i, full)
 						}
-						seenVerb[key] = true
+						seenVerb[full] = true
 						// The generator binds one command path to one op; two ops claiming it
 						// would silently select or overwrite one of them.
-						full := strings.TrimSpace(c.Area + " " + c.Group + " " + c.Verb)
 						if owner, dup := paths[full]; dup && owner != ename+"."+oname {
 							return fmt.Errorf("%s.%s cli[%d]: command path %q is declared by both %s and %s.%s", ename, oname, i, full, owner, ename, oname)
 						}
@@ -270,23 +277,6 @@ func (d *Descriptor) validateCLIBlocks() error {
 		}
 	}
 	return nil
-}
-
-// opExists reports whether "entity.op" names an operation or action.
-func (d *Descriptor) opExists(ref string) bool {
-	ent, op, ok := strings.Cut(ref, ".")
-	if !ok {
-		return false
-	}
-	e, ok := d.Entities[ent]
-	if !ok {
-		return false
-	}
-	if _, ok := e.Operations[op]; ok {
-		return true
-	}
-	_, ok = e.Actions[op]
-	return ok
 }
 
 func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
@@ -372,6 +362,26 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		}
 	}
 	return nil
+}
+
+// branchSelects reports whether giving flag f is enough to reach a select branch whose op
+// declares query param arg: f is that branch's flag: condition, f requires the flag that
+// is, or the branch is the child one (the engine then names --child as the missing
+// selector). Otherwise f alone selects the base op and its value would have to be dropped.
+func (d *Descriptor) branchSelects(c *CLI, f Flag, arg string) bool {
+	for _, r := range c.Select {
+		bo, ok := d.lookupOp(r.Op)
+		if !ok || !contains(bo.Query, arg) {
+			continue
+		}
+		switch {
+		case r.When == "child", r.When == "flag:"+f.Name:
+			return true
+		case strings.HasPrefix(r.When, "flag:") && contains(f.Requires, strings.TrimPrefix(r.When, "flag:")):
+			return true
+		}
+	}
+	return false
 }
 
 // lookupOp returns the operation "entity.op" names.
@@ -515,6 +525,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		case "query":
 			if !contains(queryNames, arg) {
 				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, queryNames)
+			}
+			if !contains(o.Query, arg) && !d.branchSelects(c, f, arg) {
+				return fmt.Errorf("flag --%s: query %q is declared only by a select branch that --%s does not select; make it the branch's flag: condition, give it requires: [<the selector flag>], or select on child", f.Name, arg, f.Name)
 			}
 			if prev, dup := queryFromFlag[arg]; dup {
 				return fmt.Errorf("flag --%s: query %q is already mapped from --%s (one query parameter, one source)", f.Name, arg, prev)
@@ -720,8 +733,14 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 		if field == "" {
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
 		}
-		if !d.opExists(ref) {
+		lo, ok := d.lookupOp(ref)
+		if !ok {
 			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
+		}
+		// A lookup runs before the verb's own --confirm guard, so it may only ever name a
+		// read-only GET; a typo pointing at a mutating or destructive op must not ship.
+		if lo.Method != http.MethodGet || lo.Destructive {
+			return fmt.Errorf("$lookup %q must name a read-only GET op (lookups run before --confirm); %s is %s%s", v, ref, lo.Method, map[bool]string{true: " and destructive", false: ""}[lo.Destructive])
 		}
 		if keyEq == "" { // unkeyed: the target's singleton record (screen-time set's one limit)
 			return nil
