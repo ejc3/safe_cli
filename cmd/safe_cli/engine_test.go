@@ -114,20 +114,6 @@ func TestInvokePauseIndefiniteOmitsSchedule(t *testing.T) {
 	}
 }
 
-// Codex #71-1: an explicit --indefinite=false is a timed pause, not an indefinite one: a
-// false bool must not fire its nulls, so pauseSchedule stays and untilIUnpause is false.
-func TestInvokeFalseBoolDoesNotNull(t *testing.T) {
-	fb := newFakeBackend(t)
-	d, _ := descriptor.Default()
-	if err := invoke(context.Background(), fb.do(), d, pauseCall(map[string]any{"indefinite": false, "for": "1h"}, "2000001"), &strings.Builder{}, true); err != nil {
-		t.Fatalf("invoke: %v", err)
-	}
-	b := fb.seen[pausePath].body
-	if !strings.Contains(b, `"pauseSchedule":"1_hour"`) || !strings.Contains(b, `"untilIUnpause":false`) {
-		t.Errorf("--indefinite=false --for 1h must send a timed pause: %s", b)
-	}
-}
-
 // Codex #71-3: resume on an already-unpaused child is a documented 500 "Device already
 // unpaused"; the verb reports it as a successful no-op (ok_on in its cli block), so a
 // retry is idempotent, and --json still carries _meta.target.

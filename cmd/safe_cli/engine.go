@@ -13,6 +13,7 @@ import (
 	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/descriptor"
 	"github.com/ejc3/safe_cli/internal/outfmt"
+	"github.com/ejc3/safe_cli/internal/tokenstore"
 )
 
 // verbCall is what a generated verb hands to invoke (docs/CLI-DESIGN.md §4): the op and
@@ -474,6 +475,13 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	}
 	if len(filters) > 0 && resp.Status < 400 {
 		resp.Body = filterResponse(resp.Body, filters)
+	}
+	if resp.Status >= 400 {
+		for _, k := range merged.OKOn {
+			if resp.Status == k.Status && strings.Contains(strings.ToLower(string(resp.Body)), strings.ToLower(k.Contains)) {
+				return writeOKOn(out, asJSON, resp, k, tgt)
+			}
+		}
 	}
 	return writeVerbResponse(out, asJSON, resp, merged, tgt)
 }
@@ -1062,4 +1070,42 @@ func upper(xs []string) []string {
 		out[i] = strings.ToUpper(x)
 	}
 	return out
+}
+
+// writeOKOn reports a documented error response the verb declares as a successful no-op
+// (ok_on): the declared result, the HTTP status it came from, and the target.
+func writeOKOn(out io.Writer, asJSON bool, resp *client.Response, k descriptor.OKOn, tgt *member) error {
+	if asJSON {
+		m := map[string]any{"statusCode": resp.Status, "result": k.Result, "noop": true}
+		if tgt != nil {
+			m["_meta"] = map[string]any{"target": tgt}
+		}
+		return outfmt.JSON(out, m)
+	}
+	return outfmt.Table(out, []string{"RESULT"}, [][]string{{k.Result}})
+}
+
+// runVerb is the runtime behind every generated verb: load the session, take the caller's
+// own ids from the id_token, and hand the flags the user gave to invoke. --dry-run keeps the
+// account read real and dumps only the request the verb would send.
+func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool) error {
+	st, ts, err := loadTokens()
+	if err != nil {
+		return err
+	}
+	idt, ok := ts.IDToken()
+	if !ok {
+		return fmt.Errorf("no id_token in the stored tokens; run `safe_cli auth login`")
+	}
+	claims := tokenstore.Claims(idt)
+	appUUID, _ := resolveAppUUID(ts)
+	vc := verbCall{
+		entity: entity, op: op, area: area, verb: verb, given: given, child: child,
+		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
+		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
+	}
+	if dryRun {
+		vc.dump = dumpRequest(rc, idt)
+	}
+	return invoke(context.Background(), authedRequest(rc, st, ts), rc.D, vc, rc.Out, rc.G.JSON)
 }
