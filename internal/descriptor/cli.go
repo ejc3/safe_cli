@@ -190,8 +190,12 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
-	// cliStructuredTransforms return one value per spreads_to destination.
-	cliStructuredTransforms = set("mode_block_alert")
+	// cliStructuredTransforms fill a FIXED set of body vars each; a flag's spreads_to must
+	// name exactly that set (mode_block_alert -> blockContent + alertOn, the wire-verified
+	// exclusive pair), so the engine's returned keys always have a destination.
+	cliStructuredTransforms = map[string][]string{
+		"mode_block_alert": {"blockContent", "alertOn"},
+	}
 	// cliResolveNames is the EXACT vocabulary of resolved variables the engine can fill
 	// (plus the structured $lookup form checked by checkResolveVar). Exact, not a prefix:
 	// a typo like $child.profielId must fail at load, not reach the engine.
@@ -421,8 +425,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			return fmt.Errorf("flag --%s: needs exactly one of maps_to or spreads_to", f.Name)
 		}
 		if len(f.SpreadsTo) > 0 {
-			if !cliStructuredTransforms[f.Transform] {
-				return fmt.Errorf("flag --%s: spreads_to needs a structured transform (one of %s), got %q", f.Name, joinSet(cliStructuredTransforms), f.Transform)
+			want, structured := cliStructuredTransforms[f.Transform]
+			if !structured {
+				return fmt.Errorf("flag --%s: spreads_to needs a structured transform (one of %s), got %q", f.Name, joinKeys(cliStructuredTransforms), f.Transform)
+			}
+			if got := spreadVars(f.SpreadsTo); !sameSet(got, want) {
+				return fmt.Errorf("flag --%s: transform %s must spread to exactly %v, got %v", f.Name, f.Transform, want, got)
 			}
 			for _, dest := range f.SpreadsTo {
 				kind, arg, ok := strings.Cut(dest, ":")
@@ -767,6 +775,40 @@ func looksResolve(v string) bool {
 		}
 	}
 	return false
+}
+
+// spreadVars strips the body:$ prefix from spreads_to destinations.
+func spreadVars(dests []string) []string {
+	out := make([]string, 0, len(dests))
+	for _, d := range dests {
+		out = append(out, strings.TrimPrefix(strings.TrimPrefix(d, "body:"), "$"))
+	}
+	return out
+}
+
+func sameSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	seen := make(map[string]bool, len(a))
+	for _, x := range a {
+		seen[x] = true
+	}
+	for _, y := range b {
+		if !seen[y] {
+			return false
+		}
+	}
+	return true
+}
+
+func joinKeys(m map[string][]string) string {
+	names := make([]string, 0, len(m))
+	for n := range m {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return strings.Join(names, " ")
 }
 
 func joinSet(m map[string]bool) string {
