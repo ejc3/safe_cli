@@ -60,7 +60,7 @@ The descriptor stays the single source of truth. Each op gains a `cli` entry —
     "summary": "Pause the child's internet now, for a fixed time or until you resume it.",
     "prereq": ["The child's phone must be PAIRED (safe_cli members shows PAIRING)."],
     "auth": "id_token",
-    "body_template": "{\"timeZone\":\"$tz\",\"profiles\":[{\"profileId\":$child.profileId,\"devices\":[{\"serviceId\":$child.serviceId,\"deviceId\":$child.deviceId,\"pauseSchedule\":$for?,\"untilIUnpause\":$indefinite,\"callOnlyMode\":$callOnly}]}]}",
+    "body_template": "{\"timeZone\":\"$tz\",\"profiles\":[{\"profileId\":\"$child.profileId\",\"devices\":[{\"serviceId\":\"$child.serviceId\",\"deviceId\":\"$child.deviceId\",\"pauseSchedule\":\"$for?\",\"untilIUnpause\":\"$indefinite\",\"callOnlyMode\":\"$callOnly\"}]}]}",
     "flags": [
       {"name": "for", "type": "enum", "enum": ["30m","1h","2h","4h","until-morning"], "default": "30m",
        "maps_to": "body:$for", "transform": "pause_schedule",
