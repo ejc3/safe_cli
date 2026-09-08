@@ -30,7 +30,9 @@ func TestCLIDesignPinsSchemaContracts(t *testing.T) {
 		needles []string
 	}{
 		{"conditional omission ($var?)", []string{"$var?", "omitted from the body entirely"}},
-		{"explicit query constants", []string{"`query`: an explicit map", "{\"categorySupported\": \"v6\"}"}},
+		{"explicit query constants", []string{"`query`: an explicit map", "{\"categorySupported\": \"v6\"}", "{\"strategy\": \"NotNull\"}"}},
+		{"excludes never names a defaulted flag", []string{"`excludes[]` may only name flags that have no `default`"}},
+		{"at_least_one for account set", []string{"`at_least_one: [flags]`", "`set [--family-name] [--timezone]`"}},
 		{"reject unclassified fields", []string{"**rejected** by the descriptor test", "sample `geofenceId` must be dropped"}},
 	}
 	for _, c := range checks {
