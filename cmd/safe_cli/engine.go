@@ -198,6 +198,24 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(c.AtLeastOne, ", --"))
 		}
 	}
+	// Enum values and at_least_one are structural too: refuse them here, before the
+	// account read, rather than after a network round trip.
+	for name, v := range given {
+		if err := checkEnum(flagByName[name], v); err != nil {
+			return err
+		}
+	}
+	if len(c.AtLeastOne) > 0 {
+		oneGiven := false
+		for _, x := range c.AtLeastOne {
+			if _, ok := present[x]; ok {
+				oneGiven = true
+			}
+		}
+		if !oneGiven {
+			return fmt.Errorf("%s %s needs at least one of --%s", c.Area, c.Verb, strings.Join(c.AtLeastOne, ", --"))
+		}
+	}
 
 	// Target: resolve --child whenever it was given (child/device verbs need it; a branch
 	// may need it; exists: lookups run under it). The chosen contract decides whether it
