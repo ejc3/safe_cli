@@ -13,8 +13,8 @@ import (
 const fixture = `{"name":"t","base_url":"https://h","areas":{"a":"help"},"entities":{"t":{"id_field":"","operations":{
   "base":{"method":"GET","path":"/b","query":["q","q2"],
     "cli":{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
-      "select":[{"when":"flag:x","op":"t.del"}],
-      "flags":[{"name":"x","type":"string","required":true,"maps_to":"query:q","help":"h"},
+      "select":[{"when":"flag:sel","op":"t.del"}],
+      "flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"query:q","help":"h"},
                {"name":"y","type":"int","maps_to":"query:q2","help":"h"}]}},
   "del":{"method":"DELETE","path":"/d","query":["q","q2"],"destructive":true}}}}}`
 
