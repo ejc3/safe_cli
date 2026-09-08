@@ -111,3 +111,26 @@ func TestFlagHelpRendering(t *testing.T) {
 		t.Errorf("an int default must not render in exponent notation:\n%s", s)
 	}
 }
+
+// --child is required to kong only when every contract of the verb needs it: a child base
+// with a branch that overrides the target to account/self must leave it optional and let
+// the engine enforce it for the branches that do (Codex #71 round 6).
+func TestChildOptionalWhenABranchDropsTheTarget(t *testing.T) {
+	const fx = `{"name":"t","base_url":"https://h","areas":{"a":"help"},"entities":{"t":{"id_field":"","operations":{
+	  "base":{"method":"GET","path":"/b","headers":["x-fp-identifier-target-serviceid"],
+	    "cli":{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	      "select":[{"when":"flag:all","op":"t.acct","target":"account"}],
+	      "flags":[{"name":"all","type":"string","maps_to":"filter:role","help":"h"}]}},
+	  "acct":{"method":"GET","path":"/acct","headers":["x-fp-identifier-target-serviceid"]}}}}}`
+	d, err := descriptor.Parse([]byte(fx))
+	if err != nil {
+		t.Fatalf("fixture must validate: %v", err)
+	}
+	src, err := Source(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if regexp.MustCompile(`Child\s+\*string\s+` + "`" + `name:"child"[^` + "`" + `]*required:""`).MatchString(string(src)) {
+		t.Errorf("--child must not be required to kong when a branch drops the child target:\n%s", src)
+	}
+}

@@ -150,6 +150,11 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 		if b.Target != "child" && b.Target != "device" {
 			req, tag = "Optional: selects the per-child form.", ""
 		}
+		for _, r := range b.Select { // a branch onto an account/self contract needs no child
+			if r.Target == "account" || r.Target == "self" {
+				req, tag = "Required unless the invocation selects the account-wide form; the engine enforces it.", ""
+			}
+		}
 		fmt.Fprintf(w, "\tChild *string `name:\"child\" help:%s%s`\n", tagQuote("The child, by the SERVICE-ID that `safe_cli members` prints. "+req), tag)
 	}
 	for _, f := range b.Flags {
