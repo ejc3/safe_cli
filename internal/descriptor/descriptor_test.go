@@ -772,26 +772,42 @@ func TestParseRejectsRequiredQueryNotInQuery(t *testing.T) {
 	}
 }
 
-// The call/text activity list op requires startDate and endDate — verified against the live
-// API, which 400s "start date is empty;end date is empty" without them. This pins that
-// grounding so the required_query is not silently dropped or widened to unverified params.
+// The calls_and_texts activity family's required_query is pinned to what was verified against
+// the live API (each op 400s "<field> is empty" for a missing required param), so it is not
+// silently dropped or widened to unverified params. Notably getTopContactListByActivityV7's
+// profileId/deviceId are NOT required (dates-only returns 404 not-found, not a 400), so they
+// must stay out of required_query — a good guard against guessing "ids are always required".
 func TestCallTextActivityRequiredQuery(t *testing.T) {
 	d, err := Default()
 	if err != nil {
 		t.Fatal(err)
 	}
 	e, _ := d.Entity("calls_and_texts")
-	op := e.Operations["getCallAndTextActivityListV7"]
-	got := map[string]bool{}
-	for _, r := range op.RequiredQuery {
-		got[r] = true
+	want := map[string][]string{
+		"getCallAndTextActivityListV7":                {"startDate", "endDate"},
+		"getCallAndTextProfileSummaryListV7":          {"startDate", "endDate"},
+		"getCallAndTextSpecificContactActivityListV7": {"otherPartyMdn", "startDate", "endDate"},
+		"getTopContactListByActivityV7":               {"startDate", "endDate"},
 	}
-	if len(op.RequiredQuery) != 2 || !got["startDate"] || !got["endDate"] {
-		t.Errorf("required_query = %v, want exactly [startDate endDate]", op.RequiredQuery)
-	}
-	// betaProviders/summaryOnly are documented optional — they must NOT be required.
-	if got["betaProviders"] || got["summaryOnly"] {
-		t.Errorf("optional params marked required: %v", op.RequiredQuery)
+	for opName, wantReq := range want {
+		op := e.Operations[opName]
+		got := map[string]bool{}
+		for _, r := range op.RequiredQuery {
+			got[r] = true
+		}
+		if len(op.RequiredQuery) != len(wantReq) {
+			t.Errorf("%s required_query = %v, want %v", opName, op.RequiredQuery, wantReq)
+			continue
+		}
+		for _, r := range wantReq {
+			if !got[r] {
+				t.Errorf("%s required_query = %v, missing %q (want %v)", opName, op.RequiredQuery, r, wantReq)
+			}
+		}
+		// Documented-optional params must never be marked required.
+		if got["betaProviders"] || got["summaryOnly"] || got["profileId"] || got["deviceId"] {
+			t.Errorf("%s marks an optional param required: %v", opName, op.RequiredQuery)
+		}
 	}
 }
 
