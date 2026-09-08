@@ -268,6 +268,16 @@ func assembleHeaders(o descriptor.Operation, idHeaders, userHeaders map[string]s
 	headers := make(map[string]string)
 	var missingSvc []string
 	for _, h := range o.Headers {
+		if isDynamicHeaderMap(h) {
+			// The decompiler's placeholder for an arbitrary header map (getAccountDetails):
+			// the app fills it with the identity headers, so forward every one we have.
+			for k, v := range idHeaders {
+				if v != "" {
+					headers[k] = v
+				}
+			}
+			continue
+		}
 		switch {
 		case idHeaders[h] != "":
 			headers[h] = idHeaders[h]

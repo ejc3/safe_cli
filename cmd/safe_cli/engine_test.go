@@ -217,7 +217,11 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
         {"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"},
         {"name":"status","type":"enum","enum":["allow","block"],"default":"block","maps_to":"body:$status","transform":"allow_block_ab","help":"h"},
         {"name":"cat","type":"int","required":true,"maps_to":"body:$cat","help":"h"},
-        {"name":"name","type":"string","maps_to":"header:x-name","help":"h"}]}},
+        {"name":"name","type":"string","default":"dflt","maps_to":"header:x-name","help":"h"}]}},
+  "alerts":{"method":"GET","path":"/al",
+    "cli":{"area":"t","verb":"alerts","priority":"core","target":"account","summary":"s",
+      "select":[{"when":"child","op":"t.listA","target":"child"}],
+      "flags":[{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}},
   "log":{"method":"GET","path":"/a","query":["q","alt"],
     "cli":{"area":"t","verb":"log","priority":"core","target":"child","summary":"s",
       "select":[{"when":"flag:alt","op":"t.listB"}],
@@ -229,7 +233,7 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
   "chores":{"method":"GET","path":"/c","headers":["timezone","x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"chores","priority":"core","target":"child","summary":"s",
       "headers":{"timezone":"$local.timezone"},"resolve":["$local.timezone"]}},
-  "acct":{"method":"GET","path":"/acct"},
+  "acct":{"method":"GET","path":"/acct","headers":["(@HeaderMap dynamic)"]},
   "stget":{"method":"GET","path":"/stget","headers":["x-fp-identifier-target-serviceid"]},
   "stput":{"method":"PUT","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"]},
   "stset":{"method":"POST","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
@@ -399,7 +403,11 @@ func TestInvokeResolverVarInHeader(t *testing.T) {
 // (no id) when it does not.
 func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
 	fb := newFakeBackend(t)
-	fb.extra["/acct"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"familyName":"Rivera"}`)) }
+	// Codex #69-4: the account read wraps its record ({"accounts":[{...}]}); the singleton
+	// lookup must find the object that carries the field, not stop at the wrapper.
+	fb.extra["/acct"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"accounts":[{"familyName":"Rivera"}]}`))
+	}
 	d := engineDescriptor(t)
 	// no existing limit -> base op POST, no id, name defaulted from the account read
 	fb.extra["/stget"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) }
@@ -409,9 +417,16 @@ func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
 	if r := fb.seen["/st"]; r.method != "POST" || !strings.Contains(r.body, `"name":"Rivera"`) || strings.Contains(r.body, "screenTimeLimitId") {
 		t.Errorf("create branch wrong: %+v", r)
 	}
+	// Codex #69-5: the lookup op declares the decompiler's dynamic header map, so the
+	// identity headers must be forwarded rather than dropped.
+	if got := fb.seen["/acct"].headers.Get("x-fp-identifier-target-serviceid"); got != "2000001" {
+		t.Errorf("a dynamic-header lookup must carry the target header, got %q", got)
+	}
 	// existing limit -> branch op PUT with the id resolved from the singleton read
 	delete(fb.seen, "/st")
+	reads := 0
 	fb.extra["/stget"] = func(w http.ResponseWriter, _ *http.Request) {
+		reads++
 		_, _ = w.Write([]byte(`{"screenTimeLimitId":55,"weeklyLimits":{}}`))
 	}
 	if err := invoke(context.Background(), fb.do(), d, childCall("stset", "stset", map[string]any{"name": "n2"}), &strings.Builder{}, true); err != nil {
@@ -419,6 +434,51 @@ func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
 	}
 	if r := fb.seen["/st"]; r.method != "PUT" || !strings.Contains(r.body, `"screenTimeLimitId":55`) || !strings.Contains(r.body, `"name":"n2"`) {
 		t.Errorf("update branch wrong: %+v", r)
+	}
+	// Codex #69-6: the exists: condition and the resolve entry name the same lookup; one
+	// invocation reads it once so selection and rendering share a snapshot.
+	if reads != 1 {
+		t.Errorf("the singleton was read %d times in one invocation, want 1", reads)
+	}
+}
+
+// Codex #69-3: a "$flag" reference in the verb's query map takes the flag's descriptor
+// default when the flag is not given (the flag's primary destination is a header here).
+func TestInvokeQueryTemplateUsesFlagDefault(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"categories":[{"id":10003,"name":"Games"}]}`))
+	}
+	d := engineDescriptor(t)
+	vc := childCall("post", "do", map[string]any{"url": []string{"a.com"}, "cat": int64(10003)})
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r := fb.seen["/p"]; !strings.Contains(r.query, "q=dflt") || r.headers.Get("x-name") != "dflt" {
+		t.Errorf("default must reach both destinations: query=%q x-name=%q", r.query, r.headers.Get("x-name"))
+	}
+}
+
+// Codex #70-1 (engine side): a flag whose query param only the --child branch's op
+// declares is refused, naming the selector, when given without --child — never dropped.
+func TestInvokeBranchOnlyQueryFlagRefusedNotDropped(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	noChild := verbCall{entity: "t", op: "alerts", area: "t", verb: "alerts", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"alt": "y"}}
+	err := invoke(context.Background(), fb.do(), d, noChild, &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "--alt") || !strings.Contains(err.Error(), "--child") {
+		t.Fatalf("want a refusal naming --alt and --child, got %v", err)
+	}
+	if _, sent := fb.seen["/al"]; sent {
+		t.Error("the base op must not be called with the flag silently dropped")
+	}
+	withChild := noChild
+	withChild.child = "2000001"
+	if err := invoke(context.Background(), fb.do(), d, withChild, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r, ok := fb.seen["/a"]; !ok || !strings.Contains(r.query, "alt=y") {
+		t.Errorf("with --child the branch op must receive the param: %+v", fb.seen["/a"])
 	}
 }
 

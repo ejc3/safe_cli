@@ -144,7 +144,8 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 
 	// Conditional op selection, declared in the descriptor; the branch's contract applies.
 	op, entity, merged := o, vc.entity, c
-	if rule, ok, err := selectRule(ctx, do, d, c, given, childGiven, idHeaders); err != nil {
+	lookups := lookupCache{} // one read per lookup per invocation: select and render share a snapshot
+	if rule, ok, err := selectRule(ctx, do, d, c, given, childGiven, idHeaders, lookups); err != nil {
 		return err
 	} else if ok {
 		ent, name, _ := strings.Cut(rule.Op, ".")
@@ -181,13 +182,14 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	pathVals := map[string]string{}
 	userHeaders := map[string]string{}
 	repeat := map[string]bool{}
-	filters := map[string]any{} // response field -> value, for filter: flags
+	filters := map[string]any{}   // response field -> value, for filter: flags
+	effective := map[string]any{} // flag name -> its transformed value, given or defaulted, for "$flag" query refs
 	resolveDefault := func(spec string) (any, error) {
 		switch {
 		case spec == "$local.timezone":
 			return localTimezone(), nil
 		case strings.HasPrefix(spec, "$lookup:"):
-			v, found, err := runLookup(ctx, do, d, spec, given, idHeaders)
+			v, found, err := runLookup(ctx, do, d, spec, given, idHeaders, lookups)
 			if err != nil {
 				return nil, err
 			}
@@ -216,6 +218,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if err != nil {
 			return fmt.Errorf("--%s: %w", f.Name, err)
 		}
+		effective[f.Name] = tv
 		if len(f.SpreadsTo) > 0 {
 			spread, ok := tv.(map[string]any)
 			if !ok {
@@ -241,7 +244,10 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			}
 		case "query":
 			if !containsStr(op.Query, arg) {
-				continue // declared for another branch's op only
+				if ok { // explicitly given: never silently drop it
+					return fmt.Errorf("--%s is only accepted with %s", f.Name, branchCondition(d, c, arg))
+				}
+				continue // a default for another branch's op
 			}
 			s, err := queryString(tv)
 			if err != nil {
@@ -280,7 +286,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	}
 
 	// Resolved values the user never types.
-	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, given); err != nil {
+	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, given, lookups); err != nil {
 		return err
 	}
 	// Fixed header constants, or resolver variables ($local.timezone for a contextual
@@ -314,7 +320,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		return err
 	}
 	// Query: declared constants/"$flag" values plus flag-mapped params.
-	q, err := renderQuery(merged.Query, withResolved(flagValues(given, flagByName), vars))
+	q, err := renderQuery(merged.Query, withResolved(effective, vars))
 	if err != nil {
 		return err
 	}
@@ -468,7 +474,7 @@ func localTimezone() string {
 }
 
 // fillResolved fills the variables the engine resolves itself, from the resolve list.
-func fillResolved(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, vars map[string]any, tgt *member, acct *account, vc verbCall, idHeaders map[string]string, given map[string]any) error {
+func fillResolved(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, vars map[string]any, tgt *member, acct *account, vc verbCall, idHeaders map[string]string, given map[string]any, lookups lookupCache) error {
 	for _, r := range c.Resolve {
 		name := strings.TrimPrefix(r, "$")
 		switch {
@@ -510,7 +516,7 @@ func fillResolved(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *d
 			}
 			vars[name] = u
 		case strings.HasPrefix(r, "$lookup:"):
-			v, found, err := runLookup(ctx, do, d, r, given, idHeaders)
+			v, found, err := runLookup(ctx, do, d, r, given, idHeaders, lookups)
 			if err != nil {
 				return err
 			}
@@ -534,7 +540,7 @@ func jsonNumber(s string) any {
 }
 
 // selectRule evaluates cli.select in order and returns the first matching rule, if any.
-func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given map[string]any, childGiven bool, idHeaders map[string]string) (descriptor.SelectRule, bool, error) {
+func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given map[string]any, childGiven bool, idHeaders map[string]string, lookups lookupCache) (descriptor.SelectRule, bool, error) {
 	for _, r := range c.Select {
 		switch {
 		case r.When == "child":
@@ -546,7 +552,7 @@ func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *des
 				return r, true, nil
 			}
 		case strings.HasPrefix(r.When, "exists:"):
-			_, found, err := runLookup(ctx, do, d, strings.TrimPrefix(r.When, "exists:"), given, idHeaders)
+			_, found, err := runLookup(ctx, do, d, strings.TrimPrefix(r.When, "exists:"), given, idHeaders, lookups)
 			if err != nil {
 				return descriptor.SelectRule{}, false, err
 			}
@@ -558,10 +564,35 @@ func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *des
 	return descriptor.SelectRule{}, false, nil
 }
 
+// lookupCache memoizes runLookup within one invocation, keyed by the lookup spec and the
+// target it was read for, so an exists: condition and the resolve entry that names the
+// same lookup select and render from one snapshot rather than two reads that may differ.
+type lookupCache map[string]lookupHit
+
+type lookupHit struct {
+	v     any
+	found bool
+}
+
 // runLookup performs a $lookup:<entity>.<op>:<key>=<flag>:<field> enrichment read: GET the
 // op with the target headers, find the first object whose <key> equals the flag's value,
 // and return its <field>. found=false when no record matches.
-func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec string, given map[string]any, idHeaders map[string]string) (any, bool, error) {
+func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec string, given map[string]any, idHeaders map[string]string, lookups lookupCache) (any, bool, error) {
+	cacheKey := spec + "\x00" + idHeaders["x-fp-identifier-target-serviceid"]
+	if hit, ok := lookups[cacheKey]; ok {
+		return hit.v, hit.found, nil
+	}
+	v, found, err := doLookup(ctx, do, d, spec, given, idHeaders)
+	if err != nil {
+		return nil, false, err
+	}
+	if lookups != nil {
+		lookups[cacheKey] = lookupHit{v: v, found: found}
+	}
+	return v, found, nil
+}
+
+func doLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec string, given map[string]any, idHeaders map[string]string) (any, bool, error) {
 	parts := strings.Split(strings.TrimPrefix(spec, "$lookup:"), ":")
 	if len(parts) != 3 {
 		return nil, false, fmt.Errorf("malformed lookup %q", spec)
@@ -602,7 +633,7 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 	if keyed {
 		rec = findRecord(doc, key, fmt.Sprint(want))
 	} else {
-		rec = singletonRecord(doc)
+		rec = singletonRecord(doc, field)
 	}
 	if rec == nil {
 		return nil, false, nil
@@ -617,20 +648,59 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 	return v, true, nil
 }
 
-// singletonRecord is the target's one record for an unkeyed lookup: the response object
-// itself, or the first object of a top-level array.
-func singletonRecord(doc any) map[string]any {
+// singletonRecord is the target's one record for an unkeyed lookup: the first object,
+// walking the response depth-first, that carries field — so a wrapped read such as
+// {"accounts":[{"familyName":...}]} yields the account, not the wrapper.
+func singletonRecord(doc any, field string) map[string]any {
 	switch t := doc.(type) {
 	case map[string]any:
-		return t
+		if _, ok := t[field]; ok {
+			return t
+		}
+		keys := make([]string, 0, len(t))
+		for k := range t {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if r := singletonRecord(t[k], field); r != nil {
+				return r
+			}
+		}
 	case []any:
-		if len(t) > 0 {
-			if obj, ok := t[0].(map[string]any); ok {
-				return obj
+		for _, el := range t {
+			if r := singletonRecord(el, field); r != nil {
+				return r
 			}
 		}
 	}
 	return nil
+}
+
+// branchCondition names, for an error, what selects a branch whose op takes query param
+// arg: "--child", "--flag", or "an existing entity.op record".
+func branchCondition(d *descriptor.Descriptor, c *descriptor.CLI, arg string) string {
+	var conds []string
+	for _, r := range c.Select {
+		ent, name, _ := strings.Cut(r.Op, ".")
+		bo, err := resolveOp(d, ent, name)
+		if err != nil || !containsStr(bo.Query, arg) {
+			continue
+		}
+		switch {
+		case r.When == "child":
+			conds = append(conds, "--child")
+		case strings.HasPrefix(r.When, "flag:"):
+			conds = append(conds, "--"+strings.TrimPrefix(r.When, "flag:"))
+		case strings.HasPrefix(r.When, "exists:"):
+			ref := strings.Split(strings.TrimPrefix(r.When, "exists:$lookup:"), ":")[0]
+			conds = append(conds, "an existing "+ref+" record")
+		}
+	}
+	if len(conds) == 0 {
+		return "another branch of this verb"
+	}
+	return strings.Join(conds, " or ")
 }
 
 // findRecord walks a JSON document for the first object whose key equals want (compared
@@ -679,21 +749,6 @@ func lookupMiss(spec string, given map[string]any) error {
 	}
 	key, flag, _ := strings.Cut(parts[1], "=")
 	return fmt.Errorf("no %s record with %s=%v; run `safe_cli call %s %s` to list valid ids", ref, key, given[flag], ent, name)
-}
-
-// flagValues exposes flag values by FLAG name for renderQuery's "$flag" references (vars is
-// keyed by body var name, which may differ).
-func flagValues(given map[string]any, flagByName map[string]descriptor.Flag) map[string]any {
-	out := make(map[string]any, len(given))
-	for name, f := range flagByName {
-		if v, ok := given[name]; ok {
-			tv, err := applyTransform(f.Transform, v)
-			if err == nil {
-				out[name] = tv
-			}
-		}
-	}
-	return out
 }
 
 // writeDryRun prints the exact request (as dumpRequest built it) plus the resolved target,
