@@ -138,11 +138,11 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 	fmt.Fprintf(w, "// %s: %s %s <- %s.%s\n", structName(v), v.area, v.name, v.entity, v.op)
 	fmt.Fprintf(w, "type %s struct {\n", structName(v))
 	if v.childFlag {
-		req := "Required."
+		req, tag := "Required.", ` required:""`
 		if b.Target != "child" && b.Target != "device" {
-			req = "Optional: selects the per-child form."
+			req, tag = "Optional: selects the per-child form.", ""
 		}
-		fmt.Fprintf(w, "\tChild *string `name:\"child\" help:%s`\n", tagQuote("The child, by the SERVICE-ID that `safe_cli members` prints. "+req))
+		fmt.Fprintf(w, "\tChild *string `name:\"child\" help:%s%s`\n", tagQuote("The child, by the SERVICE-ID that `safe_cli members` prints. "+req), tag)
 	}
 	for _, f := range b.Flags {
 		goType, err := goFieldType(f)

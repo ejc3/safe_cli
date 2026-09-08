@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alecthomas/kong"
 	"github.com/ejc3/safe_cli/internal/descriptor"
 	"github.com/ejc3/safe_cli/internal/descriptor/gen"
 )
@@ -53,6 +54,16 @@ func TestGeneratedHelpIsDiscoverable(t *testing.T) {
 	}
 	if strings.Contains(out, "--confirm") {
 		t.Errorf("pause is not destructive: --confirm must not be offered (an agent hedged by adding it):\n%s", out)
+	}
+	// Codex #71-2: a direct child/device verb declares --child required to kong, so a
+	// missing target is a usage error before any token or account read.
+	var cli CLI
+	parser, err := kong.New(&cli, kong.Name("safe_cli"), kong.Exit(func(int) {}), kong.Writers(&bytes.Buffer{}, &bytes.Buffer{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parser.Parse([]string{"pause-internet", "pause"}); err == nil || !strings.Contains(err.Error(), "--child") {
+		t.Errorf("pause without --child must be a kong usage error naming --child, got %v", err)
 	}
 	top := helpFor(t, "--help")
 	if !strings.Contains(top, "pause-internet") {

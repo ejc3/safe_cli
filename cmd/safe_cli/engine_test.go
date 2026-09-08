@@ -114,6 +114,52 @@ func TestInvokePauseIndefiniteOmitsSchedule(t *testing.T) {
 	}
 }
 
+// Codex #71-1: an explicit --indefinite=false is a timed pause, not an indefinite one: a
+// false bool must not fire its nulls, so pauseSchedule stays and untilIUnpause is false.
+func TestInvokeFalseBoolDoesNotNull(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	if err := invoke(context.Background(), fb.do(), d, pauseCall(map[string]any{"indefinite": false, "for": "1h"}, "2000001"), &strings.Builder{}, true); err != nil {
+		t.Fatalf("invoke: %v", err)
+	}
+	b := fb.seen[pausePath].body
+	if !strings.Contains(b, `"pauseSchedule":"1_hour"`) || !strings.Contains(b, `"untilIUnpause":false`) {
+		t.Errorf("--indefinite=false --for 1h must send a timed pause: %s", b)
+	}
+}
+
+// Codex #71-3: resume on an already-unpaused child is a documented 500 "Device already
+// unpaused"; the verb reports it as a successful no-op (ok_on in its cli block), so a
+// retry is idempotent, and --json still carries _meta.target.
+func TestInvokeResumeAlreadyUnpausedIsOK(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/frisco/parental-control/v5/device/pause"] = func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"statusCode":500,"errors":[{"code":500,"message":"Device already unpaused"}]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}
+	d, _ := descriptor.Default()
+	vc := verbCall{entity: "pause_internet", op: "unPauseInternet", area: "pause-internet", verb: "resume", child: "2000001", selfSvc: "1000001", selfPid: "1000002"}
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, vc, &out, true); err != nil {
+		t.Fatalf("already-unpaused must be a successful no-op, got %v", err)
+	}
+	if !strings.Contains(out.String(), "already") || !strings.Contains(out.String(), "_meta") {
+		t.Errorf("output should say it was already resumed and carry _meta: %s", out.String())
+	}
+	// Any other 500 is still an error.
+	fb.extra["/frisco/parental-control/v5/device/pause"] = func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"statusCode":500,"errors":[{"message":"Internal error"}]}`))
+	}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err == nil || !strings.Contains(err.Error(), "500") {
+		t.Errorf("an unrelated 500 must still fail, got %v", err)
+	}
+}
+
 // An UNPAIRED child is refused for a device verb with an actionable message; --allow-unpaired
 // sends anyway. A read verb (status, target child) is not guarded.
 func TestInvokePairingGuard(t *testing.T) {

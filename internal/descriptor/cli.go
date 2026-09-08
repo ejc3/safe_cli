@@ -317,6 +317,17 @@ func (d *Descriptor) validateCLIBlocks() error {
 }
 
 func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
+	for i, k := range c.OKOn {
+		if k.Status < 400 || k.Status > 599 {
+			return fmt.Errorf("ok_on[%d]: status %d must be a 4xx or 5xx error status", i, k.Status)
+		}
+		if k.Contains == "" {
+			return fmt.Errorf("ok_on[%d]: needs a contains text to match in the response body", i)
+		}
+		if k.Result == "" {
+			return fmt.Errorf("ok_on[%d]: needs a result to report", i)
+		}
+	}
 	// Exactly one shape.
 	isVerb := c.Area != "" || c.Verb != ""
 	shapes := 0

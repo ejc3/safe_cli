@@ -3698,7 +3698,7 @@
             "verb": "resume",
             "priority": "core",
             "target": "device",
-            "summary": "Resume the child's internet, lifting a pause.",
+            "summary": "Resume the child's internet, lifting a pause (a no-op when it was not paused).",
             "prereq": [
               "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
             ],
@@ -3706,7 +3706,14 @@
               "table": [
                 "statusCode"
               ]
-            }
+            },
+            "ok_on": [
+              {
+                "status": 500,
+                "contains": "already unpaused",
+                "result": "already resumed: the device was not paused"
+              }
+            ]
           }
         }
       }

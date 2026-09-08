@@ -11,13 +11,13 @@ type generatedAreas struct {
 // PauseInternetArea groups the pause-internet verbs (core verbs first).
 type PauseInternetArea struct {
 	Pause  PauseInternetPauseCmd  `cmd:"" name:"pause" help:"Pause the child's internet now, for a fixed time or until you resume it.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
-	Resume PauseInternetResumeCmd `cmd:"" name:"resume" help:"Resume the child's internet, lifting a pause.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	Resume PauseInternetResumeCmd `cmd:"" name:"resume" help:"Resume the child's internet, lifting a pause (a no-op when it was not paused).\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
 	Status PauseInternetStatusCmd `cmd:"" name:"status" help:"Show whether the child's internet is paused, how long is left, and the valid pause timings."`
 }
 
 // PauseInternetPauseCmd: pause-internet pause <- pause_internet.pauseInternet
 type PauseInternetPauseCmd struct {
-	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	For           *string `name:"for" help:"How long to pause: 30m|1h|2h|4h|until-morning (default: 30m). until-morning lifts the pause at the child's next morning. Ignored with --indefinite."`
 	Indefinite    *bool   `name:"indefinite" help:"Pause until you run 'pause-internet resume' (sends untilIUnpause=true and omits pauseSchedule). (default: false)"`
 	CallOnly      *bool   `name:"call-only" help:"Leave phone calls working while data is paused (default: false)."`
@@ -45,7 +45,7 @@ func (c *PauseInternetPauseCmd) Run(rc *runContext) error {
 
 // PauseInternetResumeCmd: pause-internet resume <- pause_internet.unPauseInternet
 type PauseInternetResumeCmd struct {
-	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
+	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
 }
@@ -57,7 +57,7 @@ func (c *PauseInternetResumeCmd) Run(rc *runContext) error {
 
 // PauseInternetStatusCmd: pause-internet status <- pause_internet.getDevices
 type PauseInternetStatusCmd struct {
-	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
 	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
