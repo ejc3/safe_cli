@@ -351,6 +351,7 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		if len(c.Flags) > 0 || c.BodyTemplate != "" || len(c.Select) > 0 || len(c.Resolve) > 0 || len(c.Query) > 0 ||
 			len(c.Headers) > 0 || len(c.Constants) > 0 || c.Output != nil || len(c.AtLeastOne) > 0 || len(c.OneOf) > 0 ||
 			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" || c.LiveEmergency {
+			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" || len(c.OKOn) > 0 {
 			if c.CallOnly {
 				return fmt.Errorf("a call_only block carries nothing but call_only, reason and summary; remove the verb/request fields or make it a verb")
 			}
