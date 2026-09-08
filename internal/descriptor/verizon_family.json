@@ -86,7 +86,7 @@
         "getAgeCaptureNotification": {
           "method": "GET",
           "path": "/frisco/parental-control/v5/ageCaptureNotif",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -217,8 +217,9 @@
         "getProfileImage": {
           "method": "GET",
           "path": "/account/frisco/userprofile-management/v6/accounts/userprofiles/images",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
+            "x-fp-identifier-target-serviceid",
             "(@HeaderMap dynamic)"
           ],
           "description": "Fetch a user profile's avatar image."
@@ -558,8 +559,9 @@
         "getSchoolSelection": {
           "method": "GET",
           "path": "/geocal/frisco/v1/schools/selection",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
+            "x-fp-identifier-target-serviceid",
             "(dynamic @HeaderMap Map<String,Object>)"
           ],
           "description": "Read the selected school (school-detail response variant)"
@@ -679,7 +681,7 @@
         "getCallAndTextActivityListV7": {
           "method": "GET",
           "path": "/callandtext/frisco/callandtext/v7/activity?activityType=call,text&timezone=preferred",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -754,7 +756,7 @@
         "getConfigData": {
           "method": "GET",
           "path": "/auth/frisco/mappcontent/v6/configs",
-          "confirmed": false,
+          "confirmed": true,
           "query": [
             "domain"
           ],
@@ -784,7 +786,7 @@
         "getNonSecureConfigData": {
           "method": "GET",
           "path": "/nsauth/frisco/mappcontent/v6/configs/nonSecure?domain=frisco-iam",
-          "confirmed": false,
+          "confirmed": true,
           "query": [],
           "headers": [
             "(@HeaderMap dynamic)"
@@ -794,7 +796,7 @@
         "getServiceKeys": {
           "method": "GET",
           "path": "/frisco/key-mgmt/v5/keys?keys=HERE_MAP_ANDROID_PARENT_ACCESS_KEY_ID,HERE_MAP_ANDROID_CHILD_ACCESS_KEY_ID,HERE_MAP_ANDROID_PARENT_ACCESS_KEY_SECRET,HERE_MAP_ANDROID_CHILD_ACCESS_KEY_SECRET,VSF_HERE_MAPBOX_ACCESS_TOKEN,MB_ANDROID_PARENT,MB_ANDROID_CHILD",
-          "confirmed": false,
+          "confirmed": true,
           "query": [],
           "headers": [
             "x-fp-identifier-target-serviceid"
@@ -1018,7 +1020,7 @@
         "getAllContactsRequest": {
           "method": "GET",
           "path": "/vsf/callandtext/v5/managecontacts?contactType=all",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1261,7 +1263,7 @@
         "getCrossSellRecommendations": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v5/userprofiles/recommendations",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1362,7 +1364,7 @@
         "getSubscriptions": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v5/accounts/userprofiles/subscriptions",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1371,7 +1373,7 @@
         "getViewBanner": {
           "method": "GET",
           "path": "/vsf/tamper/v5/view/getBanner",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1552,7 +1554,7 @@
         "getSettings": {
           "method": "GET",
           "path": "/frisco/driving-insights/v5/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1573,7 +1575,7 @@
         "getTripSummary": {
           "method": "GET",
           "path": "/vsf/driving-insights/v5/trip-summary/",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -1784,7 +1786,9 @@
         "getProvisioningStatus": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/status",
-          "headers": ["x-fp-identifier-target-serviceid"],
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
           "confirmed": true,
           "description": "Check Family Line provisioning status. VERIFIED on the wire (2026-09-07, decrypted HPACK): authenticates with the plain parent id_token + x-fp-identifier-target-serviceid — NOT the Family-Line SPC token — so it is callable directly with --service-id."
         },
@@ -1852,7 +1856,9 @@
         "traceSdkResponse": {
           "method": "POST",
           "path": "/callandtext/frisco/familyline/v1/fl/trace",
-          "headers": ["x-fp-identifier-target-serviceid"],
+          "headers": [
+            "x-fp-identifier-target-serviceid"
+          ],
           "confirmed": true,
           "takes_body": true,
           "body_example": "{\"response\":{\"eventType\":\"LOCATION_TRACE\",\"status\":\"SUCCESS\",\"statusCode\":200,\"additionalDetails\":\"ok\"}}",
@@ -1912,7 +1918,7 @@
         "getManagedUserProfiles": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v5/userprofiles/connections",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2011,7 +2017,7 @@
         "getSavedLocations": {
           "method": "GET",
           "path": "/vsf/location/v6/geofence/settings",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2393,7 +2399,7 @@
         "getDashboardDetails": {
           "method": "GET",
           "path": "/vsf/location/v5/dashboard",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2409,7 +2415,7 @@
         "getHistoryStatus": {
           "method": "GET",
           "path": "/vsf/location/v5/history/available",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2421,7 +2427,7 @@
         "getPickMeUpStatus": {
           "method": "GET",
           "path": "/vsf/location/v5/events/active?eventType=pickMeUp&eventStatus=active",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2467,7 +2473,7 @@
         "postLocationTamper": {
           "method": "POST",
           "path": "/vsf/location/v5/tamper",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -2525,7 +2531,7 @@
         "getWithWhomIamSharingLocation": {
           "method": "GET",
           "path": "/vsf/location/v6/settings?eventType=onlySharing",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3023,7 +3029,7 @@
         "getConsent": {
           "method": "GET",
           "path": "/frisco/parental-control/v5/profiles/devices/consent",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3173,7 +3179,7 @@
         "getDeviceShadowDetails": {
           "method": "GET",
           "path": "/vsf/tamper/v6/view/getDeviceShadowDetails",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3396,7 +3402,7 @@
         "gizmoImportEligibility": {
           "method": "GET",
           "path": "/account/fam/userprofile-management/v5/gizmo/import/eligibility",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-transaction-id",
             "x-fp-identifier-target-serviceid"
@@ -3624,7 +3630,7 @@
         "getAllAvailableEmergencyContacts": {
           "method": "GET",
           "path": "/fam/userprofile-management/v5/userprofiles/contacts",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3882,7 +3888,7 @@
         "getSubscriberSetupInfo": {
           "method": "GET",
           "path": "/fam/prof-monitoring/v5/subscribers",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -3970,7 +3976,7 @@
         "getTopApps": {
           "method": "GET",
           "path": "/parental-control/frisco/v5/web-app-activity/topApps",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4002,7 +4008,7 @@
         "getPubNubConfig": {
           "method": "GET",
           "path": "/frisco/commsplatform/v5/profiles/pubnubConfiguration",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4020,7 +4026,7 @@
         "putDeviceToken": {
           "method": "PUT",
           "path": "/frisco/commsplatform/v5/profiles/pushToken",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4077,7 +4083,7 @@
         "getAllTheLimits": {
           "method": "GET",
           "path": "/vsf/callandtext/v5/usagelimits?limitType=all",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4236,7 +4242,7 @@
         "getRescueInfo": {
           "method": "GET",
           "path": "/fam/rsa/v5/rescue",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4487,7 +4493,7 @@
         "getSchedules": {
           "method": "GET",
           "path": "/parental-control/frisco/v6/schedules",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4530,7 +4536,7 @@
         "getScreenTimeData": {
           "method": "GET",
           "path": "/parental-control/frisco/v7/screen-time-limits",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4744,7 +4750,7 @@
         "getEligibleServices": {
           "method": "GET",
           "path": "/servicecatalog/fam/servicescatalog/v6/eligibleservices",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-app-uuid"
@@ -4783,7 +4789,7 @@
         "getUserTasks": {
           "method": "GET",
           "path": "/account/fam/task-management/v5/userprofiles/tasks",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid",
             "x-fp-identifier-profileid"
@@ -4866,7 +4872,7 @@
         "getWatchMeSoSSessionInfo": {
           "method": "GET",
           "path": "/fam/wm-sos/v5/sessions",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -4897,7 +4903,7 @@
         "watchMeSosAlerts": {
           "method": "GET",
           "path": "/safety/fam/wm-sos/v6/sessions/insights/summary",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
@@ -5383,7 +5389,7 @@
         "getInsights": {
           "method": "GET",
           "path": "/frisco/parental-control/v6/web-app-activity/insights",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
