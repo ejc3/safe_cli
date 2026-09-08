@@ -844,6 +844,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !strings.Contains(o.Path, "{"+arg+"}") {
 				return fmt.Errorf("flag --%s: path %q is not a {placeholder} in the op's path %s", f.Name, arg, o.Path)
 			}
+			if !f.Required && f.Default == nil {
+				return fmt.Errorf("flag --%s: fills path placeholder {%s} but is optional and has no default; a placeholder's source must be always present", f.Name, arg)
+			}
 			if prev, dup := pathFromFlag[arg]; dup {
 				return fmt.Errorf("flag --%s: path %q is already mapped from --%s (one request slot, one source)", f.Name, arg, prev)
 			}
@@ -916,8 +919,8 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !ok {
 				return fmt.Errorf("flag --%s: requires unknown flag %q", f.Name, x)
 			}
-			if contains(f.Excludes, x) {
-				return fmt.Errorf("flag --%s: requires --%s and also excludes it — contradictory edges, no invocation could use --%s", f.Name, x, f.Name)
+			if contains(f.Excludes, x) || contains(g.Excludes, f.Name) {
+				return fmt.Errorf("flag --%s: requires --%s while one excludes the other — contradictory edges, no invocation could use --%s", f.Name, x, f.Name)
 			}
 			if g.Default != nil {
 				return fmt.Errorf("flag --%s: requires --%s, which has a default (a defaulted flag is always populated, so its presence proves nothing — neither a dependency nor a select branch); require an undefaulted flag", f.Name, x)
@@ -1054,8 +1057,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		// A keyed lookup runs on every invocation of this contract, so its key flag must
 		// be there: required or defaulted, or the contract is the branch that flag selects.
 		if key := lookupKeyFlag(r); key != "" {
-			if g := flagByName[key]; !g.Required && g.Default == nil && c.selectedBy != key {
+			g := flagByName[key]
+			if !g.Required && g.Default == nil && c.selectedBy != key {
 				return fmt.Errorf("resolve entry %s is keyed by --%s, which is not always present; make it required or defaulted, or confine the lookup to the branch --%s selects", r, key, key)
+			}
+			if ds, isStr := g.Default.(string); isStr && strings.HasPrefix(ds, "$") {
+				return fmt.Errorf("resolve entry %s is keyed by --%s, whose default is a resolved default (%s); a lookup key needs a literal default, a required flag, or the branch's own selector", r, key, ds)
 			}
 		}
 	}
