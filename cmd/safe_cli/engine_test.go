@@ -205,7 +205,7 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
   "listA":{"method":"GET","path":"/a","query":["q","alt"]},
   "listB":{"method":"GET","path":"/b","query":["q","alt"]},
   "cats":{"method":"GET","path":"/cats","headers":["x-fp-identifier-target-serviceid"]},
-  "post":{"method":"POST","path":"/p","takes_body":true,"headers":["x-pending-activation"],"query":["q"],
+  "post":{"method":"POST","path":"/p","takes_body":true,"headers":["x-pending-activation","x-name"],"query":["q"],
     "cli":{"area":"t","verb":"do","priority":"core","target":"child","summary":"s",
       "body_template":"{\"mode\":{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"},\"domains\":[{\"url\":\"$url\",\"status\":\"$status\"}],\"id\":\"$cat\",\"catName\":\"$lookup:t.cats:id=cat:name\",\"fixed\":\"v\"}",
       "constants":{"fixed":"v"},
