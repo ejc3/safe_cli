@@ -243,7 +243,7 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
       "flags":[{"name":"name","type":"string","default":"$lookup:t.acct::familyName","maps_to":"body:$name","help":"h"}]}},
   "dash":{"method":"GET","path":"/dash","headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"dash","priority":"core","target":"account","summary":"s",
-      "flags":[{"name":"child","type":"int","maps_to":"filter:serviceId","help":"h"}]}},
+      "flags":[{"name":"member","type":"int","maps_to":"filter:serviceId","help":"h"}]}},
   "stime":{"method":"POST","path":"/stime","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"stime","priority":"core","target":"child","summary":"s",
       "body_template":"{\"mon\":\"$mon?\"}",
@@ -490,7 +490,7 @@ func TestInvokeFilterFlagOnAccountVerb(t *testing.T) {
 		_, _ = w.Write([]byte(`{"members":[{"serviceId":2000001,"name":"A"},{"serviceId":2000002,"name":"S"}]}`))
 	}
 	d := engineDescriptor(t)
-	vc := verbCall{entity: "t", op: "dash", area: "t", verb: "dash", child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"child": int64(2000001)}}
+	vc := verbCall{entity: "t", op: "dash", area: "t", verb: "dash", child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"member": int64(2000001)}}
 	var out strings.Builder
 	if err := invoke(context.Background(), fb.do(), d, vc, &out, true); err != nil {
 		t.Fatal(err)
