@@ -13,7 +13,8 @@ func cliFixture(cli string, extra string) []byte {
 	}
 	return []byte(`{"name":"t","base_url":"https://h","entities":{"pause":{"id_field":"","operations":{
 	  "pauseIt":{"method":"POST","path":"/p","takes_body":true` + extra + `,"cli":` + cli + `},
-	  "other":{"method":"GET","path":"/o"}}}}}`)
+	  "other":{"method":"GET","path":"/o"},
+	  "other2":{"method":"POST","path":"/o2","takes_body":true,"query":["lat","lon","address"]}}}}}`)
 }
 
 // A complete, valid verb — the pause-internet `pause` shape from docs/CLI-DESIGN.md §4,
@@ -102,6 +103,25 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"spreads_to destination unused by template", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\"}","flags":[{"name":"mode","type":"enum","enum":["block","alert"],"spreads_to":["body:$a","body:$zz"],"transform":"mode_block_alert","help":"h"}]}`, "", "never uses"},
 		// Codex #66 round 3: a repeatable flag's var must live in a single-element array.
 		{"repeatable var outside an array", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"url\":\"$url\"}","flags":[{"name":"url","type":"string","repeatable":true,"maps_to":"body:$url","help":"h"}]}`, "", "single-element array"},
+		// Codex #67 (7a798ff): a typo in a cli key must not be silently discarded.
+		{"unknown cli key", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","transfrom":"tz_short","help":"h"}]}`, "", "unknown field"},
+		// resolve entries are checked on bodyless verbs too.
+		{"bodyless verb with bad resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","resolve":["$child.profielId"]}`, `"takes_body":false`, "not a supported resolved variable"},
+		// nulls targets must be optional body vars — the only place omission is defined.
+		{"nulls a query flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"y\":\"$y\"}","flags":[{"name":"q","type":"string","maps_to":"query:q","help":"h"},{"name":"y","type":"bool","default":false,"nulls":["q"],"maps_to":"body:$y","help":"h"}]}`, `"query":["q"]`, "optional body variable"},
+		{"nulls a required body var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"y\":\"$y\"}","flags":[{"name":"x","type":"string","default":"d","maps_to":"body:$x","help":"h"},{"name":"y","type":"bool","default":false,"nulls":["x"],"maps_to":"body:$y","help":"h"}]}`, "", "optional body variable"},
+		// a retained literal must EQUAL its declared constant, not merely share the key.
+		{"constant value mismatch", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"MAPPVersion\":\"wrong\",\"x\":\"$x\"}","constants":{"MAPPVersion":"8.1"},"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "does not match the declared constant"},
+		// one query parameter, one source.
+		{"two flags to one query param", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"query:q","help":"h"},{"name":"b","type":"string","maps_to":"query:q","help":"h"}]}`, `"takes_body":false,"query":["q"]`, "already mapped"},
+		// two repeatables in one expansion element have no defined expansion.
+		{"two repeatables in one element", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"items\":[{\"a\":\"$a\",\"b\":\"$b\"}]}","flags":[{"name":"a","type":"string","repeatable":true,"maps_to":"body:$a","help":"h"},{"name":"b","type":"string","repeatable":true,"maps_to":"body:$b","help":"h"}]}`, "", "second repeatable"},
+		// a select branch is validated against ITS op's contract: a bodyless GET cannot inherit a body.
+		{"select branch to a bodyless op inherits a body", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "declares no body"},
+		// dependent flag groups name declared flags and need real alternatives.
+		{"requires unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","requires":["ghost"],"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
+		{"one_of with one group", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"]],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
+		{"one_of unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"],["ghost"]],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -163,7 +183,7 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 func TestCLISelectSpreadsAndRepeatableAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
 	  "body_template":"{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\",\"domains\":[{\"status\":\"$status\",\"url\":\"$url\"}],\"n\":\"$n?\"}",
-	  "select":[{"when":"flag:n","op":"pause.other"},{"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other"},{"when":"child","op":"pause.other"}],
+	  "select":[{"when":"flag:n","op":"pause.other2"},{"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other2"},{"when":"child","op":"pause.other2"}],
 	  "flags":[
 	    {"name":"mode","type":"enum","enum":["block","alert"],"default":"block","spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"},
 	    {"name":"status","type":"enum","enum":["allow","block"],"default":"block","maps_to":"body:$status","transform":"allow_block_ab","help":"h"},
@@ -171,6 +191,24 @@ func TestCLISelectSpreadsAndRepeatableAccepted(t *testing.T) {
 	    {"name":"n","type":"string","maps_to":"body:$n","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, "")); err != nil {
 		t.Fatalf("select + spreads_to + repeatable-in-array must be accepted: %v", err)
+	}
+}
+
+// A select branch may carry its own contract: here the child branch overrides the target,
+// the body template and the resolve list for a different body-bearing op, and validates
+// against that op; requires/one_of name declared flags.
+func TestCLISelectOverridesAndDependentFlagsAccepted(t *testing.T) {
+	cli := `{"area":"alerts","verb":"set","priority":"core","target":"account","summary":"s",
+	  "body_template":"{\"newContactAlertV2\":\"$contact\"}",
+	  "select":[{"when":"child","op":"pause.other2","target":"child","body_template":"{\"newContactAlert\":\"$contact\",\"profileId\":\"$child.profileId\"}","resolve":["$child.profileId"]}],
+	  "one_of":[["lat","lon"],["address"]],
+	  "flags":[
+	    {"name":"contact","type":"bool","default":false,"maps_to":"body:$contact","help":"h"},
+	    {"name":"lat","type":"float","requires":["lon"],"maps_to":"query:lat","help":"h"},
+	    {"name":"lon","type":"float","requires":["lat"],"maps_to":"query:lon","help":"h"},
+	    {"name":"address","type":"string","maps_to":"query:address","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, `"query":["lat","lon","address"]`)); err != nil {
+		t.Fatalf("select overrides + requires/one_of must be accepted: %v", err)
 	}
 }
 
