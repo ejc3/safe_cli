@@ -938,3 +938,79 @@ func TestLiveVerifiedMutations(t *testing.T) {
 		t.Errorf("schedules.postSchedule body_example not enriched: %q", ex)
 	}
 }
+
+// TestWireVerifiedOpsConfirmed pins the ops whose exact requests were decrypted off the
+// wire (2026-09-07/08, Android-17 TLS 1.3 → HPACK) and are therefore marked confirmed.
+// Each must stay confirmed; the VSF read/write ops among them must declare the
+// x-fp-identifier-target-serviceid header so `call` injects --service-id.
+func TestWireVerifiedOpsConfirmed(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire := [][2]string{
+		{"accessibility_pin", "getAgeCaptureNotification"},
+		{"account", "getAccountDetails"},
+		{"account", "getProfileImage"},
+		{"calendar_sync", "getSchoolSelection"},
+		{"calls_and_texts", "getCallAndTextActivityListV7"},
+		{"config", "getConfigData"},
+		{"config", "getNonSecureConfigData"},
+		{"config", "getServiceKeys"},
+		{"contacts", "getAllContactsRequest"},
+		{"content_filter", "getParentalControls"},
+		{"cross_sell", "getCrossSellRecommendations"},
+		{"dashboard", "getSubscriptions"},
+		{"dashboard", "getViewBanner"},
+		{"driving_insights", "getSettings"},
+		{"driving_insights", "getTripSummary"},
+		{"family_line", "getProvisioningStatus"},
+		{"family_line", "traceSdkResponse"},
+		{"feature_permissions", "getManagedUserProfiles"},
+		{"geofence", "getSavedLocations"},
+		{"location", "getDashboardDetails"},
+		{"location", "getHistoryStatus"},
+		{"location", "getPickMeUpStatus"},
+		{"location", "getWithWhomIamSharingLocation"},
+		{"location", "postLocationTamper"},
+		{"notifications", "getNotificationCount"},
+		{"pairing", "getConsent"},
+		{"pairing", "getDeviceShadowDetails"},
+		{"pairing", "gizmoImportEligibility"},
+		{"pause_internet", "getDevices"},
+		{"pause_internet", "pauseInternet"},
+		{"pause_internet", "unPauseInternet"},
+		{"pet_tracker", "getAllAvailableEmergencyContacts"},
+		{"professional_monitoring", "getSubscriberSetupInfo"},
+		{"profile", "getTopApps"},
+		{"pubnub", "getPubNubConfig"},
+		{"pubnub", "putDeviceToken"},
+		{"restricted_usage", "getAllTheLimits"},
+		{"roadside_assistance", "getRescueInfo"},
+		{"schedules", "getSchedules"},
+		{"schedules", "getScreenTimeData"},
+		{"services_hub", "getEligibleServices"},
+		{"setup_wizard", "getUserTasks"},
+		{"sos", "getWatchMeSoSSessionInfo"},
+		{"sos", "watchMeSosAlerts"},
+		{"user_setting", "updateUserSettings"},
+		{"web_and_apps", "getInsights"},
+	}
+	for _, w := range wire {
+		e, ok := d.Entity(w[0])
+		if !ok {
+			t.Errorf("entity %q missing", w[0])
+			continue
+		}
+		op, ok := e.Operations[w[1]]
+		if !ok {
+			if op, ok = e.Actions[w[1]]; !ok {
+				t.Errorf("%s.%s missing", w[0], w[1])
+				continue
+			}
+		}
+		if !op.Confirmed {
+			t.Errorf("%s.%s must be confirmed (decrypted off the wire)", w[0], w[1])
+		}
+	}
+}
