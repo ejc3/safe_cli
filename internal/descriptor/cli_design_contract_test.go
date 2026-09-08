@@ -36,6 +36,10 @@ func TestCLIDesignPinsSchemaContracts(t *testing.T) {
 		{"conditional op selection", []string{"`select`: an ordered list", "`flag:<name>`", "`exists:$lookup:"}},
 		{"one flag spreads to several fields", []string{"`spreads_to: [\"body:$a\", \"body:$b\"]`", "`mode_block_alert`"}},
 		{"repeatable flags expand arrays", []string{"expands that element once per value"}},
+		{"select branches carry a full contract", []string{"may also override `target`", "validated at Parse as a complete verb against its own op"}},
+		{"dependent flag groups", []string{"`requires: [flags]`", "`one_of: [["}},
+		{"weekday_ints out of the registry", []string{"`weekday_ints` joins when postScheduleAlert"}},
+		{"schema closure rule", []string{"Closure: the schema is complete for a surface"}},
 		{"reject unclassified fields", []string{"**rejected** by the descriptor test", "sample `geofenceId` must be dropped"}},
 	}
 	for _, c := range checks {
