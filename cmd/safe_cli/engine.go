@@ -259,6 +259,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	queryVals := url.Values{}
 	pathVals := map[string]string{}
 	userHeaders := map[string]string{}
+	for k, v := range merged.Headers { // fixed header constants first; flag headers override
+		userHeaders[k] = v
+	}
 	repeat := map[string]bool{}
 	filters := map[string]any{}   // response field -> value, for filter: flags
 	effective := map[string]any{} // flag name -> its transformed value, given or defaulted, for "$flag" query refs
