@@ -77,7 +77,7 @@ type Operation struct {
 	// generated `safe_cli <area> <verb>` tree exposes for it, an alias to the op that does,
 	// or an explicit call-only reason. Validated at Parse (see cli.go); nil means the op is
 	// not yet classified and is reachable only through the generic `call`.
-	CLI *CLI `json:"cli,omitempty"`
+	CLI CLIBlocks `json:"cli,omitempty"`
 }
 
 // Available reports whether the op can be called (not a confirmed dead end).
