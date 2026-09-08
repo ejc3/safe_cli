@@ -24,7 +24,7 @@ const validPause = `{
   "body_template":"{\"timeZone\":\"$tz\",\"profiles\":[{\"profileId\":\"$child.profileId\",\"devices\":[{\"serviceId\":\"$child.serviceId\",\"deviceId\":\"$child.deviceId\",\"pauseSchedule\":\"$for?\",\"untilIUnpause\":\"$indefinite\",\"callOnlyMode\":\"$callOnly\"}]}]}",
   "flags":[
     {"name":"for","type":"enum","enum":["30m","1h","2h","4h","until-morning"],"default":"30m","maps_to":"body:$for","transform":"pause_schedule","help":"How long to pause (default: 30m)."},
-    {"name":"indefinite","type":"bool","default":false,"maps_to":"body:$indefinite","excludes":["for"],"nulls":["for"],"help":"Pause until resume; omits pauseSchedule."},
+    {"name":"indefinite","type":"bool","default":false,"maps_to":"body:$indefinite","nulls":["for"],"help":"Pause until resume; omits pauseSchedule."},
     {"name":"call-only","type":"bool","default":false,"maps_to":"body:$callOnly","help":"Keep calls working."},
     {"name":"timezone","type":"tz","default":"$account.timezone","maps_to":"body:$tz","transform":"tz_short","help":"Short zone code (default: account timezone)."}
   ],
