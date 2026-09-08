@@ -19,6 +19,8 @@ func cliFixture(cli string, extra string) []byte {
 	  "withph":{"method":"GET","path":"/w/{id}"},
 	  "reqq":{"method":"GET","path":"/r","query":["a"],"required_query":["a"]},
 	  "gone":{"method":"GET","path":"/g","unavailable":"observed 403"},
+	  "mp":{"method":"POST","path":"/mp","takes_body":true,"multipart":true},
+	  "goneverb":{"method":"POST","path":"/p","takes_body":true,"unavailable":"observed 403","cli":{"area":"gv","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}},
 	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}}}}}}`)
 }
 
@@ -43,7 +45,7 @@ const validPause = `{
 func TestCLIBranchOnlyQueryFlagReachableAccepted(t *testing.T) {
 	for name, cli := range map[string]string{
 		"own selector":          `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:alt","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`,
-		"requires the selector": `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","requires":["x"],"maps_to":"query:alt","help":"h"}]}`,
+		"requires the selector": `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","requires":["sel"],"maps_to":"query:alt","help":"h"}]}`,
 		"child branch":          `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2","target":"child"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`,
 	} {
 		if _, err := Parse(cliFixture(cli, "")); err != nil {
@@ -84,6 +86,19 @@ func TestCLIHeaderFlagAccepted(t *testing.T) {
 	}
 }
 
+// Codex #70 round 7 (positive): a keyed lookup whose key flag is optional is fine when the
+// lookup lives only in the branch that flag selects, and an exists: condition may be keyed
+// by an optional flag (the engine treats its absence as "not found").
+func TestCLIOptionalLookupKeyConfinedToItsBranch(t *testing.T) {
+	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}",
+	  "select":[{"when":"flag:cat","op":"pause.other2","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other:id=cat:name\"}","resolve":["$lookup:pause.other:id=cat:name"]},
+	            {"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other2"}],
+	  "flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"cat","type":"int","maps_to":"filter:role","help":"h"},{"name":"n","type":"string","maps_to":"filter:role","help":"h"}]}`
+	if _, err := Parse(cliFixture(cli, "")); err != nil {
+		t.Fatalf("must be accepted: %v", err)
+	}
+}
+
 // Codex #70-2 (positive): one op may back `a g1 show` and `a g2 show` — the group is part
 // of the command path, so the per-op duplicate check must include it.
 func TestCLIGroupDistinguishesVerbsOnOneOp(t *testing.T) {
@@ -114,7 +129,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"two shapes", `{"area":"a","verb":"v","call_only":true,"reason":"x"}`, "", "exactly one of"},
 		// Codex #70-5: a header: destination must be a header the op (or a reachable branch op) declares.
 		{"header flag not declared on op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:not-declared","help":"h"}]}`, "", "not one of the op's declared headers"},
-		{"branch-only header flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:timezone","help":"h"}]}`, "", "does not select"},
+		{"branch-only header flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:timezone","help":"h"}]}`, "", "does not select"},
 		// Codex #70-6: a required flag with a default is always populated, so "requires" could
 		// not tell whether it was given; like excludes, requires may only name undefaulted flags.
 		{"requires a defaulted flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"m\":\"$m\"}","flags":[{"name":"x","type":"string","requires":["mode"],"maps_to":"body:$x","help":"h"},{"name":"mode","type":"string","default":"b","maps_to":"body:$m","help":"h"}]}`, "", "has a default"},
@@ -130,7 +145,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// resolver-backed default has the flag's type; $child.* needs a child however it is
 		// referenced; a child branch ends on a child target; a lookup is a plain read; identity
 		// headers are the engine's; a query map cannot read a filter: flag.
-		{"select condition repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"},{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
+		{"select condition repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"},{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
 		{"select condition child repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"},{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
 		{"flag excludes itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","excludes":["x"]}]}`, "", "itself"},
 		{"flag requires itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","requires":["x"]}]}`, "", "itself"},
@@ -186,7 +201,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// flag is given — the flag selects that branch itself, requires the flag that does,
 		// or the branch is the --child one; otherwise --alt alone selects the base op and
 		// the engine would have to drop the value.
-		{"branch-only query flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`, "", "does not select"},
+		{"branch-only query flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`, "", "does not select"},
 		{"branch-only query flag under an exists branch only", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"exists:$lookup:pause.other::id","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"alt","type":"string","maps_to":"query:alt","help":"h"}]}`, "", "does not select"},
 		{"alias to missing op", `{"alias_of":"pause.nope"}`, "", "does not name an existing"},
 		{"call_only without reason", `{"call_only":true}`, "", "needs a reason"},
@@ -235,7 +250,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"lookup keyed by unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other:id=ghost:name\"}","resolve":["$lookup:pause.other:id=ghost:name"]}`, "", "unknown flag"},
 		// Codex #66 round 3: conditional op selection is declared, and everything it names is
 		// checked — the op, the flag, the lookup, and the condition vocabulary itself.
-		{"select op missing", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.nope"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "does not name an existing"},
+		{"select op missing", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.nope"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "does not name an existing"},
 		{"select unknown condition", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"moon","op":"pause.other"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "condition"},
 		{"select flag not declared", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:ghost","op":"pause.other"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		{"select malformed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"exists:$lookup:nope","op":"pause.other"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "malformed $lookup"},
@@ -259,7 +274,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// two repeatables in one expansion element have no defined expansion.
 		{"two repeatables in one element", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"items\":[{\"a\":\"$a\",\"b\":\"$b\"}]}","flags":[{"name":"a","type":"string","repeatable":true,"maps_to":"body:$a","help":"h"},{"name":"b","type":"string","repeatable":true,"maps_to":"body:$b","help":"h"}]}`, "", "second repeatable"},
 		// a select branch is validated against ITS op's contract: a bodyless GET cannot inherit a body.
-		{"select branch to a bodyless op inherits a body", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "declares no body"},
+		{"select branch to a bodyless op inherits a body", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "declares no body"},
 		// dependent flag groups name declared flags and need real alternatives.
 		{"requires unknown flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","requires":["ghost"],"maps_to":"body:$x","help":"h"}]}`, "", "unknown flag"},
 		{"one_of with one group", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","one_of":[["x"]],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "at least two"},
@@ -307,7 +322,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"header flag overriding a fixed header value", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"an","type":"string","maps_to":"header:app-name","help":"h"}]}`, `"headers":["app-name"],"header_values":{"app-name":"VSF"}`, "fixed value"},
 		{"transform on an incompatible flag type", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"t\":\"$t\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"bool","default":false,"maps_to":"body:$t","transform":"epoch_ms","help":"h"}]}`, "", "transform"},
 		{"bool01 on a string flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"t\":\"$t\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"string","required":true,"maps_to":"body:$t","transform":"bool01","help":"h"}]}`, "", "transform"},
-		{"select branch to an unavailable op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.gone"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unavailable"},
+		{"select branch to an unavailable op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.gone"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unavailable"},
+		// Codex #70 round 7: multipart ops get no verb; a required flag cannot select a branch
+		// (it would always win); a keyed lookup's key flag is always present unless the lookup
+		// is confined to the branch that flag selects; aliases target available ops; an enum
+		// transform's domain bounds the flag's enum; fixed header values match case-insensitively.
+		{"verb on a multipart op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s"}`, `"multipart":true`, "multipart"},
+		{"select branch to a multipart op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.mp"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "multipart"},
+		{"required flag as a branch selector", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "required"},
+		{"keyed lookup whose key flag may be absent", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.other:id=cat:name\"}","resolve":["$lookup:pause.other:id=cat:name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"cat","type":"int","maps_to":"filter:role","help":"h"}]}`, "", "always present"},
+		{"alias to an unavailable canonical op", `{"alias_of":"pause.goneverb"}`, "", "unavailable"},
+		{"enum outside the transform's domain", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"f\":\"$f\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"f","type":"enum","enum":["nonsense"],"default":"nonsense","maps_to":"body:$f","transform":"pause_schedule","help":"h"}]}`, "", "pause_schedule accepts"},
+		{"header constant overriding a fixed value in another case", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"App-Name":"OTHER"},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, `"headers":["App-Name"],"header_values":{"app-name":"VSF"}`, "fixed value"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

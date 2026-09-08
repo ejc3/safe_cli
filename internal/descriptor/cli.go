@@ -73,6 +73,11 @@ type CLI struct {
 	Reason        string     `json:"reason,omitempty"`
 	LiveEmergency bool       `json:"live_emergency,omitempty"` // requires --confirm and warns
 	Output        *Output    `json:"output,omitempty"`
+
+	// selectedBy is set on a branch contract (withOverrides) to the flag of its flag:
+	// condition, so validation knows a keyed lookup there is reached only when that flag
+	// is given. Never decoded from JSON.
+	selectedBy string
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
@@ -203,6 +208,13 @@ var (
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
 	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
+	// cliTransformDomains lists the input values a closed transform accepts (lowercased);
+	// an enum flag using one may only offer those values.
+	cliTransformDomains = map[string][]string{
+		"pause_schedule":   {"30m", "1h", "2h", "4h", "until-morning"},
+		"allow_block_ab":   {"allow", "block", "a", "b"},
+		"mode_block_alert": {"block", "alert"},
+	}
 	// cliTransformInputs lists the flag types each transform is defined for; a transform on
 	// any other type could never produce the wire form and is a descriptor error.
 	cliTransformInputs = map[string][]string{
@@ -323,6 +335,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		if !ok {
 			return fmt.Errorf("alias_of %q does not name an existing entity.op", c.AliasOf)
 		}
+		if target.Unavailable != "" && o.Unavailable == "" {
+			return fmt.Errorf("alias_of %q names an op marked unavailable (%s); an available op cannot alias it, or its route would vanish from the CLI", c.AliasOf, target.Unavailable)
+		}
 		// Aliases exist for duplicate routes: the target must be the same request identity,
 		// and it must carry the canonical verb (not itself an alias or call-only).
 		if target.Method != o.Method || target.Path != o.Path {
@@ -413,6 +428,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 			if g.Default != nil {
 				return fmt.Errorf("select[%d]: condition %q names --%s, which has a default (a defaulted flag is always populated, so its presence cannot select a branch)", i, r.When, sel)
 			}
+			if g.Required {
+				return fmt.Errorf("select[%d]: condition %q names --%s, which is required (always present, so this branch would always win and the base op could never run)", i, r.When, sel)
+			}
 		case strings.HasPrefix(r.When, "exists:"):
 			if err := d.checkResolveVar(strings.TrimPrefix(r.When, "exists:"), flagByName); err != nil {
 				return fmt.Errorf("select[%d]: %w", i, err)
@@ -426,6 +444,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		}
 		if bo.Unavailable != "" {
 			return fmt.Errorf("select[%d]: op %q is marked unavailable (%s); a verb cannot branch onto it", i, r.Op, bo.Unavailable)
+		}
+		if bo.Multipart {
+			return fmt.Errorf("select[%d]: op %q is multipart, which the engine cannot send; a verb cannot branch onto it", i, r.Op)
 		}
 		if err := d.validateContract(bo, c.withOverrides(r)); err != nil {
 			return fmt.Errorf("select[%d] (%s): %w", i, r.Op, err)
@@ -500,6 +521,34 @@ func resolveUses(c *CLI) map[string]bool {
 	return uses
 }
 
+// lookupKeyFlag returns the flag a keyed $lookup is keyed by ("" for anything else).
+func lookupKeyFlag(v string) string {
+	if !strings.HasPrefix(v, "$lookup:") {
+		return ""
+	}
+	parts := strings.Split(strings.TrimPrefix(v, "$lookup:"), ":")
+	if len(parts) != 3 || parts[1] == "" {
+		return ""
+	}
+	_, flag, _ := strings.Cut(parts[1], "=")
+	return flag
+}
+
+// fixedHeader reports the fixed value an op always sends for a header, matched
+// case-insensitively since HTTP header names are.
+func fixedHeader(o Operation, name string) (string, bool) {
+	for h, v := range o.HeaderValues {
+		if strings.EqualFold(h, name) {
+			return v, true
+		}
+	}
+	return "", false
+}
+
+// TransformDomains returns the closed input domains the descriptor validates enum flags
+// against, so the engine's transform registry can be tested to accept every value.
+func TransformDomains() map[string][]string { return cliTransformDomains }
+
 // headerNameOK rejects header destinations the descriptor may not claim: the identity
 // headers the engine fills (x-fp-identifier-*, which would silently win), and the
 // decompiler's dynamic header-map placeholder, which is not a header name.
@@ -547,6 +596,10 @@ func (d *Descriptor) lookupOp(ref string) (Operation, bool) {
 func (c *CLI) withOverrides(r SelectRule) *CLI {
 	m := *c
 	m.Select = nil
+	m.selectedBy = ""
+	if strings.HasPrefix(r.When, "flag:") {
+		m.selectedBy = strings.TrimPrefix(r.When, "flag:")
+	}
 	if r.Target != "" {
 		m.Target = r.Target
 	}
@@ -579,6 +632,9 @@ func flagIndex(flags []Flag) map[string]Flag {
 func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	if !cliTargets[c.Target] {
 		return fmt.Errorf("target %q must be account|self|child|device", c.Target)
+	}
+	if o.Multipart {
+		return fmt.Errorf("the op is multipart, which the engine cannot send; multipart ops get no verb (use call)")
 	}
 	// $child.* is read off the resolved --child; an account/self contract has none (its
 	// --child, if any, is the optional selector of a branch validated with its own target).
@@ -626,6 +682,13 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		if f.Transform != "" {
 			if in, known := cliTransformInputs[f.Transform]; known && !contains(in, f.Type) {
 				return fmt.Errorf("flag --%s: transform %s is defined for %v flags, not type %s", f.Name, f.Transform, in, f.Type)
+			}
+			if dom, closed := cliTransformDomains[f.Transform]; closed && f.Type == "enum" {
+				for _, e := range f.Enum {
+					if !contains(dom, strings.ToLower(e)) {
+						return fmt.Errorf("flag --%s: enum value %q is not one the transform %s accepts (%s accepts only %v)", f.Name, e, f.Transform, f.Transform, dom)
+					}
+				}
 			}
 		}
 		if f.Repeatable && f.Type != "string" && f.Type != "enum" {
@@ -712,7 +775,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !contains(headerNames, arg) {
 				return fmt.Errorf("flag --%s: header %q is not one of the op's declared headers %v", f.Name, arg, headerNames)
 			}
-			if _, fixed := o.HeaderValues[arg]; fixed {
+			if _, fixed := fixedHeader(o, arg); fixed {
 				return fmt.Errorf("flag --%s: header %q has a fixed value the op always sends (header_values); it cannot be a flag", f.Name, arg)
 			}
 			if !contains(o.Headers, arg) && !d.branchSelects(c, f, "header", arg) {
@@ -887,7 +950,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		if from, dup := headerFromFlag[name]; dup {
 			return fmt.Errorf("headers[%s] is declared as a constant and also mapped from --%s (one header, one source)", name, from)
 		}
-		if fv, fixed := o.HeaderValues[name]; fixed {
+		if fv, fixed := fixedHeader(o, name); fixed {
 			return fmt.Errorf("headers[%s] has a fixed value the op always sends (header_values: %q); a verb cannot override it", name, fv)
 		}
 		if strings.HasPrefix(v, "$") { // a resolver variable ($local.timezone for a contextual header)
@@ -918,6 +981,13 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	for _, r := range c.Resolve {
 		if err := resolveOK(r); err != nil {
 			return fmt.Errorf("resolve entry: %w", err)
+		}
+		// A keyed lookup runs on every invocation of this contract, so its key flag must
+		// be there: required or defaulted, or the contract is the branch that flag selects.
+		if key := lookupKeyFlag(r); key != "" {
+			if g := flagByName[key]; !g.Required && g.Default == nil && c.selectedBy != key {
+				return fmt.Errorf("resolve entry %s is keyed by --%s, which is not always present; make it required or defaulted, or confine the lookup to the branch --%s selects", r, key, key)
+			}
 		}
 	}
 
