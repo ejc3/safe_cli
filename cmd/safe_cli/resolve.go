@@ -103,6 +103,9 @@ func parseAccount(body []byte) (*account, error) {
 			}
 		}
 	}
+	if a.Members == nil {
+		a.Members = []member{} // an account with no service rows still lists as []
+	}
 	sortMembers(a.Members)
 	return a, nil
 }

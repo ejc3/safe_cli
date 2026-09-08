@@ -93,3 +93,18 @@ func TestRoleLabel(t *testing.T) {
 		t.Errorf("membersOrder must state the pairing order: %q", membersOrder)
 	}
 }
+
+// An account with no service rows still lists as an empty ARRAY: `members --json` must print
+// [] (a stable collection type), not null (Codex #68 round 2).
+func TestParseAccountNoServicesIsEmptyArray(t *testing.T) {
+	a, err := parseAccount([]byte(`{"accounts":[{"accountId":1,"userprofiles":[{"userProfileId":2,"profileName":"P","services":[]}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Members == nil || len(a.Members) != 0 {
+		t.Errorf("want a non-nil empty member list, got %#v", a.Members)
+	}
+	if got := filterMembers(a.Members, "", ""); got == nil {
+		t.Error("the unfiltered listing must stay a non-nil slice")
+	}
+}
