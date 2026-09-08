@@ -45,7 +45,7 @@ type CLI struct {
 	// (MAPPVersion, editSource, productType). A template literal not listed here is rejected.
 	Constants map[string]any `json:"constants,omitempty"`
 	// Resolve lists the variables the engine fills itself: $child.serviceId|profileId|
-	// deviceId|pairing, $self.serviceId|profileId, $account.id|timezone, $now.epochMs, $uuid,
+	// deviceId|pairing, $self.serviceId|profileId, $account.id, $local.timezone, $now.epochMs, $uuid,
 	// and $lookup:<entity>.<op>:<key>=<flag>:<field> for enrichment reads.
 	Resolve []string `json:"resolve,omitempty"`
 	// Variants picks the op by whether --child is given ({"account": "x.y", "child": "x.z"}).
@@ -90,15 +90,17 @@ var (
 	cliFlagTypes  = set("string", "int", "float", "bool", "enum", "duration", "date", "datetime", "tz", "list")
 	// cliTransforms is the engine's fixed registry (docs/CLI-DESIGN.md §4); the engine is the
 	// only place that implements them, this list only rejects an unknown name early.
-	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "weekday_ints", "bool01", "allow_block_ab")
+	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
+	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
+	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
 	// cliResolveNames is the EXACT vocabulary of resolved variables the engine can fill
 	// (plus the structured $lookup form checked by checkResolveVar). Exact, not a prefix:
 	// a typo like $child.profielId must fail at load, not reach the engine.
 	cliResolveNames = set("$child.serviceId", "$child.profileId", "$child.deviceId", "$child.pairing",
-		"$self.serviceId", "$self.profileId", "$account.id", "$account.timezone", "$now.epochMs", "$uuid")
+		"$self.serviceId", "$self.profileId", "$account.id", "$local.timezone", "$now.epochMs", "$uuid")
 	// cliResolveFamilies only decide which error a bad "$x" gets (a mistyped resolved
 	// variable vs. something that is not a resolved variable at all).
-	cliResolveFamilies = []string{"$child.", "$self.", "$account.", "$now.", "$uuid", "$lookup:"}
+	cliResolveFamilies = []string{"$child.", "$self.", "$account.", "$local.", "$now.", "$uuid", "$lookup:"}
 )
 
 func set(xs ...string) map[string]bool {
