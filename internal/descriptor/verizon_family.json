@@ -43,6 +43,9 @@
     "device_id": "x-fp-identifier-deviceid",
     "_note": "parental-control ops are id_token-authed (Authorization: <id_token>) plus these headers; NOT SigV4."
   },
+  "areas": {
+    "pause-internet": "Pause or resume a child's internet right now, and read the current pause state."
+  },
   "entities": {
     "accessibility_pin": {
       "summary": "Accessibility-protection PIN lock for the child device: retrieve, SMS-send, and validate the guard PIN, plus the age-capture notification flag and device-shadow tamper state.",
