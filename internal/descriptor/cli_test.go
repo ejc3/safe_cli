@@ -104,7 +104,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// Codex #66 round 3: a repeatable flag's var must live in a single-element array.
 		{"repeatable var outside an array", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"url\":\"$url\"}","flags":[{"name":"url","type":"string","repeatable":true,"maps_to":"body:$url","help":"h"}]}`, "", "single-element array"},
 		// Codex #67 (7a798ff): a typo in a cli key must not be silently discarded.
-		{"unknown cli key", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","transfrom":"tz_short","help":"h"}]}`, "", "unknown field"},
+		{"unknown cli key", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","xform":"tz_short","help":"h"}]}`, "", "unknown field"},
 		// resolve entries are checked on bodyless verbs too.
 		{"bodyless verb with bad resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","resolve":["$child.profielId"]}`, `"takes_body":false`, "not a supported resolved variable"},
 		// nulls targets must be optional body vars — the only place omission is defined.

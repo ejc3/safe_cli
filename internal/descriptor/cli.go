@@ -110,9 +110,10 @@ type SelectRule struct {
 	Resolve      []string          `json:"resolve,omitempty"`
 }
 
-// The cli block and its parts reject unknown keys: these fields are optional, so a typo
-// like "transfrom" or "nullls" would otherwise be silently discarded and the block would
-// still validate — generating an untransformed body or dropping a guard.
+// UnmarshalJSON rejects unknown keys: the block's fields are optional, so a misspelled
+// key would otherwise be silently discarded and the block would still validate —
+// generating an untransformed body or dropping a guard. Flag, SelectRule and CLIBlocks
+// decode the same way.
 func (c *CLI) UnmarshalJSON(b []byte) error {
 	type plain CLI
 	var p plain
@@ -123,6 +124,7 @@ func (c *CLI) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// UnmarshalJSON rejects unknown keys (see CLI.UnmarshalJSON).
 func (f *Flag) UnmarshalJSON(b []byte) error {
 	type plain Flag
 	var p plain
@@ -133,6 +135,7 @@ func (f *Flag) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// UnmarshalJSON rejects unknown keys (see CLI.UnmarshalJSON).
 func (r *SelectRule) UnmarshalJSON(b []byte) error {
 	type plain SelectRule
 	var p plain
@@ -160,6 +163,7 @@ type Output struct {
 // alias_of or call_only entry must be the only one.
 type CLIBlocks []*CLI
 
+// UnmarshalJSON accepts a single verb block or a list of them.
 func (b *CLIBlocks) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) > 0 && trimmed[0] == '[' {
@@ -803,15 +807,6 @@ func sameSet(a, b []string) bool {
 }
 
 func joinKeys(m map[string][]string) string {
-	names := make([]string, 0, len(m))
-	for n := range m {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	return strings.Join(names, " ")
-}
-
-func joinSet(m map[string]bool) string {
 	names := make([]string, 0, len(m))
 	for n := range m {
 		names = append(names, n)
