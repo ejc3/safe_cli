@@ -337,6 +337,8 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"query map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profielId"},"resolve":["$child.profileId"]}`, `"takes_body":false,"query":["lat"]`, "not a supported resolved variable"},
 		{"query map resolver var not in resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profileId"}}`, `"takes_body":false,"query":["lat"]`, "not listed in resolve"},
 		{"header map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","headers":{"timezone":"$ghost.zone"}}`, `"takes_body":false,"headers":["timezone"]`, "not a supported resolved variable"},
+		{"parent field on an unkeyed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other::^id\"}","resolve":["$lookup:pause.other::^id"]}`, "", "enclosing object"},
+		{"parent field alone", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other:id=x:^\",\"x\":\"$x\"}","resolve":["$lookup:pause.other:id=x:^"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "malformed"},
 		{"unkeyed lookup without a field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other::\"}","resolve":["$lookup:pause.other::"]}`, "", "malformed $lookup"},
 		{"default that is an unknown resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","default":"$ghost.value","maps_to":"body:$x","help":"h"}]}`, "", "not a supported resolved variable"},
 		{"placeholder with no source", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}/{thing}"`, "{thing} has no source"},
@@ -480,7 +482,11 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
 	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
 	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
-	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","required":true,"maps_to":"path:deviceId","help":"h"}]}`
+	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
+	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
+	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"l\":\"$lookup:pause.other:id=cat:^categoryId\",\"cat\":\"$cat\"}",
+	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name","$lookup:pause.other:id=cat:^categoryId"],
+	  "flags":[{"name":"cat","type":"int","maps_to":"body:$cat","help":"h"},{"name":"device-id","type":"string","maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
 	}

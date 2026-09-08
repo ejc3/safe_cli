@@ -235,11 +235,11 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
   "cats":{"method":"GET","path":"/cats","headers":["x-fp-identifier-target-serviceid"]},
   "post":{"method":"POST","path":"/p","takes_body":true,"headers":["x-pending-activation","x-name"],"query":["q"],
     "cli":{"area":"t","verb":"do","priority":"core","target":"child","summary":"s",
-      "body_template":"{\"mode\":{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"},\"domains\":[{\"url\":\"$url\",\"status\":\"$status\"}],\"id\":\"$cat\",\"catName\":\"$lookup:t.cats:id=cat:name\",\"fixed\":\"v\"}",
+      "body_template":"{\"mode\":{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"},\"domains\":[{\"url\":\"$url\",\"status\":\"$status\"}],\"id\":\"$cat\",\"catName\":\"$lookup:t.cats:id=cat:name\",\"catShort\":\"$lookup:t.cats:id=cat:^id\",\"catParent\":\"$lookup:t.cats:id=cat:^categoryId\",\"fixed\":\"v\"}",
       "constants":{"fixed":"v"},
       "headers":{"x-pending-activation":"false"},
       "query":{"q":"$name"},
-      "resolve":["$lookup:t.cats:id=cat:name"],
+      "resolve":["$lookup:t.cats:id=cat:name","$lookup:t.cats:id=cat:^id","$lookup:t.cats:id=cat:^categoryId"],
       "flags":[
         {"name":"mode","type":"enum","enum":["block","alert"],"default":"block","spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"},
         {"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"},
@@ -358,8 +358,11 @@ func engineDescriptor(t *testing.T) *descriptor.Descriptor {
 
 func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 	fb := newFakeBackend(t)
+	// The real getCategories shape: the subcategory record carries id/name, and the
+	// parent category object carries the short id and categoryId that updateSubcategory
+	// also wants ("^field" reads the enclosing object).
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"categories":[{"id":10001,"name":"Social"},{"id":10003,"name":"Games","categoryId":1001}]}`))
+		_, _ = w.Write([]byte(`{"categories":[{"id":"SOC","name":"Social","categoryId":5,"subCategories":[{"id":10001,"name":"Instagram","enabled":false}]},{"id":"GAM","name":"Games","categoryId":1001,"subCategories":[{"id":10003,"name":"8 Ball","enabled":false}]}]}`))
 	}
 	d := engineDescriptor(t)
 	vc := verbCall{entity: "t", op: "post", area: "t", verb: "do", child: "2000001", selfSvc: "1000001", selfPid: "1000002",
@@ -380,8 +383,11 @@ func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 	if len(domains) != 2 || domains[0].(map[string]any)["url"] != "a.com" || domains[1].(map[string]any)["url"] != "b.com" || domains[1].(map[string]any)["status"] != "b" {
 		t.Errorf("repeatable expansion wrong: %v", domains)
 	}
-	if body["id"] != float64(10003) || body["catName"] != "Games" || body["fixed"] != "v" {
+	if body["id"] != float64(10003) || body["catName"] != "8 Ball" || body["fixed"] != "v" {
 		t.Errorf("lookup/constant wrong: %s", req.body)
+	}
+	if body["catShort"] != "GAM" || body["catParent"] != float64(1001) {
+		t.Errorf("parent-field lookups wrong (want catShort=GAM catParent=1001): %s", req.body)
 	}
 	if req.headers.Get("x-pending-activation") != "false" || req.headers.Get("x-name") != "n" {
 		t.Errorf("header constant/flag wrong: %v", req.headers)
@@ -395,6 +401,7 @@ func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 func TestInvokeLookupMiss(t *testing.T) {
 	fb := newFakeBackend(t)
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"categories":[]}`)) }
+	// (the post verb's other lookups share the same read; a miss is a miss for all)
 	d := engineDescriptor(t)
 	vc := verbCall{entity: "t", op: "post", area: "t", verb: "do", child: "2000001", selfSvc: "1000001", selfPid: "1000002",
 		given: map[string]any{"url": []string{"a.com"}, "cat": int64(99999)}}
@@ -540,7 +547,7 @@ func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
 func TestInvokeQueryTemplateUsesFlagDefault(t *testing.T) {
 	fb := newFakeBackend(t)
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"categories":[{"id":10003,"name":"Games"}]}`))
+		_, _ = w.Write([]byte(`{"categories":[{"id":"GAM","categoryId":1001,"subCategories":[{"id":10003,"name":"Games"}]}]}`))
 	}
 	d := engineDescriptor(t)
 	vc := childCall("post", "do", map[string]any{"url": []string{"a.com"}, "cat": int64(10003)})

@@ -23,6 +23,7 @@ var transforms = map[string]func(any) (any, error){
 	"day3_title":     tfDay3Title,
 	"bool01":         tfBool01,
 	"allow_block_ab": tfAllowBlockAB,
+	"preset_group":   tfPresetGroup,
 	// structured: fills several body vars at once (the descriptor pins which).
 	"mode_block_alert": tfModeBlockAlert,
 }
@@ -307,6 +308,21 @@ func tfAllowBlockAB(v any) (any, error) {
 		return "b", nil
 	}
 	return nil, fmt.Errorf("%q must be allow or block", s)
+}
+
+// presetGroups is content_filter.createGroupPolicy's groupId vocabulary (live-verified
+// 2026-08-28): the age-group presets the app offers, by the CLI's short names.
+var presetGroups = map[string]int{"none": 1, "young-child": 2, "child": 3, "teen": 4}
+
+func tfPresetGroup(v any) (any, error) {
+	s, ok := v.(string)
+	if !ok {
+		return nil, fmt.Errorf("preset_group wants a string, got %T", v)
+	}
+	if g, ok := presetGroups[strings.ToLower(s)]; ok {
+		return g, nil
+	}
+	return nil, fmt.Errorf("--preset %q is not one of none|young-child|child|teen", s)
 }
 
 // tfModeBlockAlert: schedules.postSchedule's blockContent/alertOn are a mutually exclusive

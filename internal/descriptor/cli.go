@@ -223,27 +223,7 @@ var (
 	// only place that implements them, this list only rejects an unknown name early.
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
-	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
-	// cliTransformDomains lists the input values a closed transform accepts (lowercased);
-	// an enum flag using one may only offer those values.
-	cliTransformDomains = map[string][]string{
-		"pause_schedule":   {"30m", "1h", "2h", "4h", "until-morning"},
-		"allow_block_ab":   {"allow", "block", "a", "b"},
-		"mode_block_alert": {"block", "alert"},
-	}
-	// cliTransformInputs lists the flag types each transform is defined for; a transform on
-	// any other type could never produce the wire form and is a descriptor error.
-	cliTransformInputs = map[string][]string{
-		"pause_schedule":   {"enum", "string"},
-		"tz_short":         {"tz", "string"},
-		"iso_micro":        {"datetime", "date", "duration", "string"},
-		"epoch_ms":         {"datetime", "date", "duration", "int", "string"},
-		"day3_lower":       {"list", "string"},
-		"day3_title":       {"list", "string"},
-		"bool01":           {"bool"},
-		"allow_block_ab":   {"enum", "string"},
-		"mode_block_alert": {"enum", "string"},
-	}
+	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab", "preset_group")
 	// cliStructuredTransforms fill a FIXED set of body vars each; a flag's spreads_to must
 	// name exactly that set (mode_block_alert -> blockContent + alertOn, the wire-verified
 	// exclusive pair), so the engine's returned keys always have a destination.
@@ -1302,12 +1282,18 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
 		}
 		ref, keyEq, field := parts[0], parts[1], parts[2]
-		if field == "" {
+		if field == "" || field == "^" {
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
 		}
-		opRef, subtree, scoped := strings.Cut(ref, "/")
-		if scoped && (subtree == "" || strings.Contains(subtree, "/")) {
-			return fmt.Errorf("$lookup %q: the subtree after entity.op/ must be one top-level field name, got %q", v, subtree)
+		// "^field" reads the matched record's enclosing object (updateSubcategory wants the
+		// parent category's id and categoryId next to the subcategory's own name); it only
+		// makes sense for a keyed match, since a singleton read has no matched record.
+		if strings.HasPrefix(field, "^") && keyEq == "" {
+			return fmt.Errorf("$lookup %q: a ^field reads the enclosing object of a keyed match; an unkeyed singleton read has none", v)
+		}
+		lo, ok := d.lookupOp(ref)
+		if !ok {
+			return fmt.Errorf("$lookup %q does not name an existing entity.op (%s)", v, ref)
 		}
 		lo, ok := d.lookupOp(opRef)
 		if !ok {

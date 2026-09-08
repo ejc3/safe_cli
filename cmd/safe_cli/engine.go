@@ -770,7 +770,15 @@ func extractLookup(doc any, ref, keyEq, field string, given map[string]any) (any
 	}
 	var rec map[string]any
 	if keyed {
-		rec = findRecord(doc, key, fmt.Sprint(want))
+		var parent map[string]any
+		rec, parent = findRecord(doc, key, fmt.Sprint(want))
+		if strings.HasPrefix(field, "^") { // the enclosing object's field
+			field = strings.TrimPrefix(field, "^")
+			if rec != nil && parent == nil {
+				return nil, false, fmt.Errorf("lookup %s: the matching record is the top-level object, so it has no enclosing object for ^%s", ref, field)
+			}
+			rec = parent
+		}
 	} else {
 		rec = singletonRecord(doc, field)
 	}
@@ -884,12 +892,17 @@ func branchCondition(d *descriptor.Descriptor, c *descriptor.CLI, kind, arg stri
 }
 
 // findRecord walks a JSON document for the first object whose key equals want (compared
-// as text, so a numeric id matches "10003").
-func findRecord(n any, key, want string) map[string]any {
+// as text, so a numeric id matches "10003"), returning it and its enclosing object (the
+// nearest object above it, arrays skipped; nil for a top-level match).
+func findRecord(n any, key, want string) (rec, parent map[string]any) {
+	return findRecordIn(n, key, want, nil)
+}
+
+func findRecordIn(n any, key, want string, parent map[string]any) (map[string]any, map[string]any) {
 	switch t := n.(type) {
 	case map[string]any:
 		if v, ok := t[key]; ok && fmt.Sprint(normalizeNum(v)) == want {
-			return t
+			return t, parent
 		}
 		keys := make([]string, 0, len(t))
 		for k := range t {
@@ -897,18 +910,18 @@ func findRecord(n any, key, want string) map[string]any {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if r := findRecord(t[k], key, want); r != nil {
-				return r
+			if r, p := findRecordIn(t[k], key, want, t); r != nil {
+				return r, p
 			}
 		}
 	case []any:
 		for _, el := range t {
-			if r := findRecord(el, key, want); r != nil {
-				return r
+			if r, p := findRecordIn(el, key, want, parent); r != nil {
+				return r, p
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func lookupMiss(spec string, given map[string]any) error {
