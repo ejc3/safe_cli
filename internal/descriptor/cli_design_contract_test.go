@@ -33,6 +33,9 @@ func TestCLIDesignPinsSchemaContracts(t *testing.T) {
 		{"explicit query constants", []string{"`query`: an explicit map", "{\"categorySupported\": \"v6\"}", "{\"strategy\": \"NotNull\"}"}},
 		{"excludes never names a defaulted flag", []string{"`excludes[]` may only name flags that have no `default`"}},
 		{"at_least_one for account set", []string{"`at_least_one: [flags]`", "`set [--family-name] [--timezone]`"}},
+		{"conditional op selection", []string{"`select`: an ordered list", "`flag:<name>`", "`exists:$lookup:"}},
+		{"one flag spreads to several fields", []string{"`spreads_to: [\"body:$a\", \"body:$b\"]`", "`mode_block_alert`"}},
+		{"repeatable flags expand arrays", []string{"expands that element once per value"}},
 		{"reject unclassified fields", []string{"**rejected** by the descriptor test", "sample `geofenceId` must be dropped"}},
 	}
 	for _, c := range checks {
