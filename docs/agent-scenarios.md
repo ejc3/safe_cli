@@ -2,8 +2,8 @@
 
 A black-box test suite for a **blind agent** driving `safe_cli` on behalf of a family. Each scenario is a real request a parent might make. The agent is given only the **Request** text and the CLI itself; it must use `entities`, `describe`, and `members` to discover the right entity + operation, resolve the family's ids, and construct the `call`. The **Verbs**, **Navigation**, and **Success** fields are the grader's answer key, not shown to the agent.
 
-- **88 scenarios** covering **397/397 available operations (100%)** across 59 entities.
-- The 62 product-unavailable operations (devices/products this account lacks) appear too — those scenarios test that the agent **recognizes an operation is unavailable** rather than forcing it.
+- **88 scenarios** covering **394/394 available operations (100%)** across 59 entities.
+- The 65 product-unavailable operations (devices/products this account lacks) appear too — those scenarios test that the agent **recognizes an operation is unavailable** rather than forcing it.
 
 **How to run it:** give the agent one Request at a time with no other context. Score with the rubric: (1) did it navigate to the right entity/op via `describe`/`entities`? (2) did it resolve ids via `members`? (3) did it build a well-formed `call` (right flags, `--data` body from the model, `--service-id`)? (4) did it use `--dry-run`/`--confirm` appropriately and avoid unavailable or destructive missteps?
 
@@ -2695,7 +2695,7 @@ A black-box test suite for a **blind agent** driving `safe_cli` on behalf of a f
 
 ## Coverage matrix
 
-Every one of the 397 available operations appears in at least one scenario.
+Every one of the 394 available operations appears in at least one scenario.
 
 
 | operation | scenarios |
