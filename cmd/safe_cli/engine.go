@@ -422,7 +422,7 @@ func fillResolved(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *d
 // jsonNumber turns a numeric id string into a number for the body (ids are numbers on the
 // wire); a non-numeric value stays a string.
 func jsonNumber(s string) any {
-	var n json.Number = json.Number(s)
+	n := json.Number(s)
 	if i, err := n.Int64(); err == nil {
 		return i
 	}
