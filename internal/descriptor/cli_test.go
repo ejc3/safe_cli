@@ -55,13 +55,12 @@ func TestCLIBranchOnlyQueryFlagReachableAccepted(t *testing.T) {
 }
 
 // Round 3 (positive): shapes the new rules must keep accepting — at_least_one over
-// lookup-defaulted flags (account set resends the untouched field), resolver defaults of
-// the matching type, and a child branch inheriting a child base target.
+// lookup-defaulted flags (account set resends the untouched field) and resolver defaults of
+// the matching type.
 func TestCLIRoundThreePositives(t *testing.T) {
 	for name, c := range map[string]struct{ cli, extra string }{
-		"at_least_one over lookup defaults":    {`{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"familyName\":\"$fam\",\"tz\":\"$tz\"}","at_least_one":["family-name","timezone"],"resolve":["$lookup:pause.other::familyName","$lookup:pause.other::timeZone"],"flags":[{"name":"family-name","type":"string","default":"$lookup:pause.other::familyName","maps_to":"body:$fam","help":"h"},{"name":"timezone","type":"string","default":"$lookup:pause.other::timeZone","maps_to":"body:$tz","help":"h"}]}`, ""},
-		"typed resolver defaults":              {`{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\",\"c\":\"$c\"}","resolve":["$local.timezone","$lookup:pause.other::n"],"flags":[{"name":"a","type":"tz","default":"$local.timezone","maps_to":"body:$a","help":"h"},{"name":"b","type":"int","default":"$lookup:pause.other::n","maps_to":"body:$b","help":"h"},{"name":"c","type":"string","default":"$local.timezone","maps_to":"body:$c","help":"h"}]}`, ""},
-		"child branch inheriting a child base": {`{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, ""},
+		"at_least_one over lookup defaults": {`{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"familyName\":\"$fam\",\"tz\":\"$tz\"}","at_least_one":["family-name","timezone"],"resolve":["$lookup:pause.other::familyName","$lookup:pause.other::timeZone"],"flags":[{"name":"family-name","type":"string","default":"$lookup:pause.other::familyName","maps_to":"body:$fam","help":"h"},{"name":"timezone","type":"string","default":"$lookup:pause.other::timeZone","maps_to":"body:$tz","help":"h"}]}`, ""},
+		"typed resolver defaults":           {`{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\",\"c\":\"$c\"}","resolve":["$local.timezone","$lookup:pause.other::n"],"flags":[{"name":"a","type":"tz","default":"$local.timezone","maps_to":"body:$a","help":"h"},{"name":"b","type":"int","default":"$lookup:pause.other::n","maps_to":"body:$b","help":"h"},{"name":"c","type":"string","default":"$local.timezone","maps_to":"body:$c","help":"h"}]}`, ""},
 	} {
 		if _, err := Parse(cliFixture(c.cli, c.extra)); err != nil {
 			t.Errorf("%s: must be accepted: %v", name, err)
@@ -146,7 +145,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		// referenced; a child branch ends on a child target; a lookup is a plain read; identity
 		// headers are the engine's; a query map cannot read a filter: flag.
 		{"select condition repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:sel","op":"pause.other2"},{"when":"flag:sel","op":"pause.other2"}],"flags":[{"name":"sel","type":"string","maps_to":"filter:role","help":"h"},{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
-		{"select condition child repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"},{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
+		{"select condition child repeated", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2","target":"child"},{"when":"child","op":"pause.other2","target":"child"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
 		{"flag excludes itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","excludes":["x"]}]}`, "", "itself"},
 		{"flag requires itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","requires":["x"]}]}`, "", "itself"},
 		{"flag nulls itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x?\"}","flags":[{"name":"x","type":"string","nulls":["x"],"maps_to":"body:$x","help":"h"}]}`, "", "itself"},
@@ -334,6 +333,14 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"alias to an unavailable canonical op", `{"alias_of":"pause.goneverb"}`, "", "unavailable"},
 		{"enum outside the transform's domain", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"f\":\"$f\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"f","type":"enum","enum":["nonsense"],"default":"nonsense","maps_to":"body:$f","transform":"pause_schedule","help":"h"}]}`, "", "pause_schedule accepts"},
 		{"header constant overriding a fixed value in another case", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"App-Name":"OTHER"},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, `"headers":["App-Name"],"header_values":{"app-name":"VSF"}`, "fixed value"},
+		// Codex #70 round 8: a child branch on a child/device base would always match; every
+		// producer of a shared body var excludes every other; an exclusion may not involve a
+		// required flag; an at_least_one member may carry a lookup default (resend the current
+		// value) but not a literal one.
+		{"child branch on a child base", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "always"},
+		{"three producers not pairwise exclusive", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"v\":\"$v?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"a","type":"string","excludes":["b","c"],"maps_to":"body:$v","help":"h"},{"name":"b","type":"string","excludes":["a"],"maps_to":"body:$v","help":"h"},{"name":"c","type":"string","excludes":["a"],"maps_to":"body:$v","help":"h"}]}`, "", "pairwise"},
+		{"optional flag excluding a required one", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"o\":\"$o?\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"o","type":"string","excludes":["x"],"maps_to":"body:$o","help":"h"}]}`, "", "required"},
+		{"at_least_one member with a literal default", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b?\"}","at_least_one":["a","b"],"flags":[{"name":"a","type":"string","default":"lit","maps_to":"body:$a","help":"h"},{"name":"b","type":"string","maps_to":"body:$b","help":"h"}]}`, "", "default"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -393,9 +400,9 @@ func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 // existing op keyed by a declared flag and a valid lookup; a spreads_to pair through the
 // structured mode_block_alert transform; a repeatable var inside a single-element array.
 func TestCLISelectSpreadsAndRepeatableAccepted(t *testing.T) {
-	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	cli := `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s",
 	  "body_template":"{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\",\"domains\":[{\"status\":\"$status\",\"url\":\"$url\"}],\"n\":\"$n?\"}",
-	  "select":[{"when":"flag:n","op":"pause.other2"},{"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other2"},{"when":"child","op":"pause.other2"}],
+	  "select":[{"when":"flag:n","op":"pause.other2"},{"when":"exists:$lookup:pause.other:id=n:name","op":"pause.other2"},{"when":"child","op":"pause.other2","target":"child"}],
 	  "flags":[
 	    {"name":"mode","type":"enum","enum":["block","alert"],"default":"block","spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"},
 	    {"name":"status","type":"enum","enum":["allow","block"],"default":"block","maps_to":"body:$status","transform":"allow_block_ab","help":"h"},

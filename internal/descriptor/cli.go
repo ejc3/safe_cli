@@ -419,6 +419,9 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 			if eff != "child" && eff != "device" {
 				return fmt.Errorf("select[%d]: a child branch must end on a child or device target (base target %s, branch target %q)", i, c.Target, r.Target)
 			}
+			if c.Target == "child" || c.Target == "device" {
+				return fmt.Errorf("select[%d]: a child branch on a %s-target verb would always match (--child is required there), so the base op could never run", i, c.Target)
+			}
 		case strings.HasPrefix(r.When, "flag:"):
 			sel := strings.TrimPrefix(r.When, "flag:")
 			g, ok := flagByName[sel]
@@ -659,6 +662,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	// Flags: unique names, known types, exactly one destination form, well-formed maps_to.
 	flagByName := make(map[string]Flag, len(c.Flags))
 	bodyVarByFlag := make(map[string]Flag)    // body var name -> flag
+	bodyVarFlags := map[string][]Flag{}       // body var name -> every flag that produces it
 	queryFromFlag := make(map[string]string)  // query name -> the flag that maps to it
 	headerFromFlag := make(map[string]string) // header name -> flag
 	pathFromFlag := make(map[string]string)   // placeholder -> flag
@@ -754,9 +758,16 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				if prev.Repeatable != f.Repeatable {
 					return fmt.Errorf("flag --%s: shares body var $%s with --%s but one is repeatable and the other is not; both must expand the same way", f.Name, v, prev.Name)
 				}
+				// Every producer must exclude every other, not just the first one seen.
+				for _, other := range bodyVarFlags[v] {
+					if !contains(other.Excludes, f.Name) || !contains(f.Excludes, other.Name) {
+						return fmt.Errorf("flag --%s: shares body var $%s with --%s but they are not pairwise exclusive; every producer of one template value must exclude every other", f.Name, v, other.Name)
+					}
+				}
 			} else {
 				bodyVarByFlag[v] = f
 			}
+			bodyVarFlags[v] = append(bodyVarFlags[v], f)
 		case "query":
 			if !contains(queryNames, arg) {
 				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, queryNames)
@@ -833,6 +844,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if g.Default != nil {
 				return fmt.Errorf("flag --%s: excludes --%s, which has a default (a defaulted flag is always present, so the exclusion cannot be decided); express precedence with nulls instead", f.Name, x)
 			}
+			if g.Required || f.Required {
+				return fmt.Errorf("flag --%s: excludes --%s, but one of them is required (always present), so the other could never be used", f.Name, x)
+			}
 		}
 		for _, x := range f.Nulls {
 			if x == f.Name {
@@ -877,6 +891,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			if g.Required {
 				return fmt.Errorf("at_least_one names --%s, which is already required", x)
+			}
+			if d, ok := g.Default.(string); g.Default != nil && (!ok || !strings.HasPrefix(d, "$lookup:")) {
+				return fmt.Errorf("at_least_one names --%s, which has a literal default (always populated, so the guard would be vacuous); only a lookup default that resends the current value is allowed", x)
 			}
 		}
 	}
