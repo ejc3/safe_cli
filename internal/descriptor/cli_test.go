@@ -20,6 +20,7 @@ func cliFixture(cli string, extra string) []byte {
 	  "reqq":{"method":"GET","path":"/r","query":["a"],"required_query":["a"]},
 	  "gone":{"method":"GET","path":"/g","unavailable":"observed 403"},
 	  "getbody":{"method":"GET","path":"/gb","takes_body":true},
+	  "hdrlook":{"method":"GET","path":"/hl","headers":["timezone","x-fp-identifier-target-serviceid"]},
 	  "mp":{"method":"POST","path":"/mp","takes_body":true,"multipart":true},
 	  "goneverb":{"method":"POST","path":"/p","takes_body":true,"unavailable":"observed 403","cli":{"area":"gv","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}},
 	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}}}}}}`)
@@ -408,6 +409,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"output with an unknown field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","output":{"tables":["x"]},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "unknown field"},
 		{"duplicate key in a cli object", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","live_emergency":true,"live_emergency":false,"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "duplicate"},
 		{"duplicate key in a nested flag object", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"required":false,"maps_to":"body:$x","help":"h"}]}`, "", "duplicate"},
+		// Codex #70 round 13 (+ #69): body templates have no duplicate keys either; the engine's
+		// transaction headers are reserved; every constant is used by the template; an optional
+		// "$v?" is an object property value only; reason belongs to call_only blocks; a lookup op
+		// declares no header the lookup could not fill.
+		{"duplicate key inside the body template", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"enabled\":true,\"enabled\":false}","constants":{"enabled":false},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "duplicate"},
+		{"header flag names the trace transaction header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"string","maps_to":"header:X-Trace-Transaction-Id","help":"h"}]}`, `"headers":["X-Trace-Transaction-Id"]`, "engine"},
+		{"headers constant names the transaction header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"x-transaction-id":"1"},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, `"headers":["x-transaction-id"]`, "engine"},
+		{"constant absent from the body template", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","constants":{"editSource":"MAPP"},"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "never used"},
+		{"optional var as a root array element", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"[\"$o?\"]","flags":[{"name":"o","type":"string","maps_to":"body:$o","help":"h"}]}`, "", "object property"},
+		{"reason on an alias block", `{"alias_of":"pause.twin","reason":"r"}`, "", "reason"},
+		{"reason on a verb block", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","reason":"r","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "reason"},
+		{"lookup op with an unfillable header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.hdrlook::name\"}","resolve":["$lookup:pause.hdrlook::name"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "header"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
