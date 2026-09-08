@@ -339,12 +339,33 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	// against ITS op, so choosing an op can never apply the base template to an unrelated
 	// route.
 	flagByName := flagIndex(c.Flags)
+	seenWhen := map[string]int{}
 	for i, r := range c.Select {
+		// First match wins, so a repeated condition is an unreachable branch — and one that
+		// branchSelects could wrongly count as reachable.
+		if j, dup := seenWhen[r.When]; dup {
+			return fmt.Errorf("select[%d]: condition %q repeats select[%d] (first match wins, so this branch is unreachable)", i, r.When, j)
+		}
+		seenWhen[r.When] = i
 		switch {
 		case r.When == "child":
+			// --child selects this branch, so the branch must end on a contract that has a
+			// child to act on.
+			eff := r.Target
+			if eff == "" {
+				eff = c.Target
+			}
+			if eff != "child" && eff != "device" {
+				return fmt.Errorf("select[%d]: a child branch must end on a child or device target (base target %s, branch target %q)", i, c.Target, r.Target)
+			}
 		case strings.HasPrefix(r.When, "flag:"):
-			if _, ok := flagByName[strings.TrimPrefix(r.When, "flag:")]; !ok {
-				return fmt.Errorf("select[%d]: condition %q names unknown flag %q", i, r.When, strings.TrimPrefix(r.When, "flag:"))
+			sel := strings.TrimPrefix(r.When, "flag:")
+			g, ok := flagByName[sel]
+			if !ok {
+				return fmt.Errorf("select[%d]: condition %q names unknown flag %q", i, r.When, sel)
+			}
+			if g.Default != nil {
+				return fmt.Errorf("select[%d]: condition %q names --%s, which has a default (a defaulted flag is always populated, so its presence cannot select a branch)", i, r.When, sel)
 			}
 		case strings.HasPrefix(r.When, "exists:"):
 			if err := d.checkResolveVar(strings.TrimPrefix(r.When, "exists:"), flagByName); err != nil {
@@ -390,6 +411,19 @@ func (d *Descriptor) branchSelects(c *CLI, f Flag, kind, arg string) bool {
 		}
 	}
 	return false
+}
+
+// headerNameOK rejects header destinations the descriptor may not claim: the identity
+// headers the engine fills (x-fp-identifier-*, which would silently win), and the
+// decompiler's dynamic header-map placeholder, which is not a header name.
+func headerNameOK(name string) error {
+	if strings.HasPrefix(name, "x-fp-identifier-") {
+		return fmt.Errorf("header %q is an identity header the engine fills from the target; it cannot be a flag or constant", name)
+	}
+	if strings.HasPrefix(name, "(") || strings.Contains(name, "@HeaderMap") {
+		return fmt.Errorf("header %q is the decompiler's dynamic header-map placeholder, not a header name", name)
+	}
+	return nil
 }
 
 // subset reports whether every name in a is in b.
@@ -563,6 +597,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			queryFromFlag[arg] = f.Name
 		case "header":
+			if err := headerNameOK(arg); err != nil {
+				return fmt.Errorf("flag --%s: %w", f.Name, err)
+			}
 			if !contains(headerNames, arg) {
 				return fmt.Errorf("flag --%s: header %q is not one of the op's declared headers %v", f.Name, arg, headerNames)
 			}
@@ -605,6 +642,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	}
 	for _, f := range c.Flags {
 		for _, x := range f.Excludes {
+			if x == f.Name {
+				return fmt.Errorf("flag --%s: excludes itself", f.Name)
+			}
 			g, ok := flagByName[x]
 			if !ok {
 				return fmt.Errorf("flag --%s: excludes/nulls names unknown flag %q", f.Name, x)
@@ -617,6 +657,9 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 		}
 		for _, x := range f.Nulls {
+			if x == f.Name {
+				return fmt.Errorf("flag --%s: nulls itself", f.Name)
+			}
 			g, ok := flagByName[x]
 			if !ok {
 				return fmt.Errorf("flag --%s: excludes/nulls names unknown flag %q", f.Name, x)
@@ -669,8 +712,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				return fmt.Errorf("one_of[%d] is an empty group", gi)
 			}
 			for _, x := range grp {
-				if _, ok := flagByName[x]; !ok {
+				g, ok := flagByName[x]
+				if !ok {
 					return fmt.Errorf("one_of[%d] names unknown flag %q", gi, x)
+				}
+				if g.Default != nil {
+					return fmt.Errorf("one_of[%d] names --%s, which has a default (a defaulted flag is always populated, so exactly-one cannot be decided)", gi, x)
 				}
 			}
 		}
@@ -702,13 +749,18 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				if !contains(c.Resolve, v) {
 					return fmt.Errorf("query[%s] uses resolved value %s, which is not listed in resolve", name, v)
 				}
-			} else if _, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
+			} else if g, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
+			} else if strings.HasPrefix(g.MapsTo, "filter:") {
+				return fmt.Errorf("query[%s] references --%s, a filter: flag that never reaches the request", name, g.Name)
 			}
 		}
 	}
 	// Fixed header constants: every name must be a header the op declares.
 	for name, v := range c.Headers {
+		if err := headerNameOK(name); err != nil {
+			return fmt.Errorf("headers[%s]: %w", name, err)
+		}
 		if !contains(o.Headers, name) {
 			return fmt.Errorf("headers[%s] is not one of the op's declared headers %v", name, o.Headers)
 		}
@@ -790,6 +842,17 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 		if lo.Method != http.MethodGet || lo.Destructive {
 			return fmt.Errorf("$lookup %q must name a read-only GET op (lookups run before --confirm); %s is %s%s", v, ref, lo.Method, map[bool]string{true: " and destructive", false: ""}[lo.Destructive])
 		}
+		// The engine issues a lookup as the op's bare path with the target headers, so the
+		// op must need nothing else.
+		if lo.Unavailable != "" {
+			return fmt.Errorf("$lookup %q names %s, which is marked unavailable (%s)", v, ref, lo.Unavailable)
+		}
+		if placeholderRe.MatchString(lo.Path) {
+			return fmt.Errorf("$lookup %q: %s's path %s has a {placeholder} a lookup cannot fill", v, ref, lo.Path)
+		}
+		if len(lo.RequiredQuery) > 0 {
+			return fmt.Errorf("$lookup %q: %s declares required query params %v that a lookup does not send", v, ref, lo.RequiredQuery)
+		}
 		if keyEq == "" { // unkeyed: the target's singleton record (screen-time set's one limit)
 			return nil
 		}
@@ -822,6 +885,16 @@ func (d *Descriptor) checkDefault(f Flag) error {
 	if s, ok := f.Default.(string); ok && strings.HasPrefix(s, "$") {
 		if err := d.checkResolveVar(s, map[string]Flag{}); err != nil {
 			return fmt.Errorf("flag --%s: default: %w", f.Name, err)
+		}
+		// The engine fills a default from exactly two sources: the local zone and a lookup.
+		switch {
+		case s == "$local.timezone":
+			if f.Type != "tz" && f.Type != "string" {
+				return fmt.Errorf("flag --%s: default $local.timezone yields a zone code, not a value of type %s", f.Name, f.Type)
+			}
+		case strings.HasPrefix(s, "$lookup:"):
+		default:
+			return fmt.Errorf("flag --%s: default %s is not a supported default (only $local.timezone or a $lookup can fill a default; other resolver variables belong in resolve and the template)", f.Name, s)
 		}
 		return nil
 	}

@@ -16,6 +16,9 @@ func cliFixture(cli string, extra string) []byte {
 	  "other":{"method":"GET","path":"/o"},
 	  "other2":{"method":"POST","path":"/o2","takes_body":true,"query":["lat","lon","address","alt"],"headers":["timezone"]},
 	  "purge":{"method":"GET","path":"/purge","destructive":true},
+	  "withph":{"method":"GET","path":"/w/{id}"},
+	  "reqq":{"method":"GET","path":"/r","query":["a"],"required_query":["a"]},
+	  "gone":{"method":"GET","path":"/g","unavailable":"observed 403"},
 	  "twin":{"method":"POST","path":"/p","takes_body":true,"cli":{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}}}}}}`)
 }
 
@@ -45,6 +48,21 @@ func TestCLIBranchOnlyQueryFlagReachableAccepted(t *testing.T) {
 	} {
 		if _, err := Parse(cliFixture(cli, "")); err != nil {
 			t.Errorf("%s: a reachable branch-only query flag must be accepted: %v", name, err)
+		}
+	}
+}
+
+// Round 3 (positive): shapes the new rules must keep accepting — at_least_one over
+// lookup-defaulted flags (account set resends the untouched field), resolver defaults of
+// the matching type, and a child branch inheriting a child base target.
+func TestCLIRoundThreePositives(t *testing.T) {
+	for name, c := range map[string]struct{ cli, extra string }{
+		"at_least_one over lookup defaults":    {`{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"familyName\":\"$fam\",\"tz\":\"$tz\"}","at_least_one":["family-name","timezone"],"resolve":["$lookup:pause.other::familyName","$lookup:pause.other::timeZone"],"flags":[{"name":"family-name","type":"string","default":"$lookup:pause.other::familyName","maps_to":"body:$fam","help":"h"},{"name":"timezone","type":"string","default":"$lookup:pause.other::timeZone","maps_to":"body:$tz","help":"h"}]}`, ""},
+		"typed resolver defaults":              {`{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"a\":\"$a\",\"b\":\"$b\",\"c\":\"$c\"}","resolve":["$local.timezone","$lookup:pause.other::n"],"flags":[{"name":"a","type":"tz","default":"$local.timezone","maps_to":"body:$a","help":"h"},{"name":"b","type":"int","default":"$lookup:pause.other::n","maps_to":"body:$b","help":"h"},{"name":"c","type":"string","default":"$local.timezone","maps_to":"body:$c","help":"h"}]}`, ""},
+		"child branch inheriting a child base": {`{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, ""},
+	} {
+		if _, err := Parse(cliFixture(c.cli, c.extra)); err != nil {
+			t.Errorf("%s: must be accepted: %v", name, err)
 		}
 	}
 }
@@ -106,6 +124,31 @@ func TestCLIValidationRejects(t *testing.T) {
 		// Codex #70-8: identical or nested one_of groups make exactly-one unsatisfiable or dead.
 		{"one_of duplicate groups", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["address"],["address"]],"flags":[{"name":"address","type":"string","maps_to":"query:address","help":"h"}]}`, `"takes_body":false,"query":["address"]`, "one_of"},
 		{"one_of subset group", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["lat","lon"],["lat"]],"flags":[{"name":"lat","type":"float","maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","maps_to":"query:lon","help":"h"}]}`, `"takes_body":false,"query":["lat","lon"]`, "one_of"},
+		// Round 3 (Codex #70 + the verification sweep): one presence vocabulary — every
+		// presence-based reference (excludes, requires, nulls, one_of members, select flag:
+		// conditions) names another, undefaulted flag; a select condition appears once; a
+		// resolver-backed default has the flag's type; $child.* needs a child however it is
+		// referenced; a child branch ends on a child target; a lookup is a plain read; identity
+		// headers are the engine's; a query map cannot read a filter: flag.
+		{"select condition repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"},{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
+		{"select condition child repeated", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"},{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "repeats"},
+		{"flag excludes itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","excludes":["x"]}]}`, "", "itself"},
+		{"flag requires itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h","requires":["x"]}]}`, "", "itself"},
+		{"flag nulls itself", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x?\"}","flags":[{"name":"x","type":"string","nulls":["x"],"maps_to":"body:$x","help":"h"}]}`, "", "itself"},
+		{"one_of member with a default", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["lat","lon"],["address"]],"flags":[{"name":"lat","type":"float","maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","maps_to":"query:lon","help":"h"},{"name":"address","type":"string","default":"home","maps_to":"query:address","help":"h"}]}`, `"takes_body":false,"query":["lat","lon","address"]`, "has a default"},
+		{"select flag condition on a defaulted flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"m\":\"$m\"}","select":[{"when":"flag:m","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"m","type":"string","default":"d","maps_to":"body:$m","help":"h"}]}`, "", "has a default"},
+		{"bool flag defaulted to a timezone", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"bool","default":"$local.timezone","maps_to":"body:$x","help":"h"}],"resolve":["$local.timezone"]}`, "", "type bool"},
+		{"int flag defaulted to a uuid", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"int","default":"$uuid","maps_to":"body:$x","help":"h"}],"resolve":["$uuid"]}`, "", "not a supported default"},
+		{"string flag defaulted to epoch ms", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","default":"$now.epochMs","maps_to":"body:$x","help":"h"}],"resolve":["$now.epochMs"]}`, "", "not a supported default"},
+		{"child resolver as a flag default on an account verb", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"int","default":"$child.profileId","maps_to":"body:$x","help":"h"}]}`, "", "not a supported default"},
+		{"child branch without a child target", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"child","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "child branch"},
+		{"lookup to an op with a path placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.withph::name\"}","resolve":["$lookup:pause.withph::name"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "placeholder"},
+		{"lookup to an op with a required query", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.reqq::name\"}","resolve":["$lookup:pause.reqq::name"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "required query"},
+		{"lookup to an unavailable op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"n\":\"$lookup:pause.gone::name\"}","resolve":["$lookup:pause.gone::name"],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "unavailable"},
+		{"header flag names an identity header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"t","type":"string","maps_to":"header:x-fp-identifier-target-serviceid","help":"h"}]}`, `"headers":["x-fp-identifier-target-serviceid"]`, "identity header"},
+		{"headers constant names an identity header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","headers":{"x-fp-identifier-target-serviceid":"1"},"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, `"headers":["x-fp-identifier-target-serviceid"]`, "identity header"},
+		{"header flag names the dynamic placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"t","type":"string","maps_to":"header:(@HeaderMap dynamic)","help":"h"}]}`, `"headers":["(@HeaderMap dynamic)"]`, "not a header name"},
+		{"query map reads a filter flag", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","query":{"lat":"$only"},"flags":[{"name":"only","type":"string","maps_to":"filter:role","help":"h"}]}`, `"takes_body":false,"query":["lat"]`, "filter"},
 		// Codex #70-3: a null list entry is a load error, never a nil dereference.
 		{"null cli entry", `[null]`, "", "null"},
 		// Codex #69-1: a lookup runs BEFORE --confirm, so it may only name a read-only GET.
