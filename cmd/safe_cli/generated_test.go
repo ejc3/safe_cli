@@ -45,10 +45,14 @@ func TestGeneratedHelpIsDiscoverable(t *testing.T) {
 		"(default: 30m)",
 		"--indefinite",
 		"--dry-run",
+		"reads PAIRED or UNPAIRED",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("pause --help lacks %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "--confirm") {
+		t.Errorf("pause is not destructive: --confirm must not be offered (an agent hedged by adding it):\n%s", out)
 	}
 	top := helpFor(t, "--help")
 	if !strings.Contains(top, "pause-internet") {

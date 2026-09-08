@@ -3627,7 +3627,7 @@
             "target": "device",
             "summary": "Pause the child's internet now, for a fixed time or until you resume it.",
             "prereq": [
-              "The child's phone must be PAIRED (safe_cli members shows PAIRING)."
+              "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
             ],
             "body_template": "{\"timeZone\":\"$tz\",\"profiles\":[{\"profileId\":\"$child.profileId\",\"devices\":[{\"serviceId\":\"$child.serviceId\",\"deviceId\":\"$child.deviceId\",\"pauseSchedule\":\"$for?\",\"untilIUnpause\":\"$indefinite\",\"callOnlyMode\":\"$callOnly\"}]}]}",
             "flags": [
@@ -3700,7 +3700,7 @@
             "target": "device",
             "summary": "Resume the child's internet, lifting a pause.",
             "prereq": [
-              "The child's phone must be PAIRED (safe_cli members shows PAIRING)."
+              "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
             ],
             "output": {
               "table": [

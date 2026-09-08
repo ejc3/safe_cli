@@ -10,8 +10,8 @@ type generatedAreas struct {
 
 // PauseInternetArea groups the pause-internet verbs (core verbs first).
 type PauseInternetArea struct {
-	Pause  PauseInternetPauseCmd  `cmd:"" name:"pause" help:"Pause the child's internet now, for a fixed time or until you resume it.\nPrerequisite: The child's phone must be PAIRED (safe_cli members shows PAIRING).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
-	Resume PauseInternetResumeCmd `cmd:"" name:"resume" help:"Resume the child's internet, lifting a pause.\nPrerequisite: The child's phone must be PAIRED (safe_cli members shows PAIRING).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	Pause  PauseInternetPauseCmd  `cmd:"" name:"pause" help:"Pause the child's internet now, for a fixed time or until you resume it.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
+	Resume PauseInternetResumeCmd `cmd:"" name:"resume" help:"Resume the child's internet, lifting a pause.\nPrerequisite: The child's phone must be PAIRED (the PAIRING column of 'safe_cli members' reads PAIRED or UNPAIRED).\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."`
 	Status PauseInternetStatusCmd `cmd:"" name:"status" help:"Show whether the child's internet is paused, how long is left, and the valid pause timings."`
 }
 
@@ -23,7 +23,6 @@ type PauseInternetPauseCmd struct {
 	CallOnly      *bool   `name:"call-only" help:"Leave phone calls working while data is paused (default: false)."`
 	Timezone      *string `name:"timezone" help:"Short zone code (EST, PST) the pause timing is computed in (default: this machine's local zone)."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
-	Confirm       bool    `name:"confirm" help:"Required by destructive and live-emergency verbs."`
 	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
 }
 
@@ -41,30 +40,28 @@ func (c *PauseInternetPauseCmd) Run(rc *runContext) error {
 	if c.Timezone != nil {
 		given["timezone"] = *c.Timezone
 	}
-	return runVerb(rc, "pause_internet", "pauseInternet", "pause-internet", "pause", given, deref(c.Child), c.DryRun, c.Confirm, c.AllowUnpaired)
+	return runVerb(rc, "pause_internet", "pauseInternet", "pause-internet", "pause", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
 }
 
 // PauseInternetResumeCmd: pause-internet resume <- pause_internet.unPauseInternet
 type PauseInternetResumeCmd struct {
 	Child         *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
 	DryRun        bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
-	Confirm       bool    `name:"confirm" help:"Required by destructive and live-emergency verbs."`
 	AllowUnpaired bool    `name:"allow-unpaired" help:"Send even though the child's device is not PAIRED."`
 }
 
 func (c *PauseInternetResumeCmd) Run(rc *runContext) error {
 	given := map[string]any{}
-	return runVerb(rc, "pause_internet", "unPauseInternet", "pause-internet", "resume", given, deref(c.Child), c.DryRun, c.Confirm, c.AllowUnpaired)
+	return runVerb(rc, "pause_internet", "unPauseInternet", "pause-internet", "resume", given, deref(c.Child), c.DryRun, false, c.AllowUnpaired)
 }
 
 // PauseInternetStatusCmd: pause-internet status <- pause_internet.getDevices
 type PauseInternetStatusCmd struct {
-	Child   *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
-	DryRun  bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
-	Confirm bool    `name:"confirm" help:"Required by destructive and live-emergency verbs."`
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required."`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
 func (c *PauseInternetStatusCmd) Run(rc *runContext) error {
 	given := map[string]any{}
-	return runVerb(rc, "pause_internet", "getDevices", "pause-internet", "status", given, deref(c.Child), c.DryRun, c.Confirm, false)
+	return runVerb(rc, "pause_internet", "getDevices", "pause-internet", "status", given, deref(c.Child), c.DryRun, false, false)
 }

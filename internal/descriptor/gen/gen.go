@@ -26,6 +26,7 @@ type verb struct {
 	block      *descriptor.CLI
 	childFlag  bool // takes --child (target child/device, or a select branch does)
 	device     bool // target device: offers --allow-unpaired
+	confirm    bool // destructive op or live_emergency verb: --confirm is required
 }
 
 // Source renders the Go source of the generated tree for d.
@@ -54,7 +55,7 @@ func Source(d *descriptor.Descriptor) ([]byte, error) {
 					if _, ok := d.Areas[b.Area]; !ok {
 						return fmt.Errorf("%s.%s: area %q has no help text in the descriptor's areas map", ename, oname, b.Area)
 					}
-					v := verb{entity: ename, op: oname, area: b.Area, name: b.Verb, block: b}
+					v := verb{entity: ename, op: oname, area: b.Area, name: b.Verb, block: b, confirm: o.Destructive || b.LiveEmergency}
 					v.childFlag = b.Target == "child" || b.Target == "device"
 					v.device = b.Target == "device"
 					for _, r := range b.Select {
@@ -155,7 +156,13 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 		fmt.Fprintf(w, "\t%s %s `%s`\n", ident(f.Name), goType, tags)
 	}
 	fmt.Fprintf(w, "\tDryRun bool `name:\"dry-run\" help:\"Print the exact request, with the resolved ids, without sending it.\"`\n")
-	fmt.Fprintf(w, "\tConfirm bool `name:\"confirm\" help:\"Required by destructive and live-emergency verbs.\"`\n")
+	if v.confirm {
+		why := "this verb is destructive and effectively irreversible"
+		if b.LiveEmergency {
+			why = "this verb triggers a LIVE emergency/dispatch flow on a real account"
+		}
+		fmt.Fprintf(w, "\tConfirm bool `name:\"confirm\" help:%s`\n", tagQuote("Required: "+why+"."))
+	}
 	if v.device {
 		fmt.Fprintf(w, "\tAllowUnpaired bool `name:\"allow-unpaired\" help:\"Send even though the child's device is not PAIRED.\"`\n")
 	}
@@ -176,11 +183,15 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 	if v.childFlag {
 		child = "deref(c.Child)"
 	}
+	confirm := "false"
+	if v.confirm {
+		confirm = "c.Confirm"
+	}
 	allow := "false"
 	if v.device {
 		allow = "c.AllowUnpaired"
 	}
-	fmt.Fprintf(w, "\treturn runVerb(rc, %q, %q, %q, %q, given, %s, c.DryRun, c.Confirm, %s)\n}\n\n", v.entity, v.op, v.area, v.name, child, allow)
+	fmt.Fprintf(w, "\treturn runVerb(rc, %q, %q, %q, %q, given, %s, c.DryRun, %s, %s)\n}\n\n", v.entity, v.op, v.area, v.name, child, confirm, allow)
 	return nil
 }
 
@@ -193,6 +204,9 @@ func verbHelp(v verb) string {
 	}
 	if v.device {
 		help += "\nAn UNPAIRED target is refused; pass --allow-unpaired to send anyway."
+	}
+	if v.confirm {
+		help += "\nRequires --confirm."
 	}
 	return help
 }
