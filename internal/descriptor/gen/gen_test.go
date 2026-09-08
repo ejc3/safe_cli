@@ -81,3 +81,33 @@ func TestAllowUnpairedOfferedWhenABranchTargetsDevice(t *testing.T) {
 		t.Errorf("the verb help must state the UNPAIRED rule:\n%s", src)
 	}
 }
+
+// Closure batch (verification sweep, generator): help renders an int default as an integer,
+// still states a default when the help merely mentions the word, escapes kong's ${...}
+// interpolation, and says a list flag repeats.
+func TestFlagHelpRendering(t *testing.T) {
+	const fx = `{"name":"t","base_url":"https://h","areas":{"a":"help"},"entities":{"t":{"id_field":"","operations":{
+	  "base":{"method":"GET","path":"/b","query":["limit","zone","tpl","ids"],
+	    "cli":{"area":"a","verb":"v","priority":"core","target":"account","summary":"s",
+	      "flags":[{"name":"limit","type":"int","default":1000000,"maps_to":"query:limit","help":"How many."},
+	               {"name":"zone","type":"string","default":"UTC","maps_to":"query:zone","help":"Uses the default zone unless set."},
+	               {"name":"tpl","type":"string","maps_to":"query:tpl","help":"A literal ${name} placeholder."},
+	               {"name":"ids","type":"list","maps_to":"query:ids","help":"Ids."}]}}}}}}`
+	d, err := descriptor.Parse([]byte(fx))
+	if err != nil {
+		t.Fatalf("fixture must validate: %v", err)
+	}
+	src, err := Source(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(src)
+	for _, want := range []string{"(default: 1000000)", "Uses the default zone unless set. (default: UTC)", "$${name}", "Ids. Repeatable"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("generated help lacks %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "1e+06") {
+		t.Errorf("an int default must not render in exponent notation:\n%s", s)
+	}
+}

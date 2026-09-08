@@ -225,17 +225,28 @@ func verbHelp(v verb) string {
 // flagHelp is the descriptor's help plus the enum and default when the text does not
 // already state them (D5: every flag's help states its default and effect).
 func flagHelp(f descriptor.Flag) string {
-	h := strings.ReplaceAll(f.Help, "`", "'")
+	// kong interpolates ${...} in help text; a literal placeholder must be escaped as $$.
+	h := strings.ReplaceAll(strings.ReplaceAll(f.Help, "`", "'"), "${", "$${")
 	if len(f.Enum) > 0 && !strings.Contains(h, strings.Join(f.Enum, "|")) {
 		h += " One of " + strings.Join(f.Enum, "|") + "."
 	}
-	if f.Default != nil && !strings.Contains(strings.ToLower(h), "default") {
-		h += fmt.Sprintf(" (default: %v)", f.Default)
+	// State the default unless the text already does so explicitly ("(default: x)" /
+	// "default: x"); merely mentioning the word "default" is not stating the value.
+	if f.Default != nil && !strings.Contains(strings.ToLower(h), "default:") {
+		h += fmt.Sprintf(" (default: %s)", defaultText(f.Default))
 	}
-	if f.Repeatable {
-		h += " Repeatable."
+	if f.Repeatable || f.Type == "list" {
+		h += " Repeatable (pass the flag once per value)."
 	}
 	return h
+}
+
+// defaultText renders a default for help: a JSON number that is whole prints as an integer.
+func defaultText(v any) string {
+	if n, ok := v.(float64); ok && n == float64(int64(n)) {
+		return strconv.FormatInt(int64(n), 10)
+	}
+	return fmt.Sprint(v)
 }
 
 func goFieldType(f descriptor.Flag) (string, error) {
