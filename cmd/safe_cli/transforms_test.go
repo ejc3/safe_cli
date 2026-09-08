@@ -88,6 +88,9 @@ func TestTransformsRejectBadInput(t *testing.T) {
 		{"pause_schedule", "45m", "30m|1h|2h|4h|until-morning"},
 		{"tz_short", "Mars/Olympus", "IANA zone"},
 		{"iso_micro", "yesterday-ish", "not a time"},
+		{"iso_micro", "106752d", "too large"},                      // would overflow time.Duration into the FUTURE
+		{"iso_micro", "99999999999999999999d", "too large"},        // overflows the integer itself
+		{"epoch_ms", "3650000h", "too large"},
 		{"day3_lower", "funday", "not a day name"},
 		{"day3_lower", "mondayx", "not a day name"}, // a prefix match would silently make this mon
 		{"day3_lower", "sundae", "not a day name"},

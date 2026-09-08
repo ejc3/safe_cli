@@ -104,8 +104,14 @@ func parseTimeSpec(s string, now time.Time) (time.Time, error) {
 		return t, nil
 	}
 	if m := durationBackRe.FindStringSubmatch(s); m != nil {
-		n, _ := strconv.Atoi(m[1])
 		unit := map[string]time.Duration{"s": time.Second, "m": time.Minute, "h": time.Hour, "d": 24 * time.Hour}[m[2]]
+		// Bound the span before multiplying: an overflowing time.Duration would wrap into a
+		// FUTURE timestamp and silently produce a wrong request range.
+		const maxSpan = 20 * 366 * 24 * time.Hour
+		n, err := strconv.ParseInt(m[1], 10, 64)
+		if err != nil || n > int64(maxSpan/unit) {
+			return time.Time{}, fmt.Errorf("%q is too large a span (at most 20 years back)", s)
+		}
 		return now.Add(-time.Duration(n) * unit), nil
 	}
 	return time.Time{}, fmt.Errorf("%q is not a time: use now, RFC3339, YYYY-MM-DD, or a span back like 7d/24h/90m", s)
