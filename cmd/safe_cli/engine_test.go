@@ -222,6 +222,28 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
     "cli":{"area":"t","verb":"log","priority":"core","target":"child","summary":"s",
       "select":[{"when":"flag:alt","op":"t.listB"}],
       "flags":[{"name":"alt","type":"string","maps_to":"query:alt","help":"h"},{"name":"q","type":"string","maps_to":"query:q","help":"h"}]}},
+  "hist":{"method":"GET","path":"/h","query":["profileId","startDate"],"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"hist","priority":"core","target":"child","summary":"s",
+      "query":{"profileId":"$child.profileId"},"resolve":["$child.profileId"],
+      "flags":[{"name":"since","type":"string","maps_to":"query:startDate","transform":"iso_micro","help":"h"}]}},
+  "chores":{"method":"GET","path":"/c","headers":["timezone","x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"chores","priority":"core","target":"child","summary":"s",
+      "headers":{"timezone":"$local.timezone"},"resolve":["$local.timezone"]}},
+  "acct":{"method":"GET","path":"/acct"},
+  "stget":{"method":"GET","path":"/stget","headers":["x-fp-identifier-target-serviceid"]},
+  "stput":{"method":"PUT","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"]},
+  "stset":{"method":"POST","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"stset","priority":"core","target":"child","summary":"s",
+      "body_template":"{\"name\":\"$name\"}",
+      "select":[{"when":"exists:$lookup:t.stget::screenTimeLimitId","op":"t.stput","body_template":"{\"name\":\"$name\",\"screenTimeLimitId\":\"$lookup:t.stget::screenTimeLimitId\"}","resolve":["$lookup:t.stget::screenTimeLimitId"]}],
+      "flags":[{"name":"name","type":"string","default":"$lookup:t.acct::familyName","maps_to":"body:$name","help":"h"}]}},
+  "dash":{"method":"GET","path":"/dash","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"dash","priority":"core","target":"account","summary":"s",
+      "flags":[{"name":"child","type":"int","maps_to":"filter:serviceId","help":"h"}]}},
+  "stime":{"method":"POST","path":"/stime","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"stime","priority":"core","target":"child","summary":"s",
+      "body_template":"{\"mon\":\"$mon?\"}",
+      "flags":[{"name":"weekdays","type":"int","excludes":["mon"],"maps_to":"body:$mon","help":"h"},{"name":"mon","type":"int","excludes":["weekdays"],"maps_to":"body:$mon","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -338,5 +360,105 @@ func TestInvokeOneOfAndRequires(t *testing.T) {
 	}
 	if !strings.Contains(fb.seen["/w"].query, "address=1+Main+St") {
 		t.Errorf("query = %q", fb.seen["/w"].query)
+	}
+}
+
+func childCall(op, verb string, given map[string]any) verbCall {
+	return verbCall{entity: "t", op: op, area: "t", verb: verb, child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: given}
+}
+
+// A resolver variable as a query value: location history / calls list send the child's
+// profileId that the account read resolved, next to the flag-mapped, transformed date.
+func TestInvokeResolverVarInQuery(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("hist", "hist", map[string]any{"since": "2026-09-01"}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	q := fb.seen["/h"].query
+	if !strings.Contains(q, "profileId=3000001") || !strings.Contains(q, "startDate=2026-09-01T00%3A00%3A00.000000Z") {
+		t.Errorf("query = %q", q)
+	}
+}
+
+// A resolver variable as a header value: a contextual timezone header the op declares is
+// filled from the local zone with no user flag.
+func TestInvokeResolverVarInHeader(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("chores", "chores", nil), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if tz := fb.seen["/c"].headers.Get("timezone"); tz == "" || tz == "$local.timezone" {
+		t.Errorf("timezone header = %q, want the local zone", tz)
+	}
+}
+
+// Unkeyed singleton lookups: a flag default read from the current record, and an exists:
+// condition that picks PUT (with the id filled) when the child already has a limit, POST
+// (no id) when it does not.
+func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/acct"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"familyName":"Rivera"}`)) }
+	d := engineDescriptor(t)
+	// no existing limit -> base op POST, no id, name defaulted from the account read
+	fb.extra["/stget"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) }
+	if err := invoke(context.Background(), fb.do(), d, childCall("stset", "stset", nil), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r := fb.seen["/st"]; r.method != "POST" || !strings.Contains(r.body, `"name":"Rivera"`) || strings.Contains(r.body, "screenTimeLimitId") {
+		t.Errorf("create branch wrong: %+v", r)
+	}
+	// existing limit -> branch op PUT with the id resolved from the singleton read
+	delete(fb.seen, "/st")
+	fb.extra["/stget"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"screenTimeLimitId":55,"weeklyLimits":{}}`))
+	}
+	if err := invoke(context.Background(), fb.do(), d, childCall("stset", "stset", map[string]any{"name": "n2"}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if r := fb.seen["/st"]; r.method != "PUT" || !strings.Contains(r.body, `"screenTimeLimitId":55`) || !strings.Contains(r.body, `"name":"n2"`) {
+		t.Errorf("update branch wrong: %+v", r)
+	}
+}
+
+// A filter: flag on an ACCOUNT verb never touches the request (the caller's own service id
+// stays in the target header) and filters the response client-side.
+func TestInvokeFilterFlagOnAccountVerb(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/dash"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"members":[{"serviceId":2000001,"name":"A"},{"serviceId":2000002,"name":"S"}]}`))
+	}
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "dash", area: "t", verb: "dash", child: "2000001", selfSvc: "1000001", selfPid: "1000002", given: map[string]any{"child": int64(2000001)}}
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, vc, &out, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := fb.seen["/dash"].headers.Get("x-fp-identifier-target-serviceid"); got != "1000001" {
+		t.Errorf("an account verb must keep the caller's service id in the target header, got %q", got)
+	}
+	if !strings.Contains(out.String(), `"A"`) || strings.Contains(out.String(), `"S"`) {
+		t.Errorf("response should be filtered to serviceId 2000001:\n%s", out.String())
+	}
+}
+
+// Two flags that exclude each other cannot both be given; either alone works and feeds
+// the one body var they share.
+func TestInvokeExcludesAndSharedVar(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	err := invoke(context.Background(), fb.do(), d, childCall("stime", "stime", map[string]any{"weekdays": int64(60), "mon": int64(30)}), &strings.Builder{}, true)
+	if err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+		t.Fatalf("want an excludes error, got %v", err)
+	}
+	if _, sent := fb.seen["/stime"]; sent {
+		t.Error("nothing may be sent after an excludes refusal")
+	}
+	if err := invoke(context.Background(), fb.do(), d, childCall("stime", "stime", map[string]any{"mon": int64(30)}), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(fb.seen["/stime"].body, `"mon":30`) {
+		t.Errorf("body = %s", fb.seen["/stime"].body)
 	}
 }

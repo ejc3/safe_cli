@@ -95,6 +95,11 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 				return fmt.Errorf("--%s requires --%s", name, req)
 			}
 		}
+		for _, x := range flagByName[name].Excludes {
+			if _, ok := given[x]; ok {
+				return fmt.Errorf("--%s and --%s cannot be combined", name, x)
+			}
+		}
 	}
 	if len(c.OneOf) > 0 {
 		full := 0
@@ -159,6 +164,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 				tgt.ServiceID, tgt.Name, strings.ToUpper(nonEmpty(tgt.Pairing, "UNPAIRED")), c.Area, c.Verb, tgt.ServiceID)
 		}
 	}
+	if merged.Target != "child" && merged.Target != "device" {
+		targetSvc = vc.selfSvc // an account/self verb acts on the caller's own service even when --child filters its output
+	}
 	idHeaders = identityHeadersFrom(targetSvc, vc.selfPid, vc.appUUID, tgt, merged.Target)
 	if op.Destructive && !vc.confirm && !vc.dryRun {
 		return fmt.Errorf("%s %s is catastrophic and effectively irreversible — re-run with --confirm", c.Area, c.Verb)
@@ -172,16 +180,30 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	queryVals := url.Values{}
 	pathVals := map[string]string{}
 	userHeaders := map[string]string{}
-	for k, v := range merged.Headers { // fixed header constants first; flag headers override
-		userHeaders[k] = v
-	}
 	repeat := map[string]bool{}
+	filters := map[string]any{} // response field -> value, for filter: flags
+	resolveDefault := func(spec string) (any, error) {
+		switch {
+		case spec == "$local.timezone":
+			return localTimezone(), nil
+		case strings.HasPrefix(spec, "$lookup:"):
+			v, found, err := runLookup(ctx, do, d, spec, given, idHeaders)
+			if err != nil {
+				return nil, err
+			}
+			if !found {
+				return nil, nil // nothing current to resend; the flag stays unset
+			}
+			return v, nil
+		}
+		return nil, fmt.Errorf("default %q is not a resolvable value", spec)
+	}
 	for _, f := range merged.Flags {
 		v, ok := given[f.Name]
 		if !ok {
-			v, err = defaultFor(f)
+			v, err = defaultFor(f, resolveDefault)
 			if err != nil {
-				return err
+				return fmt.Errorf("--%s: %w", f.Name, err)
 			}
 		}
 		if v == nil {
@@ -230,6 +252,10 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			pathVals[arg] = fmt.Sprint(tv)
 		case "header":
 			userHeaders[arg] = fmt.Sprint(tv)
+		case "filter":
+			if ok { // only an explicitly given selector filters
+				filters[arg] = tv
+			}
 		}
 	}
 	// nulls: an explicitly given flag unsets the variables of the flags it nulls, so their
@@ -257,6 +283,22 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, given); err != nil {
 		return err
 	}
+	// Fixed header constants, or resolver variables ($local.timezone for a contextual
+	// header); a flag-mapped header keeps precedence.
+	for k, v := range merged.Headers {
+		if _, fromFlag := userHeaders[k]; fromFlag {
+			continue
+		}
+		if strings.HasPrefix(v, "$") {
+			rv, ok := vars[strings.TrimPrefix(v, "$")]
+			if !ok || rv == nil {
+				return fmt.Errorf("header %s: %s has no value", k, v)
+			}
+			userHeaders[k] = fmt.Sprint(rv)
+			continue
+		}
+		userHeaders[k] = v
+	}
 
 	// Path: placeholders from flags, then the target's ids for {deviceId}/{profileId}/{serviceId}.
 	if tgt != nil {
@@ -272,7 +314,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		return err
 	}
 	// Query: declared constants/"$flag" values plus flag-mapped params.
-	q, err := renderQuery(merged.Query, flagValues(given, flagByName))
+	q, err := renderQuery(merged.Query, withResolved(flagValues(given, flagByName), vars))
 	if err != nil {
 		return err
 	}
@@ -307,7 +349,72 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if vc.dryRun {
 		return writeDryRun(out, asJSON, resp, tgt)
 	}
+	if len(filters) > 0 && resp.Status < 400 {
+		resp.Body = filterResponse(resp.Body, filters)
+	}
 	return writeVerbResponse(out, asJSON, resp, merged, tgt)
+}
+
+// withResolved returns the flag values plus the resolved variables, keyed by var name, so
+// a query map may reference either ("$since" or "$child.profileId").
+func withResolved(flagVals, vars map[string]any) map[string]any {
+	out := make(map[string]any, len(flagVals)+len(vars))
+	for k, v := range vars {
+		out[k] = v
+	}
+	for k, v := range flagVals {
+		out[k] = v
+	}
+	return out
+}
+
+// filterResponse applies filter: selectors client-side: every array of objects in the
+// response keeps only the objects whose field equals the selector value (compared as text,
+// so 2000001 matches "2000001"). The request itself was never narrowed.
+func filterResponse(body []byte, filters map[string]any) []byte {
+	var doc any
+	if err := json.Unmarshal(body, &doc); err != nil {
+		return body
+	}
+	out, err := json.Marshal(filterNode(doc, filters))
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+func filterNode(n any, filters map[string]any) any {
+	switch t := n.(type) {
+	case map[string]any:
+		for k, v := range t {
+			t[k] = filterNode(v, filters)
+		}
+		return t
+	case []any:
+		kept := make([]any, 0, len(t))
+		for _, el := range t {
+			obj, isObj := el.(map[string]any)
+			if isObj && !matchesFilters(obj, filters) {
+				continue
+			}
+			kept = append(kept, filterNode(el, filters))
+		}
+		return kept
+	}
+	return n
+}
+
+func matchesFilters(obj map[string]any, filters map[string]any) bool {
+	for field, want := range filters {
+		got, ok := obj[field]
+		if !ok {
+			continue // an object without the field is not a candidate row; keep it
+		}
+		if fmt.Sprint(normalizeNum(got)) != fmt.Sprint(normalizeNum(want)) {
+			return false
+		}
+	}
+	return true
 }
 
 func nonEmpty(s, alt string) string {
@@ -337,18 +444,15 @@ func identityHeadersFrom(targetSvc, selfPid, appUUID string, tgt *member, target
 	return m
 }
 
-// defaultFor applies a flag's descriptor default. A literal is used as-is; a "$..." default
-// is a resolved value (only $local.timezone is a defaultable resolved value today).
-func defaultFor(f descriptor.Flag) (any, error) {
+// defaultFor applies a flag's descriptor default: a literal as-is, or a "$..." default
+// resolved by resolve (a resolver variable such as $local.timezone, or an unkeyed lookup
+// that resends an untouched field's current value).
+func defaultFor(f descriptor.Flag, resolve func(string) (any, error)) (any, error) {
 	if f.Default == nil {
 		return nil, nil
 	}
 	if s, ok := f.Default.(string); ok && strings.HasPrefix(s, "$") {
-		switch s {
-		case "$local.timezone":
-			return localTimezone(), nil
-		}
-		return nil, fmt.Errorf("--%s: default %q is not a resolvable value", f.Name, s)
+		return resolve(s)
 	}
 	return f.Default, nil
 }
@@ -463,10 +567,16 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 		return nil, false, fmt.Errorf("malformed lookup %q", spec)
 	}
 	ref, keyEq, field := parts[0], parts[1], parts[2]
-	key, flag, _ := strings.Cut(keyEq, "=")
-	want, ok := given[flag]
-	if !ok {
-		return nil, false, fmt.Errorf("lookup %s needs --%s", ref, flag)
+	var key, flag string
+	var want any
+	keyed := keyEq != ""
+	if keyed {
+		key, flag, _ = strings.Cut(keyEq, "=")
+		var ok bool
+		want, ok = given[flag]
+		if !ok {
+			return nil, false, fmt.Errorf("lookup %s needs --%s", ref, flag)
+		}
 	}
 	ent, name, _ := strings.Cut(ref, ".")
 	op, err := resolveOp(d, ent, name)
@@ -488,15 +598,39 @@ func runLookup(ctx context.Context, do doFunc, d *descriptor.Descriptor, spec st
 	if err := json.Unmarshal(resp.Body, &doc); err != nil {
 		return nil, false, fmt.Errorf("lookup %s: %w", ref, err)
 	}
-	rec := findRecord(doc, key, fmt.Sprint(want))
+	var rec map[string]any
+	if keyed {
+		rec = findRecord(doc, key, fmt.Sprint(want))
+	} else {
+		rec = singletonRecord(doc)
+	}
 	if rec == nil {
 		return nil, false, nil
 	}
 	v, ok := rec[field]
-	if !ok {
-		return nil, false, fmt.Errorf("lookup %s: matching record has no field %q", ref, field)
+	if !ok || v == nil {
+		if keyed {
+			return nil, false, fmt.Errorf("lookup %s: matching record has no field %q", ref, field)
+		}
+		return nil, false, nil // the singleton exists but carries no such field: nothing to resend/select
 	}
 	return v, true, nil
+}
+
+// singletonRecord is the target's one record for an unkeyed lookup: the response object
+// itself, or the first object of a top-level array.
+func singletonRecord(doc any) map[string]any {
+	switch t := doc.(type) {
+	case map[string]any:
+		return t
+	case []any:
+		if len(t) > 0 {
+			if obj, ok := t[0].(map[string]any); ok {
+				return obj
+			}
+		}
+	}
+	return nil
 }
 
 // findRecord walks a JSON document for the first object whose key equals want (compared
@@ -539,8 +673,11 @@ func normalizeNum(v any) any {
 func lookupMiss(spec string, given map[string]any) error {
 	parts := strings.Split(strings.TrimPrefix(spec, "$lookup:"), ":")
 	ref := parts[0]
-	key, flag, _ := strings.Cut(parts[1], "=")
 	ent, name, _ := strings.Cut(ref, ".")
+	if parts[1] == "" {
+		return fmt.Errorf("%s has no %s for this target; run `safe_cli call %s %s` to see it", ref, parts[2], ent, name)
+	}
+	key, flag, _ := strings.Cut(parts[1], "=")
 	return fmt.Errorf("no %s record with %s=%v; run `safe_cli call %s %s` to list valid ids", ref, key, given[flag], ent, name)
 }
 
