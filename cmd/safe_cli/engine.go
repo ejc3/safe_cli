@@ -879,19 +879,11 @@ func findRecord(n any, key, want string) map[string]any {
 	return nil
 }
 
-// normalizeNum prints a JSON float that is a whole number without a decimal part so
-// 10003 (float64 from encoding/json) compares equal to the flag text "10003".
-func normalizeNum(v any) any {
-	if f, ok := v.(float64); ok && f == float64(int64(f)) {
-		return int64(f)
-	}
-	return v
-}
-
 func lookupMiss(spec string, given map[string]any) error {
 	parts := strings.Split(strings.TrimPrefix(spec, "$lookup:"), ":")
 	ref := parts[0]
-	ent, name, _ := strings.Cut(ref, ".")
+	opRef, _, _ := strings.Cut(ref, "/") // the hint names the op, not the searched subtree
+	ent, name, _ := strings.Cut(opRef, ".")
 	if parts[1] == "" {
 		return fmt.Errorf("%s has no %s for this target; run `safe_cli call %s %s` to see it", ref, parts[2], ent, name)
 	}

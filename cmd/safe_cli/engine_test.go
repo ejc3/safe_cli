@@ -715,6 +715,10 @@ func TestInvokeLookupSubtreeScopesTheSearch(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "30033") {
 		t.Fatalf("an id outside the subtree must be a miss naming it, got %v", err)
 	}
+	// The hint names the op an agent can call, never the subtree (Codex #69 round 7).
+	if hint := err.Error()[strings.LastIndex(err.Error(), "run `"):]; !strings.Contains(hint, "safe_cli call t cats`") || strings.Contains(hint, "cats/") {
+		t.Errorf("the miss hint must name the plain op: %v", err)
+	}
 	if _, sent := fb.seen["/sub"]; sent {
 		t.Error("nothing may be sent after a miss")
 	}
