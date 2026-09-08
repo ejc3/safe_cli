@@ -98,6 +98,21 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// --objectionable-alerts=false IS the setting. A switch (select flag:, nulls) fires only
 	// when the flag is asserted: --flag=false is the switch's absence.
 	present := given
+	// keyVals is what a keyed lookup may be keyed by: the given flags plus every literal
+	// default (the schema accepts a defaulted key flag as always present).
+	keyVals := map[string]any{}
+	for name, v := range given {
+		keyVals[name] = v
+	}
+	for _, f := range c.Flags {
+		if _, ok := keyVals[f.Name]; ok || f.Default == nil {
+			continue
+		}
+		if ds, isStr := f.Default.(string); isStr && strings.HasPrefix(ds, "$") {
+			continue // a resolved default is not a lookup key
+		}
+		keyVals[f.Name] = normalizeNum(f.Default)
+	}
 	asserted := map[string]any{}
 	for name, v := range given {
 		if b, isBool := v.(bool); isBool && !b {
@@ -202,7 +217,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	// Conditional op selection, declared in the descriptor; the branch's contract applies.
 	op, entity, merged := o, vc.entity, c
 	lookups := lookupCache{} // one read per lookup per invocation: select and render share a snapshot
-	if rule, ok, err := selectRule(ctx, do, d, c, asserted, childGiven, idHeaders, lookups); err != nil {
+	if rule, ok, err := selectRule(ctx, do, d, c, asserted, keyVals, childGiven, idHeaders, lookups); err != nil {
 		return err
 	} else if ok {
 		ent, name, _ := strings.Cut(rule.Op, ".")
@@ -246,7 +261,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		case spec == "$local.timezone":
 			return localTimezone(), nil
 		case strings.HasPrefix(spec, "$lookup:"):
-			v, found, err := runLookup(ctx, do, d, spec, given, idHeaders, lookups)
+			v, found, err := runLookup(ctx, do, d, spec, keyVals, idHeaders, lookups)
 			if err != nil {
 				return nil, err
 			}
@@ -263,6 +278,11 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 			v, err = defaultFor(f, resolveDefault)
 			if err != nil {
 				return fmt.Errorf("--%s: %w", f.Name, err)
+			}
+		}
+		if f.Repeatable { // even when absent: the singleton array expands to [] rather than [{}]
+			if _, arg, ok := strings.Cut(f.MapsTo, ":"); ok && strings.HasPrefix(arg, "$") {
+				repeat[strings.TrimPrefix(arg, "$")] = true
 			}
 		}
 		if v == nil {
@@ -339,7 +359,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	}
 
 	// Resolved values the user never types.
-	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, given, lookups); err != nil {
+	if err := fillResolved(ctx, do, d, merged, vars, tgt, acct, vc, idHeaders, keyVals, lookups); err != nil {
 		return err
 	}
 	// Fixed header constants, or resolver variables ($local.timezone for a contextual
@@ -613,7 +633,7 @@ func jsonNumber(s string) any {
 }
 
 // selectRule evaluates cli.select in order and returns the first matching rule, if any.
-func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given map[string]any, childGiven bool, idHeaders map[string]string, lookups lookupCache) (descriptor.SelectRule, bool, error) {
+func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *descriptor.CLI, given, keyVals map[string]any, childGiven bool, idHeaders map[string]string, lookups lookupCache) (descriptor.SelectRule, bool, error) {
 	for _, r := range c.Select {
 		switch {
 		case r.When == "child":
@@ -627,11 +647,11 @@ func selectRule(ctx context.Context, do doFunc, d *descriptor.Descriptor, c *des
 		case strings.HasPrefix(r.When, "exists:"):
 			spec := strings.TrimPrefix(r.When, "exists:")
 			if key := lookupKeyFlag(spec); key != "" {
-				if _, ok := given[key]; !ok {
-					continue // keyed by a flag that was not given: the record cannot exist for us
+				if _, ok := keyVals[key]; !ok {
+					continue // keyed by a flag that was not given (and has no default): the record cannot exist for us
 				}
 			}
-			_, found, err := runLookup(ctx, do, d, spec, given, idHeaders, lookups)
+			_, found, err := runLookup(ctx, do, d, spec, keyVals, idHeaders, lookups)
 			if err != nil {
 				return descriptor.SelectRule{}, false, err
 			}

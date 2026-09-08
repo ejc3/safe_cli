@@ -197,7 +197,7 @@ func TestInvokeDryRunShowsResolvedTarget(t *testing.T) {
 // chosen by an explicitly-given flag, a structured spread, repeatable array expansion, a
 // $lookup enrichment, query and header constants, and one_of/requires.
 const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":{"id_field":"","operations":{"getAccountDetails":{"method":"GET","path":"/account/fam/userprofile-management/v8/accounts/userprofiles","headers":["x-fp-identifier-target-serviceid"]}}},"t":{"id_field":"","operations":{
-  "listA":{"method":"GET","path":"/a","query":["q","alt"]},
+  "listA":{"method":"GET","path":"/a","query":["q","alt","cat"]},
   "listB":{"method":"GET","path":"/b","query":["q","alt"]},
   "cats":{"method":"GET","path":"/cats","headers":["x-fp-identifier-target-serviceid"]},
   "post":{"method":"POST","path":"/p","takes_body":true,"headers":["x-pending-activation","x-name"],"query":["q"],
@@ -233,8 +233,8 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
   "stput":{"method":"PUT","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"]},
   "stset":{"method":"POST","path":"/st","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"stset","priority":"core","target":"child","summary":"s",
-      "body_template":"{\"name\":\"$name\"}",
-      "select":[{"when":"exists:$lookup:t.stget::screenTimeLimitId","op":"t.stput","body_template":"{\"name\":\"$name\",\"screenTimeLimitId\":\"$lookup:t.stget::screenTimeLimitId\"}","resolve":["$lookup:t.stget::screenTimeLimitId"]}],
+      "body_template":"{\"name\":\"$name\"}","resolve":["$lookup:t.acct::familyName"],
+      "select":[{"when":"exists:$lookup:t.stget::screenTimeLimitId","op":"t.stput","body_template":"{\"name\":\"$name\",\"screenTimeLimitId\":\"$lookup:t.stget::screenTimeLimitId\"}","resolve":["$lookup:t.stget::screenTimeLimitId","$lookup:t.acct::familyName"]}],
       "flags":[{"name":"name","type":"string","default":"$lookup:t.acct::familyName","maps_to":"body:$name","help":"h"}]}},
   "dash":{"method":"GET","path":"/dash","headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"dash","priority":"core","target":"account","summary":"s",
@@ -287,6 +287,18 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
       "flags":[{"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"}]}},
   "arr":{"method":"GET","path":"/arr","headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"arr","priority":"core","target":"child","summary":"s"}},
+  "kdef":{"method":"POST","path":"/kdef","takes_body":true,"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"kdef","priority":"core","target":"child","summary":"s",
+      "body_template":"{\"n\":\"$lookup:t.cats:id=cat:name\",\"cat\":\"$cat\"}","resolve":["$lookup:t.cats:id=cat:name"],
+      "flags":[{"name":"cat","type":"int","default":10003,"maps_to":"body:$cat","help":"h"}]}},
+  "kexd":{"method":"GET","path":"/kexd","query":["cat"],"headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"kexd","priority":"core","target":"child","summary":"s",
+      "select":[{"when":"exists:$lookup:t.cats:id=cat:name","op":"t.listA"}],
+      "flags":[{"name":"cat","type":"int","default":10003,"maps_to":"query:cat","help":"h"}]}},
+  "optrep":{"method":"POST","path":"/optrep","takes_body":true,
+    "cli":{"area":"t","verb":"optrep","priority":"core","target":"account","summary":"s",
+      "body_template":"{\"domains\":[{\"url\":\"$url?\"}]}",
+      "flags":[{"name":"url","type":"string","repeatable":true,"maps_to":"body:$url","help":"h"}]}},
   "where":{"method":"GET","path":"/w","query":["lat","lon","address"],
     "cli":{"area":"t","verb":"where","priority":"core","target":"account","summary":"s",
       "one_of":[["lat","lon"],["address"]],
@@ -676,6 +688,43 @@ func TestInvokeExistsKeyedByAbsentFlagIsNotMet(t *testing.T) {
 	}
 	if _, looked := fb.seen["/cats"]; looked {
 		t.Error("no lookup may be attempted without its key")
+	}
+}
+
+// Codex #69 round 6:
+//   - a keyed lookup (in resolve or an exists: condition) whose key flag has a default uses
+//     that default when the flag is not given, as the schema promises;
+//   - an optional repeatable flag that is not given expands its singleton array to [], not
+//     to one element with the leaf removed.
+func TestInvokeLookupKeyUsesFlagDefault(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"categories":[{"id":"GAM","categoryId":1001,"subCategories":[{"id":10003,"name":"8 Ball"}]}]}`))
+	}
+	d := engineDescriptor(t)
+	if err := invoke(context.Background(), fb.do(), d, childCall("kdef", "kdef", nil), &strings.Builder{}, true); err != nil {
+		t.Fatalf("a defaulted key must feed the lookup: %v", err)
+	}
+	if b := fb.seen["/kdef"].body; !strings.Contains(b, `"n":"8 Ball"`) || !strings.Contains(b, `"cat":10003`) {
+		t.Errorf("body = %s", b)
+	}
+	if err := invoke(context.Background(), fb.do(), d, childCall("kexd", "kexd", nil), &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, branch := fb.seen["/a"]; !branch {
+		t.Error("an exists: condition keyed by a defaulted flag must be evaluated with the default (branch expected)")
+	}
+}
+
+func TestInvokeAbsentRepeatableExpandsToEmptyArray(t *testing.T) {
+	fb := newFakeBackend(t)
+	d := engineDescriptor(t)
+	vc := verbCall{entity: "t", op: "optrep", area: "t", verb: "optrep", selfSvc: "1000001", selfPid: "1000002"}
+	if err := invoke(context.Background(), fb.do(), d, vc, &strings.Builder{}, true); err != nil {
+		t.Fatal(err)
+	}
+	if b := fb.seen["/optrep"].body; !strings.Contains(b, `"domains":[]`) {
+		t.Errorf("an absent repeatable flag must expand to an empty array, got %s", b)
 	}
 }
 
