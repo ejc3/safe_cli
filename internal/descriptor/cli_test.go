@@ -49,6 +49,23 @@ func TestCLIBranchOnlyQueryFlagReachableAccepted(t *testing.T) {
 	}
 }
 
+// Codex #70-5 (positive): a header flag is fine on the op's own header, and on a branch
+// op's header when the flag is that branch's selector.
+func TestCLIHeaderFlagAccepted(t *testing.T) {
+	for name, cli := range map[string]string{
+		"own header":      `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:timezone","help":"h"}]}`,
+		"branch selector": `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:tz","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:timezone","help":"h"}]}`,
+	} {
+		extra := ""
+		if name == "own header" {
+			extra = `"headers":["timezone"]`
+		}
+		if _, err := Parse(cliFixture(cli, extra)); err != nil {
+			t.Errorf("%s: must be accepted: %v", name, err)
+		}
+	}
+}
+
 // Codex #70-2 (positive): one op may back `a g1 show` and `a g2 show` — the group is part
 // of the command path, so the per-op duplicate check must include it.
 func TestCLIGroupDistinguishesVerbsOnOneOp(t *testing.T) {
@@ -77,6 +94,18 @@ func TestCLIValidationRejects(t *testing.T) {
 		name, cli, extra, want string
 	}{
 		{"two shapes", `{"area":"a","verb":"v","call_only":true,"reason":"x"}`, "", "exactly one of"},
+		// Codex #70-5: a header: destination must be a header the op (or a reachable branch op) declares.
+		{"header flag not declared on op", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:not-declared","help":"h"}]}`, "", "not one of the op's declared headers"},
+		{"branch-only header flag not selected by its own flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","select":[{"when":"flag:x","op":"pause.other2"}],"flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"},{"name":"tz","type":"string","maps_to":"header:timezone","help":"h"}]}`, "", "does not select"},
+		// Codex #70-6: a required flag with a default is always populated, so "requires" could
+		// not tell whether it was given; like excludes, requires may only name undefaulted flags.
+		{"requires a defaulted flag", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\",\"m\":\"$m\"}","flags":[{"name":"x","type":"string","requires":["mode"],"maps_to":"body:$x","help":"h"},{"name":"mode","type":"string","default":"b","maps_to":"body:$m","help":"h"}]}`, "", "has a default"},
+		// Codex #70-7: $child.* needs a child to resolve from; an account/self verb has none.
+		{"child resolver on an account verb", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","body_template":"{\"p\":\"$child.profileId\"}","resolve":["$child.profileId"]}`, "", "target account"},
+		{"child resolver on a self verb query", `{"area":"a","verb":"v","priority":"core","target":"self","summary":"s","query":{"lat":"$child.profileId"},"resolve":["$child.profileId"]}`, `"takes_body":false,"query":["lat"]`, "target self"},
+		// Codex #70-8: identical or nested one_of groups make exactly-one unsatisfiable or dead.
+		{"one_of duplicate groups", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["address"],["address"]],"flags":[{"name":"address","type":"string","maps_to":"query:address","help":"h"}]}`, `"takes_body":false,"query":["address"]`, "one_of"},
+		{"one_of subset group", `{"area":"a","verb":"v","priority":"core","target":"account","summary":"s","one_of":[["lat","lon"],["lat"]],"flags":[{"name":"lat","type":"float","maps_to":"query:lat","help":"h"},{"name":"lon","type":"float","maps_to":"query:lon","help":"h"}]}`, `"takes_body":false,"query":["lat","lon"]`, "one_of"},
 		// Codex #70-3: a null list entry is a load error, never a nil dereference.
 		{"null cli entry", `[null]`, "", "null"},
 		// Codex #69-1: a lookup runs BEFORE --confirm, so it may only name a read-only GET.
@@ -177,7 +206,7 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"command path declared by two ops", `{"area":"tw","verb":"in","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","maps_to":"body:$x","help":"h"}]}`, "", "declared by both"},
 		{"alias to a different route", `{"alias_of":"pause.other"}`, "", "does not share method and path"},
 		{"alias to an op with no verb", `{"alias_of":"pause.other2"}`, `"method":"POST","path":"/o2"`, "canonical verb"},
-		{"two flags to one header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"header:x-h","help":"h"},{"name":"b","type":"string","maps_to":"header:x-h","help":"h"}]}`, `"takes_body":false`, "already mapped"},
+		{"two flags to one header", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"header:x-h","help":"h"},{"name":"b","type":"string","maps_to":"header:x-h","help":"h"}]}`, `"takes_body":false,"headers":["x-h"]`, "already mapped"},
 		{"two flags to one placeholder", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"a","type":"string","maps_to":"path:thing","help":"h"},{"name":"b","type":"string","maps_to":"path:thing","help":"h"}]}`, `"takes_body":false,"path":"/x/{thing}"`, "already mapped"},
 		{"enum default not in list", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"enum","enum":["a","b"],"default":"zzz","maps_to":"body:$x","help":"h"}]}`, "", "default"},
 		{"int flag with string default", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"int","default":"seven","maps_to":"body:$x","help":"h"}]}`, "", "default"},

@@ -365,13 +365,21 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 }
 
 // branchSelects reports whether giving flag f is enough to reach a select branch whose op
-// declares query param arg: f is that branch's flag: condition, f requires the flag that
-// is, or the branch is the child one (the engine then names --child as the missing
-// selector). Otherwise f alone selects the base op and its value would have to be dropped.
-func (d *Descriptor) branchSelects(c *CLI, f Flag, arg string) bool {
+// declares the query param or header arg (kind "query"|"header"): f is that branch's flag:
+// condition, f requires the flag that is, or the branch is the child one (the engine then
+// names --child as the missing selector). Otherwise f alone selects the base op and its
+// value would have to be dropped.
+func (d *Descriptor) branchSelects(c *CLI, f Flag, kind, arg string) bool {
 	for _, r := range c.Select {
 		bo, ok := d.lookupOp(r.Op)
-		if !ok || !contains(bo.Query, arg) {
+		if !ok {
+			continue
+		}
+		declared := bo.Query
+		if kind == "header" {
+			declared = bo.Headers
+		}
+		if !contains(declared, arg) {
 			continue
 		}
 		switch {
@@ -382,6 +390,16 @@ func (d *Descriptor) branchSelects(c *CLI, f Flag, arg string) bool {
 		}
 	}
 	return false
+}
+
+// subset reports whether every name in a is in b.
+func subset(a, b []string) bool {
+	for _, x := range a {
+		if !contains(b, x) {
+			return false
+		}
+	}
+	return true
 }
 
 // lookupOp returns the operation "entity.op" names.
@@ -439,13 +457,24 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 	if !cliTargets[c.Target] {
 		return fmt.Errorf("target %q must be account|self|child|device", c.Target)
 	}
+	// $child.* is read off the resolved --child; an account/self contract has none (its
+	// --child, if any, is the optional selector of a branch validated with its own target).
+	if c.Target != "child" && c.Target != "device" {
+		for _, r := range c.Resolve {
+			if strings.HasPrefix(r, "$child.") {
+				return fmt.Errorf("resolve entry %s cannot be filled with target %s: only a child/device verb (or a child select branch) has a child to read it from", r, c.Target)
+			}
+		}
+	}
 	// Query names a flag may target: the op's own, plus any a select branch's op declares
 	// (calls log --number -> otherPartyMdn exists only on the specific-contact op); the
 	// engine sends only what the chosen op declares.
 	queryNames := append([]string{}, o.Query...)
+	headerNames := append([]string{}, o.Headers...)
 	for _, r := range c.Select {
 		if bo, ok := d.lookupOp(r.Op); ok {
 			queryNames = append(queryNames, bo.Query...)
+			headerNames = append(headerNames, bo.Headers...)
 		}
 	}
 	// Flags: unique names, known types, exactly one destination form, well-formed maps_to.
@@ -526,7 +555,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if !contains(queryNames, arg) {
 				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, queryNames)
 			}
-			if !contains(o.Query, arg) && !d.branchSelects(c, f, arg) {
+			if !contains(o.Query, arg) && !d.branchSelects(c, f, "query", arg) {
 				return fmt.Errorf("flag --%s: query %q is declared only by a select branch that --%s does not select; make it the branch's flag: condition, give it requires: [<the selector flag>], or select on child", f.Name, arg, f.Name)
 			}
 			if prev, dup := queryFromFlag[arg]; dup {
@@ -534,6 +563,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			}
 			queryFromFlag[arg] = f.Name
 		case "header":
+			if !contains(headerNames, arg) {
+				return fmt.Errorf("flag --%s: header %q is not one of the op's declared headers %v", f.Name, arg, headerNames)
+			}
+			if !contains(o.Headers, arg) && !d.branchSelects(c, f, "header", arg) {
+				return fmt.Errorf("flag --%s: header %q is declared only by a select branch that --%s does not select; make it the branch's flag: condition, give it requires: [<the selector flag>], or select on child", f.Name, arg, f.Name)
+			}
 			if prev, dup := headerFromFlag[arg]; dup {
 				return fmt.Errorf("flag --%s: header %q is already mapped from --%s (one request slot, one source)", f.Name, arg, prev)
 			}
@@ -598,8 +633,12 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if x == f.Name {
 				return fmt.Errorf("flag --%s: requires itself", f.Name)
 			}
-			if _, ok := flagByName[x]; !ok {
+			g, ok := flagByName[x]
+			if !ok {
 				return fmt.Errorf("flag --%s: requires unknown flag %q", f.Name, x)
+			}
+			if g.Default != nil {
+				return fmt.Errorf("flag --%s: requires --%s, which has a default (a defaulted flag is always populated, so its presence proves nothing — neither a dependency nor a select branch); require an undefaulted flag", f.Name, x)
 			}
 		}
 	}
@@ -632,6 +671,15 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			for _, x := range grp {
 				if _, ok := flagByName[x]; !ok {
 					return fmt.Errorf("one_of[%d] names unknown flag %q", gi, x)
+				}
+			}
+		}
+		// A group contained in another can never be the exactly-one group: giving the
+		// larger group satisfies both, so the verb would reject every invocation of it.
+		for i, a := range c.OneOf {
+			for j, b := range c.OneOf {
+				if i != j && subset(a, b) {
+					return fmt.Errorf("one_of[%d] %v is contained in one_of[%d] %v; groups must not repeat or nest", i, a, j, b)
 				}
 			}
 		}
