@@ -722,6 +722,9 @@ func subset(a, b []string) bool {
 	return true
 }
 
+// LookupOp returns the operation "entity.op" names (a select branch's op, an alias target).
+func (d *Descriptor) LookupOp(ref string) (Operation, bool) { return d.lookupOp(ref) }
+
 // lookupOp returns the operation "entity.op" names.
 func (d *Descriptor) lookupOp(ref string) (Operation, bool) {
 	ent, op, ok := strings.Cut(ref, ".")

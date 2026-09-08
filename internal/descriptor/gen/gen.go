@@ -62,6 +62,11 @@ func Source(d *descriptor.Descriptor) ([]byte, error) {
 						if r.Target == "child" || r.Target == "device" {
 							v.childFlag = true
 						}
+						// The engine demands --confirm for whichever op is selected, so a
+						// destructive branch makes the flag necessary on the verb.
+						if bo, ok := d.LookupOp(r.Op); ok && bo.Destructive {
+							v.confirm = true
+						}
 					}
 					areas[b.Area] = append(areas[b.Area], v)
 				}
@@ -152,6 +157,9 @@ func writeVerb(w *bytes.Buffer, v verb) error {
 		tags := fmt.Sprintf("name:%s help:%s", tagQuote(f.Name), tagQuote(flagHelp(f)))
 		if strings.HasPrefix(goType, "[]") {
 			tags += ` sep:"none"`
+		}
+		if f.Required {
+			tags += ` required:""`
 		}
 		fmt.Fprintf(w, "\t%s %s `%s`\n", ident(f.Name), goType, tags)
 	}
