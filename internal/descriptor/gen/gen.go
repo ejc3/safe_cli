@@ -62,6 +62,9 @@ func Source(d *descriptor.Descriptor) ([]byte, error) {
 						if r.Target == "child" || r.Target == "device" {
 							v.childFlag = true
 						}
+						if r.Target == "device" {
+							v.device = true // the engine applies the selected device contract
+						}
 						// The engine demands --confirm for whichever op is selected, so a
 						// destructive branch makes the flag necessary on the verb.
 						if bo, ok := d.LookupOp(r.Op); ok && bo.Destructive {

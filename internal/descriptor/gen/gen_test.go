@@ -56,3 +56,28 @@ func TestConfirmOfferedWhenABranchIsDestructive(t *testing.T) {
 		t.Errorf("Run must pass c.Confirm through:\n%s", src)
 	}
 }
+
+// Codex #71-6: a verb whose select branch targets a device offers --allow-unpaired (and the
+// UNPAIRED help line), because the engine applies the selected device contract.
+func TestAllowUnpairedOfferedWhenABranchTargetsDevice(t *testing.T) {
+	const fx = `{"name":"t","base_url":"https://h","areas":{"a":"help"},"entities":{"t":{"id_field":"","operations":{
+	  "base":{"method":"GET","path":"/b",
+	    "cli":{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
+	      "select":[{"when":"flag:x","op":"t.dev","target":"device"}],
+	      "flags":[{"name":"x","type":"string","maps_to":"filter:role","help":"h"}]}},
+	  "dev":{"method":"GET","path":"/d"}}}}}`
+	d, err := descriptor.Parse([]byte(fx))
+	if err != nil {
+		t.Fatalf("fixture must validate: %v", err)
+	}
+	src, err := Source(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`AllowUnpaired\s+bool`).MatchString(string(src)) || !strings.Contains(string(src), "c.AllowUnpaired)") {
+		t.Errorf("a device branch must offer --allow-unpaired and pass it through:\n%s", src)
+	}
+	if !strings.Contains(string(src), "An UNPAIRED target is refused") {
+		t.Errorf("the verb help must state the UNPAIRED rule:\n%s", src)
+	}
+}
