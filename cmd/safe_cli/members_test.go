@@ -127,3 +127,21 @@ func TestMembersHelpStatesOrder(t *testing.T) {
 		t.Errorf("members --help must state the order and the --child target:\n%s", out)
 	}
 }
+
+// The row an agent reads carries a stable `paired` boolean next to the wire-level pairing
+// string (docs/CLI-DESIGN.md §2), and the text footer points at --child, the verbs' target
+// (--service-id is `call`'s) (Codex #68 round 5).
+func TestMemberPairedBoolAndFooterTarget(t *testing.T) {
+	a, err := parseAccount([]byte(`{"accounts":[{"accountId":1,"userprofiles":[
+		{"userProfileId":2,"profileName":"K","services":[{"serviceId":9,"roleName":"DEPENDENT","pairingStatus":"UNPAIRED"}]},
+		{"userProfileId":3,"profileName":"P","services":[{"serviceId":8,"roleName":"GUARDIAN","pairingStatus":"PAIRED"}]}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.Members[0].Paired || a.Members[1].Paired {
+		t.Errorf("paired must mirror PAIRED: %+v", a.Members)
+	}
+	if !strings.Contains(membersFooter, "--child") || !strings.Contains(membersFooter, "call") {
+		t.Errorf("the footer must direct to --child and reserve --service-id for call: %q", membersFooter)
+	}
+}

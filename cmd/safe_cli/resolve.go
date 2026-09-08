@@ -98,6 +98,7 @@ func parseAccount(body []byte) (*account, error) {
 					ProfileID: pid,
 					DeviceID:  s.DeviceID,
 					Pairing:   s.PairingStatus,
+					Paired:    s.PairingStatus == "PAIRED",
 					Plan:      s.PlanName,
 				})
 			}

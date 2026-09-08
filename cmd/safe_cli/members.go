@@ -33,12 +33,18 @@ type member struct {
 	ProfileID int64  `json:"profile_id"`
 	DeviceID  int64  `json:"device_id,omitempty"`
 	Pairing   string `json:"pairing,omitempty"`
+	Paired    bool   `json:"paired"` // Pairing == PAIRED: the stable check for device-scoped verbs
 	Plan      string `json:"plan,omitempty"`
 }
 
 // membersOrder is the sort `members` prints, stated in its help and footer so "the first
 // child" is well-defined: guardians, then children with PAIRED before UNPAIRED, then by name.
 const membersOrder = "guardians first, then children with PAIRED before UNPAIRED, then by name"
+
+// membersFooter closes the text listing: the order, and where the SERVICE-ID goes — --child on
+// the generated verbs; --service-id only on the generic `call`.
+const membersFooter = "\nOrder: %s. Pass a child's SERVICE-ID as --child to child-scoped verbs (as --service-id to `call`). " +
+	"Device-scoped verbs (pause, contacts, websites) need a PAIRED device (paired: true).\n"
 
 func (c *membersCmd) Run(rc *runContext) error {
 	st, ts, err := loadTokens()
@@ -78,8 +84,7 @@ func (c *membersCmd) Run(rc *runContext) error {
 	if err := outfmt.Table(rc.Out, []string{"NAME", "ROLE", "PAIRING", "SERVICE-ID", "PROFILE-ID", "DEVICE-ID"}, rows); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(rc.Out, "\nOrder: %s. Pass SERVICE-ID as --service-id to child-scoped ops. "+
-		"Device-scoped ops (pause, contacts, websites) need a PAIRED device.\n", membersOrder)
+	_, err = fmt.Fprintf(rc.Out, membersFooter, membersOrder)
 	return err
 }
 
