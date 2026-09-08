@@ -1,8 +1,10 @@
 package descriptor
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -55,12 +57,15 @@ type CLI struct {
 	Select []SelectRule `json:"select,omitempty"`
 	// AtLeastOne requires at least one of the named optional flags (`account set
 	// [--family-name] [--timezone]`); validated to name declared, non-required flags.
-	AtLeastOne    []string `json:"at_least_one,omitempty"`
-	AliasOf       string   `json:"alias_of,omitempty"`
-	CallOnly      bool     `json:"call_only,omitempty"`
-	Reason        string   `json:"reason,omitempty"`
-	LiveEmergency bool     `json:"live_emergency,omitempty"` // requires --confirm and warns
-	Output        *Output  `json:"output,omitempty"`
+	AtLeastOne []string `json:"at_least_one,omitempty"`
+	// OneOf requires exactly one alternative group of optional flags to be fully given
+	// (`pick-me-up request --lat --lon | --address`); every name must be a declared flag.
+	OneOf         [][]string `json:"one_of,omitempty"`
+	AliasOf       string     `json:"alias_of,omitempty"`
+	CallOnly      bool       `json:"call_only,omitempty"`
+	Reason        string     `json:"reason,omitempty"`
+	LiveEmergency bool       `json:"live_emergency,omitempty"` // requires --confirm and warns
+	Output        *Output    `json:"output,omitempty"`
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
@@ -73,6 +78,7 @@ type Flag struct {
 	Repeatable bool     `json:"repeatable,omitempty"`
 	Excludes   []string `json:"excludes,omitempty"` // flags that may not be combined with this one
 	Nulls      []string `json:"nulls,omitempty"`    // flags whose variable this one unsets (their "$x?" property is omitted)
+	Requires   []string `json:"requires,omitempty"` // flags that must be given whenever this one is (--lat requires --lon)
 	// MapsTo is body:$var | query:<name> | header:<name> | path:<placeholder>. A flag has
 	// exactly one of MapsTo or SpreadsTo.
 	MapsTo string `json:"maps_to,omitempty"`
@@ -84,10 +90,58 @@ type Flag struct {
 	Help      string   `json:"help"`
 }
 
-// SelectRule is one {when, op} entry of CLI.Select.
+// SelectRule is one {when, op} entry of CLI.Select. A branch may override the verb's
+// target, body_template, query, constants and resolve — unspecified fields inherit — because
+// a branch can be a different request contract (`alerts settings set --child` posts
+// different keys under a different header). Each branch is validated as a complete verb
+// against its own op.
 type SelectRule struct {
-	When string `json:"when"`
-	Op   string `json:"op"`
+	When         string            `json:"when"`
+	Op           string            `json:"op"`
+	Target       string            `json:"target,omitempty"`
+	BodyTemplate string            `json:"body_template,omitempty"`
+	Query        map[string]string `json:"query,omitempty"`
+	Constants    map[string]any    `json:"constants,omitempty"`
+	Resolve      []string          `json:"resolve,omitempty"`
+}
+
+// The cli block and its parts reject unknown keys: these fields are optional, so a typo
+// like "transfrom" or "nullls" would otherwise be silently discarded and the block would
+// still validate — generating an untransformed body or dropping a guard.
+func (c *CLI) UnmarshalJSON(b []byte) error {
+	type plain CLI
+	var p plain
+	if err := strictDecode(b, &p); err != nil {
+		return fmt.Errorf("cli block: %w", err)
+	}
+	*c = CLI(p)
+	return nil
+}
+
+func (f *Flag) UnmarshalJSON(b []byte) error {
+	type plain Flag
+	var p plain
+	if err := strictDecode(b, &p); err != nil {
+		return fmt.Errorf("flag: %w", err)
+	}
+	*f = Flag(p)
+	return nil
+}
+
+func (r *SelectRule) UnmarshalJSON(b []byte) error {
+	type plain SelectRule
+	var p plain
+	if err := strictDecode(b, &p); err != nil {
+		return fmt.Errorf("select: %w", err)
+	}
+	*r = SelectRule(p)
+	return nil
+}
+
+func strictDecode(b []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
 }
 
 // Output names the response fields the default table shows.
@@ -208,19 +262,104 @@ func (d *Descriptor) validateCLI(o Operation) error {
 	if !cliPriorities[c.Priority] {
 		return fmt.Errorf("priority %q must be core|common|long-tail", c.Priority)
 	}
-	if !cliTargets[c.Target] {
-		return fmt.Errorf("target %q must be account|self|child|device", c.Target)
-	}
 	if strings.TrimSpace(c.Summary) == "" {
 		return fmt.Errorf("a verb needs a summary (its --help line)")
 	}
 	if !cliAuths[c.Auth] {
 		return fmt.Errorf("auth %q must be id_token|spc_token", c.Auth)
 	}
-	// Flags: unique names, known types, well-formed maps_to.
+	if err := d.validateContract(o, c); err != nil {
+		return err
+	}
+	// select: conditions are checked against the verb's flags, and each branch is a
+	// complete request contract — the verb's fields with the branch's overrides — validated
+	// against ITS op, so choosing an op can never apply the base template to an unrelated
+	// route.
+	flagByName := flagIndex(c.Flags)
+	for i, r := range c.Select {
+		switch {
+		case r.When == "child":
+		case strings.HasPrefix(r.When, "flag:"):
+			if _, ok := flagByName[strings.TrimPrefix(r.When, "flag:")]; !ok {
+				return fmt.Errorf("select[%d]: condition %q names unknown flag %q", i, r.When, strings.TrimPrefix(r.When, "flag:"))
+			}
+		case strings.HasPrefix(r.When, "exists:"):
+			if err := d.checkResolveVar(strings.TrimPrefix(r.When, "exists:"), flagByName); err != nil {
+				return fmt.Errorf("select[%d]: %w", i, err)
+			}
+		default:
+			return fmt.Errorf("select[%d]: condition %q must be child | flag:<name> | exists:$lookup:<entity>.<op>:<key>=<flag>:<field>", i, r.When)
+		}
+		bo, ok := d.lookupOp(r.Op)
+		if !ok {
+			return fmt.Errorf("select[%d]: op %q does not name an existing entity.op", i, r.Op)
+		}
+		if err := d.validateContract(bo, c.withOverrides(r)); err != nil {
+			return fmt.Errorf("select[%d] (%s): %w", i, r.Op, err)
+		}
+	}
+	return nil
+}
+
+// lookupOp returns the operation "entity.op" names.
+func (d *Descriptor) lookupOp(ref string) (Operation, bool) {
+	ent, op, ok := strings.Cut(ref, ".")
+	if !ok {
+		return Operation{}, false
+	}
+	e, ok := d.Entities[ent]
+	if !ok {
+		return Operation{}, false
+	}
+	if o, ok := e.Operations[op]; ok {
+		return o, true
+	}
+	o, ok := e.Actions[op]
+	return o, ok
+}
+
+// withOverrides returns a select branch's request contract: a copy of the verb with the
+// branch's non-empty overrides applied and no further select.
+func (c *CLI) withOverrides(r SelectRule) *CLI {
+	m := *c
+	m.Select = nil
+	if r.Target != "" {
+		m.Target = r.Target
+	}
+	if r.BodyTemplate != "" {
+		m.BodyTemplate = r.BodyTemplate
+	}
+	if r.Query != nil {
+		m.Query = r.Query
+	}
+	if r.Constants != nil {
+		m.Constants = r.Constants
+	}
+	if r.Resolve != nil {
+		m.Resolve = r.Resolve
+	}
+	return &m
+}
+
+func flagIndex(flags []Flag) map[string]Flag {
+	m := make(map[string]Flag, len(flags))
+	for _, f := range flags {
+		m[f.Name] = f
+	}
+	return m
+}
+
+// validateContract checks a verb's request contract — target, flags and their
+// destinations, dependent-flag groups, query sources, resolve entries and the body
+// template — against op o (invariants 2–4 of the architecture pass).
+func (d *Descriptor) validateContract(o Operation, c *CLI) error {
+	if !cliTargets[c.Target] {
+		return fmt.Errorf("target %q must be account|self|child|device", c.Target)
+	}
+	// Flags: unique names, known types, exactly one destination form, well-formed maps_to.
 	flagByName := make(map[string]Flag, len(c.Flags))
-	bodyVarByFlag := make(map[string]Flag) // body var name -> flag
-	queryFromFlag := make(map[string]bool) // query name -> covered by a flag
+	bodyVarByFlag := make(map[string]Flag)   // body var name -> flag
+	queryFromFlag := make(map[string]string) // query name -> the flag that maps to it
 	for _, f := range c.Flags {
 		if f.Name == "" {
 			return fmt.Errorf("a flag has no name")
@@ -281,7 +420,10 @@ func (d *Descriptor) validateCLI(o Operation) error {
 			if !contains(o.Query, arg) {
 				return fmt.Errorf("flag --%s: query %q is not one of the op's declared query params %v", f.Name, arg, o.Query)
 			}
-			queryFromFlag[arg] = true
+			if prev, dup := queryFromFlag[arg]; dup {
+				return fmt.Errorf("flag --%s: query %q is already mapped from --%s (one query parameter, one source)", f.Name, arg, prev)
+			}
+			queryFromFlag[arg] = f.Name
 		case "header":
 			// header names are free-form; the headers block checks them at call time.
 		case "path":
@@ -306,8 +448,24 @@ func (d *Descriptor) validateCLI(o Operation) error {
 			}
 		}
 		for _, x := range f.Nulls {
-			if _, ok := flagByName[x]; !ok {
+			g, ok := flagByName[x]
+			if !ok {
 				return fmt.Errorf("flag --%s: excludes/nulls names unknown flag %q", f.Name, x)
+			}
+			// Omission is defined only for an optional "$x?" body property; nulling a query/
+			// header/path flag or a required "$x" would leave a null or unresolved value.
+			kind, arg, _ := strings.Cut(g.MapsTo, ":")
+			v := strings.TrimPrefix(arg, "$")
+			if kind != "body" || !strings.Contains(c.BodyTemplate, "\"$"+v+"?\"") {
+				return fmt.Errorf("flag --%s: nulls --%s, whose var must be an optional body variable (\"$%s?\") in the body_template — omission is only defined for optional body properties", f.Name, x, v)
+			}
+		}
+		for _, x := range f.Requires {
+			if x == f.Name {
+				return fmt.Errorf("flag --%s: requires itself", f.Name)
+			}
+			if _, ok := flagByName[x]; !ok {
+				return fmt.Errorf("flag --%s: requires unknown flag %q", f.Name, x)
 			}
 		}
 	}
@@ -328,25 +486,20 @@ func (d *Descriptor) validateCLI(o Operation) error {
 			}
 		}
 	}
-
-	// select: conditional operation choice, declared and checked — every op exists, every
-	// flag: names a declared flag, every exists: is a valid lookup.
-	for i, r := range c.Select {
-		if !d.opExists(r.Op) {
-			return fmt.Errorf("select[%d]: op %q does not name an existing entity.op", i, r.Op)
+	// one_of: exactly one alternative group must be fully given (--lat --lon | --address).
+	if len(c.OneOf) > 0 {
+		if len(c.OneOf) < 2 {
+			return fmt.Errorf("one_of needs at least two alternative groups, got %d", len(c.OneOf))
 		}
-		switch {
-		case r.When == "child":
-		case strings.HasPrefix(r.When, "flag:"):
-			if _, ok := flagByName[strings.TrimPrefix(r.When, "flag:")]; !ok {
-				return fmt.Errorf("select[%d]: condition %q names unknown flag %q", i, r.When, strings.TrimPrefix(r.When, "flag:"))
+		for gi, grp := range c.OneOf {
+			if len(grp) == 0 {
+				return fmt.Errorf("one_of[%d] is an empty group", gi)
 			}
-		case strings.HasPrefix(r.When, "exists:"):
-			if err := d.checkResolveVar(strings.TrimPrefix(r.When, "exists:"), flagByName); err != nil {
-				return fmt.Errorf("select[%d]: %w", i, err)
+			for _, x := range grp {
+				if _, ok := flagByName[x]; !ok {
+					return fmt.Errorf("one_of[%d] names unknown flag %q", gi, x)
+				}
 			}
-		default:
-			return fmt.Errorf("select[%d]: condition %q must be child | flag:<name> | exists:$lookup:<entity>.<op>:<key>=<flag>:<field>", i, r.When)
 		}
 	}
 
@@ -356,7 +509,7 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		if !contains(o.Query, name) {
 			return fmt.Errorf("query[%s] is not one of the op's declared query params %v", name, o.Query)
 		}
-		if queryFromFlag[name] {
+		if _, fromFlag := queryFromFlag[name]; fromFlag {
 			return fmt.Errorf("query[%s] is declared as a constant and also mapped from a flag", name)
 		}
 		if strings.HasPrefix(v, "$") {
@@ -366,8 +519,18 @@ func (d *Descriptor) validateCLI(o Operation) error {
 		}
 	}
 	for _, req := range o.RequiredQuery {
-		if _, ok := c.Query[req]; !ok && !queryFromFlag[req] {
+		_, fromFlag := queryFromFlag[req]
+		if _, ok := c.Query[req]; !ok && !fromFlag {
 			return fmt.Errorf("required query param %q has no source (no flag maps to it and it is not a query constant)", req)
+		}
+	}
+
+	// Resolve entries are checked for every verb, bodyless ones included — a path, query or
+	// header can resolve too, and a typo must fail here, not at invocation.
+	resolveOK := func(v string) error { return d.checkResolveVar(v, flagByName) }
+	for _, r := range c.Resolve {
+		if err := resolveOK(r); err != nil {
+			return fmt.Errorf("resolve entry: %w", err)
 		}
 	}
 
@@ -388,19 +551,13 @@ func (d *Descriptor) validateCLI(o Operation) error {
 	if err := json.Unmarshal([]byte(c.BodyTemplate), &tpl); err != nil {
 		return fmt.Errorf("body_template is not strict JSON (write variables as \"$name\" strings): %w", err)
 	}
-	resolveOK := func(v string) error { return d.checkResolveVar(v, flagByName) }
 	seenVars := make(map[string]bool)
-	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK, false); err != nil {
+	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK, false, nil); err != nil {
 		return err
 	}
 	for v, f := range bodyVarByFlag {
 		if !seenVars[v] {
 			return fmt.Errorf("flag --%s maps to body var $%s, which the body_template never uses", f.Name, v)
-		}
-	}
-	for _, r := range c.Resolve {
-		if err := resolveOK(r); err != nil {
-			return fmt.Errorf("resolve entry: %w", err)
 		}
 	}
 	return nil
@@ -440,10 +597,12 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 
 // walkTemplate classifies every leaf of the template: "$name"/"$name?" must be a flag's body
 // var or a resolve entry (and "?" only on a flag that can be unset); any other scalar, or
-// array of scalars, must sit under a key declared in Constants. inArray reports that the
-// node sits inside a SINGLE-element array — the only place a repeatable flag's var may
-// live, because the engine expands that element once per value.
-func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool) error {
+// array of scalars, must sit under a key declared in Constants AND equal the declared value.
+// inArray reports that the node sits inside a SINGLE-element array — the only place a
+// repeatable flag's var may live, because the engine expands that element once per value —
+// and elemRepeat records which repeatable var that element expands on, so a second one
+// (whose expansion would be undefined) is rejected.
+func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool, elemRepeat *string) error {
 	switch t := v.(type) {
 	case map[string]any:
 		keys := make([]string, 0, len(t))
@@ -452,50 +611,79 @@ func walkTemplate(key string, v any, c *CLI, bodyVarByFlag map[string]Flag, seen
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen, resolveOK, inArray); err != nil {
+			if err := walkTemplate(k, t[k], c, bodyVarByFlag, seen, resolveOK, inArray, elemRepeat); err != nil {
 				return err
 			}
 		}
 		return nil
 	case []any:
 		single := len(t) == 1
+		allLiteral := true
 		for _, el := range t {
 			if _, isObj := el.(map[string]any); isObj {
-				if err := walkTemplate(key, el, c, bodyVarByFlag, seen, resolveOK, single); err != nil {
+				allLiteral = false
+			} else if s, ok := el.(string); ok && strings.HasPrefix(s, "$") {
+				allLiteral = false
+			}
+		}
+		if allLiteral {
+			cv, declared := c.Constants[key]
+			if !declared {
+				return fmt.Errorf("body_template field %q is an unclassified example value (array) — map it to a flag, resolve it, or declare it in constants", key)
+			}
+			if !reflect.DeepEqual(cv, v) {
+				return fmt.Errorf("body_template field %q = %v does not match the declared constant %v", key, v, cv)
+			}
+			return nil
+		}
+		for _, el := range t {
+			var rep string
+			if _, isObj := el.(map[string]any); isObj {
+				if err := walkTemplate(key, el, c, bodyVarByFlag, seen, resolveOK, single, &rep); err != nil {
 					return err
 				}
 				continue
 			}
 			if s, ok := el.(string); ok && strings.HasPrefix(s, "$") {
-				if err := classifyVar(s, c, bodyVarByFlag, seen, resolveOK, single); err != nil {
+				if err := classifyVar(s, c, bodyVarByFlag, seen, resolveOK, single, &rep); err != nil {
 					return err
 				}
 				continue
 			}
-			if _, declared := c.Constants[key]; !declared {
-				return fmt.Errorf("body_template field %q is an unclassified example value (array) — map it to a flag, resolve it, or declare it in constants", key)
-			}
+			return fmt.Errorf("body_template field %q mixes literal and variable array elements; declare the literal part as a constant or make every element a variable", key)
 		}
 		return nil
 	case string:
 		if strings.HasPrefix(t, "$") {
-			return classifyVar(t, c, bodyVarByFlag, seen, resolveOK, inArray)
+			return classifyVar(t, c, bodyVarByFlag, seen, resolveOK, inArray, elemRepeat)
 		}
 	}
-	// A literal scalar leaf.
-	if _, declared := c.Constants[key]; !declared {
+	// A literal scalar leaf: declared, and equal to what was declared.
+	cv, declared := c.Constants[key]
+	if !declared {
 		return fmt.Errorf("body_template field %q is an unclassified example value — map it to a flag, resolve it, or declare it in constants", key)
+	}
+	if !reflect.DeepEqual(cv, v) {
+		return fmt.Errorf("body_template field %q = %v does not match the declared constant %v", key, v, cv)
 	}
 	return nil
 }
 
-func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool) error {
+func classifyVar(s string, c *CLI, bodyVarByFlag map[string]Flag, seen map[string]bool, resolveOK func(string) error, inArray bool, elemRepeat *string) error {
 	optional := strings.HasSuffix(s, "?")
 	name := strings.TrimSuffix(strings.TrimPrefix(s, "$"), "?")
 	if f, ok := bodyVarByFlag[name]; ok {
 		seen[name] = true
-		if f.Repeatable && !inArray {
-			return fmt.Errorf("flag --%s is repeatable, so its var $%s must be inside a single-element array template (the element expands once per value)", f.Name, name)
+		if f.Repeatable {
+			if !inArray {
+				return fmt.Errorf("flag --%s is repeatable, so its var $%s must be inside a single-element array template (the element expands once per value)", f.Name, name)
+			}
+			if elemRepeat != nil {
+				if *elemRepeat != "" && *elemRepeat != name {
+					return fmt.Errorf("body_template array element already expands on repeatable --%s; a second repeatable --%s in the same element has no defined expansion", bodyVarByFlag[*elemRepeat].Name, f.Name)
+				}
+				*elemRepeat = name
+			}
 		}
 		if optional && f.Required && !nulledBySomeFlag(f.Name, c) {
 			return fmt.Errorf("body var $%s? is optional but flag --%s is required and nothing nulls it", name, f.Name)
