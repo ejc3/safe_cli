@@ -79,9 +79,6 @@ type CLI struct {
 	// condition, so validation knows a keyed lookup there is reached only when that flag
 	// is given. Never decoded from JSON.
 	selectedBy string
-	// branch marks a contract derived by withOverrides; checks that compare inherited
-	// fields against the base template (unused constants) run on the base only.
-	branch bool
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
@@ -403,9 +400,12 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 	// against ITS op, so choosing an op can never apply the base template to an unrelated
 	// route.
 	flagByName := flagIndex(c.Flags)
-	// Every resolve entry must be read somewhere — by the base or a branch template, a query
-	// or header value, a flag default, or an exists: condition; an unused $lookup would be a
-	// wasted request on every invocation.
+	// Every resolve entry must be read by the contract that resolves it — its template, a
+	// query or header value, a flag default, or (for the base) an exists: condition; an
+	// unused $lookup would be a wasted request on every invocation. Judged per effective
+	// contract: the base on its own, and each branch with its overrides (a branch that does
+	// not override resolve inherits the base's entries and must use them too), never across
+	// the union, or a sibling's reference would excuse a needless lookup.
 	uses := resolveUses(c)
 	for _, r := range c.Resolve {
 		if !uses[r] {
@@ -413,9 +413,11 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		}
 	}
 	for i, br := range c.Select {
-		for _, r := range br.Resolve {
-			if !uses[r] {
-				return fmt.Errorf("select[%d]: resolve entry %s is never used", i, r)
+		bc := c.withOverrides(br)
+		buses := resolveUses(bc)
+		for _, r := range bc.Resolve {
+			if !buses[r] {
+				return fmt.Errorf("select[%d]: resolve entry %s is never used by that branch's template, query or header values or defaults", i, r)
 			}
 		}
 	}
@@ -541,13 +543,12 @@ func resolveUses(c *CLI) map[string]bool {
 			add(s)
 		}
 	}
+	// An exists: condition is evaluated by the base before a branch is chosen, so it is a
+	// use of the base's entries; a branch's own template and query are judged on the branch
+	// contract (withOverrides), never here.
 	for _, r := range c.Select {
 		if strings.HasPrefix(r.When, "exists:") {
 			add(strings.TrimPrefix(r.When, "exists:"))
-		}
-		scanTemplate(r.BodyTemplate)
-		for _, v := range r.Query {
-			add(v)
 		}
 	}
 	return uses
@@ -732,7 +733,6 @@ func (d *Descriptor) lookupOp(ref string) (Operation, bool) {
 func (c *CLI) withOverrides(r SelectRule) *CLI {
 	m := *c
 	m.Select = nil
-	m.branch = true
 	m.selectedBy = ""
 	if strings.HasPrefix(r.When, "flag:") {
 		m.selectedBy = strings.TrimPrefix(r.When, "flag:")
@@ -1238,15 +1238,14 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		return fmt.Errorf("body_template: %w", err)
 	}
 	seenVars := make(map[string]bool)
-	if !c.branch {
-		// A constant the template never carries would classify nothing and silently vanish
-		// from the request.
-		used := map[string]bool{}
-		literalKeys(tpl, used)
-		for k := range c.Constants {
-			if !used[k] {
-				return fmt.Errorf("constants declares %q, which is never used: the body_template carries no literal field of that name", k)
-			}
+	// A constant the template never carries would classify nothing and silently vanish
+	// from the request. Checked on every effective contract: a select branch overrides the
+	// template and the constants independently, so its pair is judged on its own.
+	used := map[string]bool{}
+	literalKeys(tpl, used)
+	for k := range c.Constants {
+		if !used[k] {
+			return fmt.Errorf("constants declares %q, which is never used: the body_template carries no literal field of that name", k)
 		}
 	}
 	if err := walkTemplate("", tpl, c, bodyVarByFlag, seenVars, resolveOK, false, nil); err != nil {
