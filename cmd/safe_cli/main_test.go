@@ -151,3 +151,39 @@ func TestUnavailableDeadEndsHiddenAndRefused(t *testing.T) {
 		}
 	}
 }
+
+// describe shows, per op, the generated subcommand that fronts it (the CLI column), so an
+// agent reading an entity's ops learns the typed verb to run instead of `call`; an op with
+// no verb leaves the column blank and the legend says `call` is the way in.
+func TestDescribeShowsGeneratedVerb(t *testing.T) {
+	d, err := descriptor.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	rc := &runContext{D: d, G: &Globals{}, Out: &out}
+	if err := (&describeCmd{Entity: "pause_internet"}).Run(rc); err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "CLI") {
+		t.Fatalf("describe should have a CLI column naming the generated verb:\n%s", s)
+	}
+	for _, want := range []string{"pause-internet pause", "pause-internet resume", "pause-internet status"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("describe pause_internet should name the generated verb %q:\n%s", want, s)
+		}
+	}
+	out.Reset()
+	if err := (&describeCmd{Entity: "content_filter"}).Run(rc); err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	s = out.String()
+	// updateSubcategory fronts two verbs; both are listed on its row.
+	if !strings.Contains(s, "filter block, filter allow") && !strings.Contains(s, "filter allow, filter block") {
+		t.Errorf("an op with several verbs lists them all:\n%s", s)
+	}
+	if !strings.Contains(s, "CLI=") {
+		t.Errorf("the legend should explain the CLI column:\n%s", s)
+	}
+}
