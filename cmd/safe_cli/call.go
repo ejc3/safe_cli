@@ -245,15 +245,45 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 		}
 		return fmt.Errorf("%s %s needs a JSON body — pass --data (payload shape not yet extracted for this op)", a.entity, a.op)
 	}
+	headers, missingSvc, err := assembleHeaders(o, a.idHeaders, a.userHeaders)
+	if err != nil {
+		return err
+	}
+	if len(missingSvc) > 0 {
+		return fmt.Errorf("%s %s needs %s — pass --service-id with the TARGET (child's) service id (parental-control acts on a child, not the parent's own service)", a.entity, a.op, strings.Join(missingSvc, ", "))
+	}
+	resp, err := do(ctx, o.Method, path, body, headers)
+	if err != nil {
+		return err
+	}
+	return writeAPIResponse(out, asJSON, resp)
+}
+
+// assembleHeaders attaches the headers an op declares — identity values, a generated
+// trace id, fixed app values, or user-supplied ones — and reports which declared
+// serviceid headers have no value (the caller decides how to word the refusal). Extra
+// user headers the op does not declare are still sent so a request can always be
+// reproduced exactly. Shared by `call` and the generated verbs' engine.
+func assembleHeaders(o descriptor.Operation, idHeaders, userHeaders map[string]string) (map[string]string, []string, error) {
 	headers := make(map[string]string)
 	var missingSvc []string
 	for _, h := range o.Headers {
+		if isDynamicHeaderMap(h) {
+			// The decompiler's placeholder for an arbitrary header map (getAccountDetails):
+			// the app fills it with the identity headers, so forward every one we have.
+			for k, v := range idHeaders {
+				if v != "" {
+					headers[k] = v
+				}
+			}
+			continue
+		}
 		switch {
-		case a.idHeaders[h] != "":
-			headers[h] = a.idHeaders[h]
-		case a.userHeaders[h] != "":
-			headers[h] = a.userHeaders[h]
-		case o.HeaderValues[h] != "" && !hasHeaderCI(a.userHeaders, h):
+		case idHeaders[h] != "":
+			headers[h] = idHeaders[h]
+		case userHeaders[h] != "":
+			headers[h] = userHeaders[h]
+		case o.HeaderValues[h] != "" && !hasHeaderCI(userHeaders, h):
 			// A fixed header value the app always sends (e.g. app-name=VSF); auto-filled so an
 			// agent needn't know it. An explicit --header overrides — matched case-insensitively
 			// (HTTP header names are case-insensitive), so --header App-Name=X wins over the
@@ -263,28 +293,19 @@ func runCall(ctx context.Context, do doFunc, d *descriptor.Descriptor, a callArg
 			// The app supplies a fresh UUID here; newAppRequest only adds x-transaction-id.
 			tid, terr := client.TraceID()
 			if terr != nil {
-				return terr
+				return nil, nil, terr
 			}
 			headers[h] = tid
 		case strings.Contains(h, "serviceid"):
 			missingSvc = append(missingSvc, h)
 		}
 	}
-	if len(missingSvc) > 0 {
-		return fmt.Errorf("%s %s needs %s — pass --service-id with the TARGET (child's) service id (parental-control acts on a child, not the parent's own service)", a.entity, a.op, strings.Join(missingSvc, ", "))
-	}
-	// Any extra --header values not already placed (e.g. a header the op doesn't declare)
-	// are still sent, so the caller can always reproduce the exact request.
-	for k, v := range a.userHeaders {
+	for k, v := range userHeaders {
 		if _, ok := headers[k]; !ok {
 			headers[k] = v
 		}
 	}
-	resp, err := do(ctx, o.Method, path, body, headers)
-	if err != nil {
-		return err
-	}
-	return writeAPIResponse(out, asJSON, resp)
+	return headers, missingSvc, nil
 }
 
 // appendQuery appends query parameters onto path, choosing ? or & as needed. url.Values

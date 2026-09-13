@@ -250,12 +250,18 @@ func headerNames(op descriptor.Operation) []string {
 		if _, auto := op.HeaderValues[h]; auto {
 			continue // fixed value the CLI auto-sends (e.g. app-name=VSF) — not a must-pass header
 		}
-		if strings.HasPrefix(h, "(") || strings.Contains(h, "@HeaderMap") || strings.Contains(h, "dynamic") {
+		if isDynamicHeaderMap(h) {
 			continue // decompiler placeholder for an arbitrary header map, not a name
 		}
 		out = append(out, h)
 	}
 	return out
+}
+
+// isDynamicHeaderMap reports a decompiler placeholder ("(@HeaderMap dynamic)") for an op
+// whose headers the app assembles at run time, rather than a real header name.
+func isDynamicHeaderMap(h string) bool {
+	return strings.HasPrefix(h, "(") || strings.Contains(h, "@HeaderMap") || strings.Contains(h, "dynamic")
 }
 
 func main() {
