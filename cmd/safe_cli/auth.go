@@ -130,7 +130,7 @@ func (c *authStatusCmd) Run(rc *runContext) error {
 		rows = append(rows, []string{t.FriscoTokenType, fmt.Sprintf("%ds", t.ExpiresIn), state, redact(t.IDToken)})
 	}
 	if ts.MDN != "" {
-		if _, err := fmt.Fprintf(rc.Out, "mdn: %s\n", ts.MDN); err != nil {
+		if _, err := fmt.Fprintf(rc.Out, "phone: %s\n", ts.MDN); err != nil {
 			return err
 		}
 	}

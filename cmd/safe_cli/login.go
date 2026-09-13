@@ -25,7 +25,7 @@ import (
 // My-Verizon web login + 2FA, whose vsfapp:// redirect the operator pastes back, then
 // the token exchange. The durable offline refresh_token is persisted.
 type authLoginCmd struct {
-	MDN       string `name:"mdn" help:"The 10-digit line to verify (prompted if omitted)."`
+	MDN       string `name:"phone" help:"The 10-digit phone number to verify (prompted if omitted)."`
 	OTP       string `name:"otp" help:"An already-sent device OTP code. When set, skips the OTP request (does not send a new SMS) and validates this code directly — for resuming a login when a code was already delivered."`
 	APK       string `name:"apk" type:"existingfile" help:"Extract the signing key from this APK instead of SAFE_CLI_SIGNING_KEY[_FILE]."`
 	Redirect  string `name:"redirect" help:"Override the OAuth redirect_uri (advanced; e.g. an RFC 8252 loopback)."`
@@ -99,7 +99,7 @@ func writeLoginResult(out io.Writer, asJSON bool, mdn, path string) error {
 	if asJSON {
 		return outfmt.JSON(out, map[string]string{
 			"status":      "ok",
-			"mdn":         mdn,
+			"phone":       mdn,
 			"tokens_path": path,
 		})
 	}
@@ -154,7 +154,7 @@ func runLogin(ctx context.Context, d loginDeps) (*tokenstore.TokenSet, error) {
 	mdn := strings.TrimSpace(d.MDN)
 	if mdn == "" {
 		var err error
-		if mdn, err = promptLine(d.In, d.Out, "Verizon line (10-digit MDN): "); err != nil {
+		if mdn, err = promptLine(d.In, d.Out, "Verizon phone number (10 digits): "); err != nil {
 			return nil, err
 		}
 	}

@@ -803,7 +803,7 @@
             "startDate",
             "endDate"
           ],
-          "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's MDN, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (all three required — the API 400s an empty other-party mdn / start / end date), betaProviders=RCS|RCS,GIZMO (optional)."
+          "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's phone number, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (all three required — the API 400s an empty other-party phone number / start / end date), betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getSchedulesRequest": {
           "method": "GET",
@@ -1076,7 +1076,7 @@
           ],
           "takes_body": true,
           "body_example": "{\"mdn\":\"5551234567\"}",
-          "description": "Validate a Gizmo contact phone number (MDN)"
+          "description": "Validate a Gizmo contact phone number"
         },
         "addContactToTheList": {
           "method": "POST",
@@ -2337,7 +2337,7 @@
       }
     },
     "identity": {
-      "summary": "OAuth/OIDC identity and authentication: acquire and refresh parent/child device tokens, send and validate login OTPs, verify phone numbers (MDN), log out, and record login/biometric audit events.",
+      "summary": "OAuth/OIDC identity and authentication: acquire and refresh parent/child device tokens, send and validate login OTPs, verify phone numbers, log out, and record login/biometric audit events.",
       "id_field": "authPath",
       "operations": {
         "childRefreshToken": {
@@ -2448,7 +2448,7 @@
           "confirmed": false,
           "takes_body": true,
           "body_example": "{\"mdn\":\"5551234567\"}",
-          "description": "Verify/validate a phone number (MDN) (POST userprofile-management v5 phonenumber/validate)."
+          "description": "Verify/validate a phone number (POST userprofile-management v5 phonenumber/validate)."
         }
       }
     },
@@ -3598,7 +3598,7 @@
             "x-fp-identifier-target-serviceid",
             "x-mdn"
           ],
-          "description": "Look up a Gizmo device by MDN (phone number)."
+          "description": "Look up a Gizmo device by phone number."
         },
         "getMediaBackupList": {
           "method": "GET",
@@ -3773,7 +3773,7 @@
           ],
           "takes_body": true,
           "body_example": "{\"mdn\":\"5551234567\"}",
-          "description": "Validate a Gizmo MDN before pairing."
+          "description": "Validate a Gizmo phone number before pairing."
         },
         "getDeviceStatus2": {
           "method": "GET",
