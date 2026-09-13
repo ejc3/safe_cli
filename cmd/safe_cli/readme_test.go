@@ -19,9 +19,9 @@ var syntheticIDs = map[string]bool{
 	"1000002": true, "2000002": true, "3000002": true, // synthetic DEPENDENT row
 }
 
-// TestDocsUseOnlySyntheticIDs scans every committed Markdown doc (not just the README) so
+// TestDocsUseOnlySyntheticIDs scans every committed Markdown doc AND the HTML home page so
 // no doc example can leak per-user account ids. AGENTS.md is a symlink to CLAUDE.md and is
-// covered by reading it.
+// covered by reading it; docs/index.html is covered because it is served publicly.
 func TestDocsUseOnlySyntheticIDs(t *testing.T) {
 	root := filepath.Join("..", "..")
 	re := regexp.MustCompile(`\b[0-9]{7,8}\b`)
@@ -35,7 +35,7 @@ func TestDocsUseOnlySyntheticIDs(t *testing.T) {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".md") {
+		if !strings.HasSuffix(path, ".md") && !strings.HasSuffix(path, ".html") {
 			return nil
 		}
 		// #nosec G122 -- scanning the repo's own committed docs from a fixed relative
