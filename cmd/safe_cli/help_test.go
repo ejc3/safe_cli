@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/alecthomas/kong"
@@ -23,4 +24,16 @@ func helpFor(t *testing.T, args ...string) string {
 	}
 	_, _ = parser.Parse(args) // --help prints and "exits" via the no-op
 	return buf.String()
+}
+
+// TestAuthLoginPhoneFlag pins the user-facing noun: the line-verification flag is
+// --phone (nobody recognises "mdn"). The old --mdn spelling must be gone from help.
+func TestAuthLoginPhoneFlag(t *testing.T) {
+	h := helpFor(t, "auth", "login", "--help")
+	if !strings.Contains(h, "--phone") {
+		t.Errorf("auth login help must offer --phone; got:\n%s", h)
+	}
+	if strings.Contains(h, "--mdn") || strings.Contains(h, "MDN") {
+		t.Errorf("auth login help must not mention mdn/MDN; got:\n%s", h)
+	}
 }

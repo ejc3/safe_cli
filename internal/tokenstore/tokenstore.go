@@ -74,12 +74,35 @@ type Token struct {
 	ObtainedAt      int64  `json:"obtained_at,omitempty"` // unix seconds; set on save
 }
 
-// TokenSet is the persisted auth material.
+// TokenSet is the persisted auth material. MDN holds the account's phone number; it is
+// serialized under "phone" (the user-facing noun), and UnmarshalJSON still reads the
+// pre-rename "mdn" key so a token file written by an older build keeps working.
 type TokenSet struct {
-	MDN       string  `json:"mdn,omitempty"`
+	MDN       string  `json:"phone,omitempty"`
 	AppUUID   string  `json:"app_uuid,omitempty"`
 	Tokens    []Token `json:"tokens"`
 	AuthLevel string  `json:"authLevel,omitempty"`
+}
+
+// UnmarshalJSON accepts the pre-rename "mdn" key for the phone number so an existing
+// login (a token file written before the rename) is not invalidated.
+func (s *TokenSet) UnmarshalJSON(b []byte) error {
+	type alias TokenSet
+	var a alias
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	*s = TokenSet(a)
+	if s.MDN == "" {
+		var legacy struct {
+			MDN string `json:"mdn"`
+		}
+		if err := json.Unmarshal(b, &legacy); err != nil {
+			return err
+		}
+		s.MDN = legacy.MDN
+	}
+	return nil
 }
 
 // byType returns the first token with the given frisco_token_type.

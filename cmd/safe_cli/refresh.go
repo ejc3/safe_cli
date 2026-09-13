@@ -114,7 +114,7 @@ func refreshTokens(ctx context.Context, cl *client.Client, tokenPath, clientID, 
 
 func writeRefreshResult(out io.Writer, asJSON bool, ts *tokenstore.TokenSet) error {
 	if asJSON {
-		return outfmt.JSON(out, map[string]string{"status": "ok", "mdn": ts.MDN})
+		return outfmt.JSON(out, map[string]string{"status": "ok", "phone": ts.MDN})
 	}
 	_, err := fmt.Fprintln(out, "Tokens refreshed.")
 	return err

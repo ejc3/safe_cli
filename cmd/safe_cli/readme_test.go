@@ -56,3 +56,32 @@ func TestDocsUseOnlySyntheticIDs(t *testing.T) {
 		t.Fatalf("walk docs: %v", err)
 	}
 }
+
+// TestImportDocUsesPhoneKey pins docs/PROCESS.md's `auth import` TokenSet example to the
+// current on-disk key. A persisted TokenSet serializes the phone number under "phone"
+// (see internal/tokenstore), so the hand-built import example must teach "phone", not the
+// deprecated "mdn". Wire request bodies elsewhere in the doc keep "mdn" (the API field);
+// this guards only the TokenSet-shaped example, identified by its `tokens":[{"id_token`
+// opener so the OTP bodies are not matched.
+func TestImportDocUsesPhoneKey(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", "..", "docs", "PROCESS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, line := range strings.Split(string(b), "\n") {
+		if !strings.Contains(line, `tokens":[{"id_token`) {
+			continue
+		}
+		found = true
+		if !strings.Contains(line, `"phone"`) {
+			t.Errorf("PROCESS.md auth-import TokenSet example must use \"phone\": %s", strings.TrimSpace(line))
+		}
+		if strings.Contains(line, `"mdn"`) {
+			t.Errorf("PROCESS.md auth-import TokenSet example must not teach the deprecated \"mdn\" key: %s", strings.TrimSpace(line))
+		}
+	}
+	if !found {
+		t.Fatal("did not find the TokenSet import example in PROCESS.md (tokens\":[{\"id_token …) — did the doc move?")
+	}
+}

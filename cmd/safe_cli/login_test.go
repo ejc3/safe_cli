@@ -218,7 +218,7 @@ func TestWriteLoginResult(t *testing.T) {
 	if err := json.Unmarshal([]byte(jb.String()), &m); err != nil {
 		t.Fatalf("--json output is not JSON: %v (%q)", err, jb.String())
 	}
-	if m["status"] != "ok" || m["mdn"] != "5551234567" || m["tokens_path"] != "/cfg/tokens.json" {
+	if m["status"] != "ok" || m["phone"] != "5551234567" || m["tokens_path"] != "/cfg/tokens.json" {
 		t.Errorf("json result = %v", m)
 	}
 

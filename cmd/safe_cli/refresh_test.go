@@ -99,7 +99,7 @@ func TestWriteRefreshResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	var m map[string]string
-	if err := json.Unmarshal([]byte(jb.String()), &m); err != nil || m["status"] != "ok" || m["mdn"] != "5551234567" {
+	if err := json.Unmarshal([]byte(jb.String()), &m); err != nil || m["status"] != "ok" || m["phone"] != "5551234567" {
 		t.Errorf("json result = %q (%v)", jb.String(), err)
 	}
 	var pb strings.Builder

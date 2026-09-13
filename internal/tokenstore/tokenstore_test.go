@@ -5,9 +5,34 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+// TestPhoneKeyOnDiskAndLegacyRead pins the user-facing rename of the persisted line
+// number: it must serialize under "phone" (not the old "mdn"), and a token file written
+// by a pre-rename build (which stored it under "mdn") must still load so an existing
+// login is not invalidated.
+func TestPhoneKeyOnDiskAndLegacyRead(t *testing.T) {
+	b, err := json.Marshal(&TokenSet{MDN: "5551234567", Tokens: []Token{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"phone":"5551234567"`) {
+		t.Errorf("phone must serialize under \"phone\"; got %s", b)
+	}
+	if strings.Contains(string(b), `"mdn"`) {
+		t.Errorf("must not emit the legacy \"mdn\" key; got %s", b)
+	}
+	var legacy TokenSet
+	if err := json.Unmarshal([]byte(`{"mdn":"5551234567","tokens":[]}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.MDN != "5551234567" {
+		t.Errorf("a legacy \"mdn\" token file must still load the phone; got %q", legacy.MDN)
+	}
+}
 
 // makeJWT builds an unsigned JWT with the given claims (header.payload.).
 func makeJWT(claims map[string]any) string {
