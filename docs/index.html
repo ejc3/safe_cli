@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>safe_cli</title>
+<meta name="description" content="Unofficial command-line tool for administering your own Verizon Family (Smith Micro SafePath) account: pause-internet, filter, apps, website, and call for everything else.">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --surface-2:#eceff3;
+    --border:#d8dee6; --border-strong:#c3ccd6;
+    --text:#141d27; --muted:#54637a; --faint:#8492a4;
+    --accent:#8a5200; --accent-bright:#dc9330; --on-accent:#171008;
+    --cyan:#0c6f7e; --cyan-soft:#0c6f7e18;
+    --good:#237d43; --good-soft:#237d4315; --amber-soft:#dc933018;
+    --shadow:0 1px 2px rgba(20,29,39,.06), 0 8px 28px -12px rgba(20,29,39,.18);
+    --shadow-sm:0 1px 2px rgba(20,29,39,.05);
+    --grid:#141d270a;
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color-scheme:light dark;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e141b; --surface:#141c25; --surface-2:#1a232e;
+      --border:#28333f; --border-strong:#35434f;
+      --text:#e7eef5; --muted:#9db0c4; --faint:#647587;
+      --accent:#f0b45c; --accent-bright:#eba93f; --on-accent:#160f05;
+      --cyan:#63cadb; --cyan-soft:#63cadb1c;
+      --good:#6cc487; --good-soft:#6cc48718; --amber-soft:#eba93f16;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.65);
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+      --grid:#e7eef507;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e141b; --surface:#141c25; --surface-2:#1a232e;
+    --border:#28333f; --border-strong:#35434f;
+    --text:#e7eef5; --muted:#9db0c4; --faint:#647587;
+    --accent:#f0b45c; --accent-bright:#eba93f; --on-accent:#160f05;
+    --cyan:#63cadb; --cyan-soft:#63cadb1c;
+    --good:#6cc487; --good-soft:#6cc48718; --amber-soft:#eba93f16;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.65);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+    --grid:#e7eef507;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); line-height:1.6; font-size:16px;
+    -webkit-font-smoothing:antialiased; letter-spacing:-.003em;
+  }
+  img{max-width:100%}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+  a{color:var(--cyan); text-decoration:none}
+  a:hover{text-decoration:underline; text-underline-offset:3px}
+  :focus-visible{outline:2px solid var(--cyan); outline-offset:2px; border-radius:4px}
+  h1,h2,h3{text-wrap:balance; line-height:1.12; letter-spacing:-.02em; margin:0}
+  p{margin:0}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-family:var(--mono); font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); display:inline-flex; align-items:center; gap:9px}
+  .eyebrow::before{content:""; width:22px; height:1px; background:var(--accent-bright); opacity:.7}
+
+  header.nav{position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--border)}
+  .nav-in{display:flex; align-items:center; gap:20px; height:60px}
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--mono); font-weight:600; font-size:16px; letter-spacing:-.02em}
+  .brand .p{color:var(--accent-bright)}
+  .brand b{color:var(--text); font-weight:700}
+  .nav-links{margin-left:auto; display:flex; gap:26px; align-items:center}
+  .nav-links a{color:var(--muted); font-size:14px; font-weight:500}
+  .nav-links a:hover{color:var(--text); text-decoration:none}
+  .tag{font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--on-accent); background:var(--accent-bright); border-radius:6px; padding:4px 9px; text-transform:uppercase}
+  .toggle{appearance:none; cursor:pointer; background:var(--surface-2); color:var(--muted); border:1px solid var(--border); border-radius:8px; width:34px; height:34px; display:grid; place-items:center; font-size:15px}
+  .toggle:hover{color:var(--text); border-color:var(--border-strong)}
+  @media(max-width:720px){ .nav-links a:not(.tag){display:none} }
+
+  .unofficial{background:var(--amber-soft); border-bottom:1px solid color-mix(in srgb, var(--accent-bright) 38%, transparent)}
+  .unofficial .wrap{display:flex; gap:13px; align-items:center; padding:12px 24px}
+  .unofficial .lbl{font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.14em; color:var(--on-accent); background:var(--accent-bright); padding:4px 10px; border-radius:6px; text-transform:uppercase; white-space:nowrap}
+  .unofficial .txt{color:var(--muted); font-size:13.5px}
+  .unofficial .txt b{color:var(--text); font-weight:600}
+  @media(max-width:640px){ .unofficial .wrap{align-items:flex-start; flex-direction:column; gap:8px} }
+
+  .hero{position:relative; padding:70px 0 40px; overflow:hidden}
+  .hero::before{content:""; position:absolute; inset:0; z-index:0; pointer-events:none; background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size:34px 34px; mask-image:radial-gradient(120% 90% at 82% 0%, #000 0%, transparent 62%)}
+  .hero-in{position:relative; z-index:1; display:grid; grid-template-columns:1.02fr .98fr; gap:44px; align-items:center}
+  @media(max-width:900px){ .hero-in{grid-template-columns:1fr; gap:34px} .hero{padding:50px 0 28px} }
+  .hero h1{font-size:clamp(33px,5vw,52px); font-weight:700; margin:20px 0 0; letter-spacing:-.03em}
+  .hero h1 .hl{color:var(--accent); white-space:nowrap}
+  .lede{color:var(--muted); font-size:clamp(16px,1.6vw,19px); max-width:34em; margin-top:20px}
+  .lede b{color:var(--text); font-weight:600}
+  .hero-cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px}
+  .btn{font-family:var(--mono); font-size:14px; font-weight:600; letter-spacing:-.01em; display:inline-flex; align-items:center; gap:9px; padding:11px 17px; border-radius:9px; border:1px solid transparent; cursor:pointer}
+  .btn.primary{background:var(--accent-bright); color:var(--on-accent)}
+  .btn.primary:hover{filter:brightness(1.05); text-decoration:none}
+  .btn.ghost{background:transparent; color:var(--text); border-color:var(--border-strong)}
+  .btn.ghost:hover{background:var(--surface-2); text-decoration:none}
+  .btn .k{opacity:.7}
+  .hero-note{margin-top:18px; font-size:13px; color:var(--faint)}
+  .hero-note b{color:var(--accent); font-weight:600}
+
+  .term{background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; font-family:var(--mono); font-size:13px}
+  .term-bar{display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--border); background:var(--surface-2)}
+  .dot{width:11px; height:11px; border-radius:50%; background:var(--border-strong)}
+  .dot.a{background:#e06c5b} .dot.b{background:#e0b64f} .dot.c{background:#5bb87a}
+  .term-title{margin-left:8px; color:var(--faint); font-size:12px; letter-spacing:.02em}
+  .term-body{padding:16px 16px 18px; overflow-x:auto; line-height:1.7}
+  .term-body pre{margin:0; white-space:pre; min-width:max-content}
+  .pr{color:var(--accent-bright); font-weight:600}
+  .cmd{color:var(--text); font-weight:600}
+  .flag{color:var(--cyan)}
+  .str{color:var(--good)}
+  .cmt{color:var(--faint)}
+  .out{color:var(--muted)}
+  .out .hl{color:var(--accent); font-weight:600}
+  .cursor{display:inline-block; width:8px; height:15px; vertical-align:-3px; background:var(--accent-bright); animation:blink 1.15s steps(2,jump-none) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .stats{border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--surface); margin-top:44px}
+  .stats-in{display:grid; grid-template-columns:repeat(3,1fr)}
+  .stat{padding:26px 22px; border-left:1px solid var(--border)}
+  .stat:first-child{border-left:0}
+  .stat .n{font-family:var(--mono); font-weight:600; font-size:34px; letter-spacing:-.03em; color:var(--text); font-variant-numeric:tabular-nums}
+  .stat .l{color:var(--muted); font-size:13px; margin-top:4px}
+  .stat .s{color:var(--faint); font-size:12px; font-family:var(--mono); margin-top:9px}
+  @media(max-width:720px){ .stats-in{grid-template-columns:1fr} .stat{border-left:0} .stat:nth-child(n+2){border-top:1px solid var(--border)} }
+
+  section.blk{padding:70px 0}
+  .head{max-width:44em}
+  .head h2{font-size:clamp(25px,3.2vw,34px); font-weight:700; margin-top:14px}
+  .head p{color:var(--muted); margin-top:14px; font-size:17px}
+
+  .feat{display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-top:38px}
+  @media(max-width:760px){ .feat{grid-template-columns:1fr} }
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; box-shadow:var(--shadow-sm)}
+  .card .ic{font-family:var(--mono); font-weight:600; color:var(--accent); font-size:13px; letter-spacing:.02em}
+  .card h3{font-size:17.5px; font-weight:600; margin-top:12px}
+  .card p{color:var(--muted); font-size:14.5px; margin-top:8px}
+  .card code{font-family:var(--mono); font-size:12.5px; background:var(--surface-2); padding:1px 6px; border-radius:5px; color:var(--text)}
+  .allop{margin-top:16px; border:1px dashed var(--border-strong); border-radius:12px; padding:18px 22px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; background:var(--surface-2); color:var(--muted); font-size:14.5px}
+  .allop b{color:var(--text); font-weight:600}
+  .allop .big{font-family:var(--mono); font-weight:600; color:var(--accent); font-size:15px; white-space:nowrap}
+
+  .grammar{margin-top:30px; font-family:var(--mono); background:var(--surface-2); border:1px dashed var(--border-strong); border-radius:12px; padding:22px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center; font-size:14px}
+  .tok{padding:8px 13px; border-radius:8px; border:1px solid var(--border); background:var(--surface); position:relative}
+  .tok .cap{position:absolute; top:-9px; left:12px; background:var(--surface-2); padding:0 6px; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); white-space:nowrap}
+  .tok.k{color:var(--accent); font-weight:600}
+  .tok.e{color:var(--cyan); font-weight:600}
+  .tok.o{color:var(--text); font-weight:600}
+  .tok.i{color:var(--good); font-weight:600}
+  .arrow{color:var(--faint)}
+
+  .flow{display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:36px; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface)}
+  @media(max-width:820px){ .flow{grid-template-columns:1fr 1fr} }
+  @media(max-width:520px){ .flow{grid-template-columns:1fr} }
+  .step{padding:20px 18px; border-left:1px solid var(--border)}
+  .step:first-child{border-left:0}
+  @media(max-width:820px){ .step:nth-child(3){border-left:0} .step:nth-child(n+3){border-top:1px solid var(--border)} }
+  @media(max-width:520px){ .step{border-left:0; border-top:1px solid var(--border)} .step:first-child{border-top:0} }
+  .step .no{font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:600}
+  .step h4{font-size:14.5px; margin:8px 0 5px; font-weight:600}
+  .step p{color:var(--muted); font-size:13px; line-height:1.5}
+  .step code{font-family:var(--mono); font-size:12px; color:var(--text); background:var(--surface-2); padding:1px 5px; border-radius:4px}
+
+  .scope{background:var(--surface-2); border:1px solid var(--border); border-radius:16px; padding:34px; margin-top:20px}
+  .scope-grid{display:grid; grid-template-columns:1fr 1fr; gap:28px 40px; margin-top:8px}
+  @media(max-width:820px){ .scope-grid{grid-template-columns:1fr} }
+  .scope h3{font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px}
+  .scope h3::before{content:""; width:7px; height:7px; border-radius:2px; background:var(--accent-bright)}
+  .scope p{color:var(--muted); font-size:14px; margin-top:8px}
+  .scope .neg h3::before{background:var(--good)}
+  .never{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:10px; display:flex; flex-wrap:wrap; gap:7px}
+  .never span{border:1px solid var(--border-strong); border-radius:6px; padding:2px 8px; background:var(--surface)}
+
+  footer{border-top:1px solid var(--border); margin-top:20px; padding:38px 0 54px}
+  .foot-in{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; align-items:center}
+  .foot-in .b{font-family:var(--mono); font-weight:600}
+  .foot-in .b .p{color:var(--accent-bright)}
+  .foot-note{color:var(--faint); font-size:13px; max-width:42em}
+
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important} .cursor{opacity:1} }
+</style>
+</head>
+<body>
+<header class="nav">
+<div class="wrap nav-in">
+<div class="brand"><span class="p">&#9654;</span><span>safe<b>_cli</b></span></div>
+<nav class="nav-links">
+<a href="#capabilities">What it controls</a>
+<a href="#commands">How it works</a>
+<a href="#start">Get started</a>
+<a href="#scope">Scope</a>
+<span class="tag">Unofficial</span>
+<button class="toggle" id="themeBtn" aria-label="Toggle color theme" title="Toggle theme">&#9680;</button>
+</nav>
+</div>
+</header>
+
+<div class="unofficial">
+<div class="wrap">
+<span class="lbl">Unofficial</span>
+<span class="txt"><b>Not affiliated with, endorsed by, or supported by Verizon or Smith Micro.</b> A community tool for administering your own family account.</span>
+</div>
+</div>
+
+<main>
+<section class="hero">
+<div class="wrap hero-in">
+<div class="hero-copy">
+<span class="eyebrow">Verizon Family / Smith Micro SafePath</span>
+<h1>Your Verizon Family account, <span class="hl">from the command line.</span></h1>
+<p class="lede">
+<b>safe_cli</b> is an unofficial command-line tool for the Verizon Family account you administer.
+The everyday controls are subcommands (<span class="mono" style="color:var(--text)">pause-internet</span>,
+<span class="mono" style="color:var(--text)">filter</span>, <span class="mono" style="color:var(--text)">apps</span>,
+<span class="mono" style="color:var(--text)">website</span>); every other operation the app performs is reachable through
+<span class="mono" style="color:var(--text)">call</span>. It is built to be driven by an agent or a script:
+<code>--json</code> output, a self-describing surface, and <code>--dry-run</code> for every request.
+</p>
+<div class="hero-cta">
+<a class="btn primary" href="#commands">How it works <span class="k">&darr;</span></a>
+<a class="btn ghost" href="https://github.com/ejc3/safe_cli">Source on GitHub</a>
+</div>
+<p class="hero-note"><b>Unofficial</b> &mdash; a community tool, not a Verizon or Smith Micro product. Example ids are synthetic.</p>
+</div>
+<div class="term">
+<div class="term-bar">
+<span class="dot a"></span><span class="dot b"></span><span class="dot c"></span>
+<span class="term-title">~ &mdash; safe_cli</span>
+</div>
+<div class="term-body"><pre><span class="pr">$</span> <span class="cmd">safe_cli</span> members
+<span class="out">NAME    ROLE      PAIRING   SERVICE-ID  PROFILE-ID  DEVICE-ID
+Parent  guardian            1000001     2000001     3000001
+Kid     child     PAIRED    <span class="hl">1000002</span>     2000002     3000002</span>
+<span class="pr">$</span> <span class="cmd">safe_cli</span> pause-internet pause <span class="flag">--child</span> <span class="str">1000002</span> <span class="flag">--for</span> <span class="str">30m</span>
+<span class="out">STATUSCODE
+201</span>
+<span class="pr">$</span> <span class="cmd">safe_cli</span> pause-internet status <span class="flag">--child</span> <span class="str">1000002</span>
+<span class="out">STATUS  TIMELEFT
+Paused  -</span>
+<span class="pr">$</span> <span class="cmd">safe_cli</span> pause-internet resume <span class="flag">--child</span> <span class="str">1000002</span>
+<span class="out">STATUSCODE
+200</span>
+<span class="pr">$</span> <span class="cursor"></span></pre></div>
+</div>
+</div>
+</section>
+
+<div class="stats">
+<div class="wrap stats-in">
+<div class="stat"><div class="n">18</div><div class="l">generated verbs</div><div class="s">across pause-internet, filter, apps, website</div></div>
+<div class="stat"><div class="n">459</div><div class="l">operations in the descriptor</div><div class="s">394 available on a standard family account, all reachable through <span class="mono">call</span></div></div>
+<div class="stat"><div class="n">1</div><div class="l">flag to pick the child</div><div class="s"><span class="mono">--child SERVICE-ID</span>, from <span class="mono">members</span></div></div>
+</div>
+</div>
+
+<section class="blk" id="capabilities">
+<div class="wrap">
+<div class="head">
+<span class="eyebrow">What it controls</span>
+<h2>The controls from the app, as subcommands.</h2>
+<p>Each area is a command with typed flags. Ids you would otherwise have to look up
+(profile, device, a category's fields) are resolved for you from the child's service id.</p>
+</div>
+<div class="feat">
+<div class="card">
+<div class="ic">// pause-internet</div>
+<h3>Pause the internet</h3>
+<p><code>pause</code> for 30m, 1h, 2h, 4h or until morning, or <code>--indefinite</code>;
+<code>--call-only</code> keeps phone calls working. <code>resume</code> lifts it (a repeat is a
+no-op, not an error). <code>status</code> shows the current state.</p>
+</div>
+<div class="card">
+<div class="ic">// filter</div>
+<h3>Content filter</h3>
+<p><code>show</code> lists the filter with each subcategory's id and whether it is blocked;
+<code>block</code> and <code>allow</code> flip one by id; <code>set --preset</code> applies an age
+group (none, young-child, child, teen); <code>categories</code> and <code>presets</code> list the rest.</p>
+</div>
+<div class="card">
+<div class="ic">// apps</div>
+<h3>Apps</h3>
+<p><code>list</code> shows the apps the filter knows, grouped (Messaging, Social Media, Games, &hellip;),
+with ids; <code>--find</code> narrows by name. <code>block</code> and <code>allow</code> act on one app.</p>
+</div>
+<div class="card">
+<div class="ic">// website</div>
+<h3>Websites and safe search</h3>
+<p><code>block</code> and <code>allow</code> add domains to the block list or the trusted list,
+<code>list</code> shows both with the entry ids <code>remove</code> takes, and
+<code>safe-search enable|disable</code> enforces safe search on the child's search engines.</p>
+</div>
+</div>
+<div class="allop">
+<span class="big">Everything else: <span class="mono" style="font-size:.9em">call &lt;entity&gt; &lt;op&gt;</span></span>
+<span>Location and place alerts, screen time and bedtime, contacts and call restrictions, driving,
+service and subscription details, device pairing. <span class="mono">entities</span> lists the areas,
+<span class="mono">describe</span> lists an area's operations with what each needs.</span>
+</div>
+</div>
+</section>
+
+<section class="blk" id="commands" style="padding-top:0">
+<div class="wrap">
+<div class="head">
+<span class="eyebrow">How it works</span>
+<h2>One grammar: <span class="mono" style="font-size:.8em">safe_cli &lt;area&gt; &lt;verb&gt; --child &lt;SERVICE-ID&gt;</span></h2>
+<p>A read prints a table, or JSON with <code style="font-family:var(--mono)">--json</code>.
+A write refuses an unpaired device unless you pass <code style="font-family:var(--mono)">--allow-unpaired</code>,
+and anything destructive refuses without <code style="font-family:var(--mono)">--confirm</code>.
+<code style="font-family:var(--mono)">--dry-run</code> prints the exact request, ids resolved, without sending it.</p>
+</div>
+<div class="grammar">
+<span class="pr mono">$ safe_cli</span>
+<span class="tok e"><span class="cap">area</span>filter</span>
+<span class="tok o"><span class="cap">verb</span>block</span>
+<span class="tok i"><span class="cap">who</span>--child 1000002</span>
+<span class="tok i"><span class="cap">what</span>--category 10003</span>
+</div>
+<div class="term" style="margin-top:22px">
+<div class="term-bar">
+<span class="dot a"></span><span class="dot b"></span><span class="dot c"></span>
+<span class="term-title">blocking a content category</span>
+</div>
+<div class="term-body"><pre><span class="pr">$</span> <span class="cmd">safe_cli</span> filter show <span class="flag">--child</span> <span class="str">1000002</span> <span class="flag">--find</span> <span class="str">drugs</span>     <span class="cmt"># which id is it?</span>
+<span class="out">{ "categories": [ { "id": "OBJ", "name": "Objectionable", "subCategories": [
+      { "id": 10003, "name": "Drugs, alcohol, gambling", "enabled": false } ] } ] }</span>
+<span class="pr">$</span> <span class="cmd">safe_cli</span> filter block <span class="flag">--child</span> <span class="str">1000002</span> <span class="flag">--category</span> <span class="str">10003</span> <span class="flag">--dry-run</span>
+<span class="out"># target: Kid  (service 1000002, profile 2000002, device 3000002, PAIRED)
+POST /parental-control/frisco/v8/subcategory HTTP/1.1
+x-fp-identifier-target-serviceid: 1000002
+
+{"subcategory":{"categoryId":1001,"categoryShortName":"OBJ","enabled":true,"id":10003,"name":"Drugs, alcohol, gambling"}}</span>
+<span class="cmt"># The category's fields were filled in from the filter. Drop --dry-run to send.</span>
+<span class="pr">$</span> <span class="cursor"></span></pre></div>
+</div>
+</div>
+</section>
+
+<section class="blk" id="start" style="padding-top:0">
+<div class="wrap">
+<div class="head">
+<span class="eyebrow">Get started</span>
+<h2>Build it, log in with your own Verizon account.</h2>
+<p>You sign in through the normal Verizon login in your browser; safe_cli never sees your
+password. The login needs the app's request-signing key, which you read from your own copy
+of the app (<code>auth extract-key</code>); the key is not part of the project.</p>
+</div>
+<div class="flow">
+<div class="step"><div class="no">1</div><h4>Build</h4><p><code>git clone https://github.com/ejc3/safe_cli &amp;&amp; make build</code> (Go, no CGO).</p></div>
+<div class="step"><div class="no">2</div><h4>Log in</h4><p><code>safe_cli auth login</code> walks the device OTP, the Verizon login and 2FA. Tokens are stored locally and refreshed on their own.</p></div>
+<div class="step"><div class="no">3</div><h4>Find your family</h4><p><code>safe_cli members</code> lists everyone with the service ids you pass as <code>--child</code>.</p></div>
+<div class="step"><div class="no">4</div><h4>Make a change</h4><p>Run a verb with <code>--dry-run</code> first, then without. <code>--help</code> on any verb lists its flags and prerequisites.</p></div>
+</div>
+</div>
+</section>
+
+<section class="blk" id="scope" style="padding-top:0">
+<div class="wrap">
+<div class="head">
+<span class="eyebrow">Scope and safety</span>
+<h2>Your account only.</h2>
+</div>
+<div class="scope">
+<div class="scope-grid">
+<div class="pos">
+<h3>What this is for</h3>
+<p>Administering your <em>own</em> Verizon Family account, in the same spirit as the community
+tools for Google Family Link, Microsoft Family Safety and Nintendo parental controls. It is
+<b>unofficial</b>: not affiliated with, endorsed by, or supported by Verizon or Smith Micro, and it
+can break when the service changes. You are responsible for using it only on accounts you administer.</p>
+</div>
+<div class="neg">
+<h3>Nothing of yours is in the project</h3>
+<p>No passwords, tokens, app files or family details are committed: not in the code, the tests or the
+docs. Tokens live in a mode-0600 file on your machine. The request-signing key is never written to disk
+or logged. Emergency features (SOS, rescue, roadside) are never triggered by tests.</p>
+<div class="never">
+<span>your password</span><span>login tokens</span><span>the app</span>
+<span>your family's ids</span><span>names and numbers</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<footer>
+<div class="wrap foot-in">
+<div class="b">safe<span style="color:var(--text)">_cli</span> <span class="p">&#9654;</span></div>
+<p class="foot-note"><b style="color:var(--text);font-weight:600">Unofficial.</b> A community tool for
+administering your own Verizon Family account. Not affiliated with Verizon or Smith&nbsp;Micro.
+<a href="https://github.com/ejc3/safe_cli">github.com/ejc3/safe_cli</a> &middot; MIT</p>
+</div>
+</footer>
+
+<script>
+(function(){
+  var btn = document.getElementById('themeBtn');
+  var root = document.documentElement;
+  function current(){
+    var s = root.getAttribute('data-theme');
+    if(s) return s;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    btn.textContent = next === 'dark' ? '\u25D1' : '\u25D0';
+  });
+})();
+</script>
+</body>
+</html>

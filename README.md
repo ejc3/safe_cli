@@ -1,9 +1,10 @@
 # safe_cli
 
-**Verizon Family (Smith Micro SafePath) in your terminal.** A comprehensive,
-`gog`/GAM-style CLI that exposes the entire SafePath data model and every action
-the app can perform, behind one `verb entity` command grammar with
-machine-readable `--json` output.
+**Verizon Family (Smith Micro SafePath) in your terminal.** An unofficial,
+`gog`/GAM-style CLI for your own family account: the everyday controls as plain
+subcommands (`pause-internet`, `filter`, `apps`, `website`), every other operation
+the app performs through `call <entity> <op>`, and machine-readable `--json`
+output throughout.
 
 > **Unofficial.** Not affiliated with Verizon or Smith Micro. It automates *your
 > own* family account over the same backend the app uses — the same idea as the
@@ -20,45 +21,69 @@ plaintext after TLS decrypt) confirmed the backend has **no per-request device
 attestation** and that authenticated API calls send the raw `id_token` in the
 `Authorization` header (**no `Bearer` prefix**; not SigV4/Cognito — a debunked red
 herring). `auth login` authenticates live, `auth refresh` renews without a browser,
-and the descriptor's 59 entities / 459 operations are all invokable through `call`.
-Reads and reversible mutations have been verified against production, and mutation
-request bodies checked byte-for-byte against the app's own captured traffic.
+and the descriptor's 59 entities / 459 operations are all invokable through `call`;
+394 of them are available on a standard family account (`docs/unavailable-endpoints.md`
+lists the 65 that are not). The everyday actions are generated subcommands with typed
+flags (18 verbs across four areas so far; `docs/CLI-DESIGN.md` is the design). Reads and
+reversible mutations have been verified against production, and mutation request bodies
+checked byte-for-byte against the app's own captured traffic.
 
 ### Quick start (built for agents)
 
-The surface is designed to be assembled from introspection — no memorization:
+`members` is the first call once logged in: it lists the family with the ids you
+target. Pass a child's SERVICE-ID as `--child` to every child-scoped verb.
+
+```console
+$ safe_cli members
+NAME    ROLE      PAIRING   SERVICE-ID  PROFILE-ID  DEVICE-ID
+Parent  guardian            1000001     2000001     3000001
+Kid     child     PAIRED    1000002     2000002     3000002
+```
+
+(Example rows — synthetic names and ids.) Then the everyday controls are subcommands:
+
+```console
+$ safe_cli pause-internet pause --child 1000002 --for 30m     # 30m|1h|2h|4h|until-morning, or --indefinite
+STATUSCODE
+201
+$ safe_cli pause-internet status --child 1000002
+STATUS  TIMELEFT
+Paused  -
+$ safe_cli pause-internet resume --child 1000002
+STATUSCODE
+200
+$ safe_cli filter show --child 1000002 --find drugs     # the content filter, with subcategory ids
+$ safe_cli filter block --child 1000002 --category 10003
+$ safe_cli filter set --child 1000002 --preset teen     # none|young-child|child|teen; replaces per-category settings
+$ safe_cli apps list --child 1000002 --find tiktok      # the apps the filter knows, with ids
+$ safe_cli apps block --child 1000002 --app 10037
+$ safe_cli website block --child 1000002 --url example.com
+$ safe_cli website list --child 1000002                 # blocked, trusted, safe search; entry ids for 'website remove'
+$ safe_cli website safe-search enable --child 1000002
+```
+
+Every verb has `--help` with the flags and prerequisites, and `--dry-run`, which
+prints the exact request with the resolved ids (profile, device, category fields)
+without sending it. A verb that acts on a device refuses an UNPAIRED child unless you
+pass `--allow-unpaired`; anything destructive refuses without `--confirm`; a repeated
+`resume` reports "already resumed" instead of failing.
+
+Everything else the app can do is reachable through `describe` and `call`:
 
 ```console
 $ safe_cli entities                     # the whole data model
 $ safe_cli describe content_filter      # one entity's ops: names, method, flags, what each does
-$ safe_cli members                      # the family, with the ids you target
-NAME    ROLE      PAIRING   SERVICE-ID  PROFILE-ID  DEVICE-ID
-Parent  guardian            1000001     2000001     3000001
-Kid     child     UNPAIRED  1000002     2000002     3000002
+$ safe_cli call schedules getSchedules --service-id 1000002 --json
 ```
-
-(Example rows — synthetic names and ids.)
-
-`members` is the intended first call once logged in: it tells you which
-`--service-id` to pass (ROLE `child` is a managed child — pass the child's service
-id, e.g. `1000002` above, not your own).
 
 `describe` names, per op, exactly what to supply — `svc` (needs `--service-id`),
 `body` (needs `--data`), `query=<names>` / `header=<names>` / `path=<names>` (the
 exact `--query`/`--header`/`--path name=value` args), and `⚠ …confirm` for a
-catastrophic op that refuses without `--confirm`. Then `call` runs it:
-
-```console
-$ safe_cli call schedules getSchedules --service-id 1000002 --json
-$ safe_cli call app_block blockApp --service-id 1000002 \
-    --data '{"subcategory":{"name":"Social","id":101,"enabled":true,"categoryId":5,"categoryShortName":"SOC"}}'
-```
-
-With `--data` omitted, an op that needs a body prints a worked example; every error
-says exactly which flag to add. `--dry-run` prints the request without sending it —
-as an HTTP/1.1 *rendering* (that's just how Go's `httputil.DumpRequestOut` serializes);
-the wire is actually HTTP/2, same as the app. Everything speaks `--json` for
-stdout-as-API.
+catastrophic op that refuses without `--confirm`. With `--data` omitted, an op that
+needs a body prints a worked example; every error says exactly which flag to add.
+`--dry-run` prints the request without sending it — as an HTTP/1.1 *rendering*
+(that's just how Go's `httputil.DumpRequestOut` serializes); the wire is actually
+HTTP/2, same as the app. Everything speaks `--json` for stdout-as-API.
 
 ## Logging in
 
@@ -165,6 +190,12 @@ each PR. See `CLAUDE.md`.
 - `docs/api-catalog.md` — human-readable per-op catalog (method, path, identity headers);
   `docs/vsf-endpoints.json` is the machine-readable form.
 - `docs/discovered-endpoints.txt` — the early raw path harvest (183 paths).
+- `docs/CLI-DESIGN.md` — the subcommand tree: the per-op `cli` block schema, the
+  engine, and the area/verb vocabulary.
+- `docs/agent-scenarios.md` — 88 request-style scenarios covering every available op,
+  for testing an agent that drives the CLI blind.
+- `docs/unavailable-endpoints.md` — the 65 ops a standard family account cannot reach.
+- `docs/index.html` — the home page.
 
 ## License
 
