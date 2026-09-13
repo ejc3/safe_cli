@@ -1052,7 +1052,7 @@ func writeDryRun(out io.Writer, asJSON bool, resp *client.Response, tgt *member)
 // as a one-row table, falling back to pretty JSON.
 func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *descriptor.CLI, tgt *member) error {
 	if resp.Status >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.Status, strings.TrimSpace(string(resp.Body)))
+		return httpError(resp.Status, resp.Body)
 	}
 	if asJSON {
 		var m map[string]any

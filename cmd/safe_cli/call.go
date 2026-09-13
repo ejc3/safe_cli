@@ -467,7 +467,7 @@ func fillPath(path, idField, id string, pathParams map[string]string) (string, e
 // under --json, indented otherwise).
 func writeAPIResponse(out io.Writer, asJSON bool, resp *client.Response) error {
 	if resp.Status >= 400 {
-		return fmt.Errorf("HTTP %d: %s", resp.Status, strings.TrimSpace(string(resp.Body)))
+		return httpError(resp.Status, resp.Body)
 	}
 	if asJSON {
 		_, err := out.Write(ensureNewline(resp.Body))
