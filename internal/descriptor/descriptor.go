@@ -139,6 +139,9 @@ type Descriptor struct {
 	BaseURL    string            `json:"base_url"`
 	Auth       Auth              `json:"auth"`
 	Entities   map[string]Entity `json:"entities"`
+	// Areas is the one-line help for each generated area (`safe_cli <area> --help` and the
+	// top-level listing), keyed by area name; every area a cli block names must have one.
+	Areas map[string]string `json:"areas,omitempty"`
 }
 
 // Default returns the descriptor embedded in the binary.

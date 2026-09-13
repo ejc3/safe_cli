@@ -21,9 +21,9 @@ import (
 type callCmd struct {
 	Entity    string   `arg:"" help:"Entity (see 'safe_cli entities')."`
 	Op        string   `arg:"" help:"Operation or action (see 'safe_cli describe <entity>')."`
-	ID        string   `arg:"" optional:"" help:"Resource id to fill a {placeholder} in the path."`
+	ID        string   `arg:"" optional:"" help:"Resource id for the path's {placeholder} (a geofence/contact/schedule id from a prior list call) — never the child: the child is --service-id."`
 	Data      string   `name:"data" help:"JSON request body (for create/update/action operations)."`
-	ServiceID string   `name:"service-id" help:"Target (child's) service id for the x-fp-identifier-target-serviceid header."`
+	ServiceID string   `name:"service-id" help:"The child's SERVICE-ID from 'safe_cli members' (the value the generated verbs take as --child); sent as x-fp-identifier-target-serviceid."`
 	ProfileID string   `name:"profile-id" help:"Target profile id (defaults to the id_token's own profile)."`
 	DeviceID  string   `name:"device-id" help:"Target device id (defaults to the id_token's own device)."`
 	Query     []string `name:"query" short:"q" help:"Query parameter as name=value (repeatable), for operations that declare query params (see 'safe_cli describe <entity>')."`

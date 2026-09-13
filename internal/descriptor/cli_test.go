@@ -224,6 +224,10 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"header flag names an identity header in mixed case", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"string","maps_to":"header:X-FP-Identifier-Target-ServiceId","help":"h"}]}`, `"headers":["X-FP-Identifier-Target-ServiceId"]`, "identity header"},
 		{"scalar then repeatable flag sharing a scalar var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"v\":\"$v?\"}","flags":[{"name":"one","type":"string","excludes":["many"],"maps_to":"body:$v","help":"h"},{"name":"many","type":"string","repeatable":true,"excludes":["one"],"maps_to":"body:$v","help":"h"}]}`, "", "repeatable"},
 		{"repeatable then scalar flag sharing a scalar var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"v\":\"$v?\"}","flags":[{"name":"many","type":"string","repeatable":true,"excludes":["one"],"maps_to":"body:$v","help":"h"},{"name":"one","type":"string","excludes":["many"],"maps_to":"body:$v","help":"h"}]}`, "", "repeatable"},
+		// Codex #71-3: ok_on turns a documented error response into a success; it must name a
+		// 4xx/5xx status, a body substring and the result to report.
+		{"ok_on with a success status", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","ok_on":[{"status":200,"contains":"x","result":"r"}]}`, `"takes_body":false`, "4xx or 5xx"},
+		{"ok_on without contains", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","ok_on":[{"status":500,"result":"r"}]}`, `"takes_body":false`, "needs a contains"},
 		// Codex #70-3: a null list entry is a load error, never a nil dereference.
 		{"null cli entry", `[null]`, "", "null"},
 		// Codex #69-1: a lookup runs BEFORE --confirm, so it may only name a read-only GET.

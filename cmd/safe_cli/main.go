@@ -43,6 +43,8 @@ type CLI struct {
 	Auth     authCmd     `cmd:"" help:"Manage authentication (import/status/logout)."`
 	Raw      rawCmd      `cmd:"" help:"Call any backend path with the stored id_token."`
 	Call     callCmd     `cmd:"" help:"Invoke a descriptor operation/action on an entity (verb entity id)."`
+	// The generated area/verb tree (zz_generated_tree.go), the friendly layer over `call`.
+	generatedAreas `embed:""`
 }
 
 type versionCmd struct{}

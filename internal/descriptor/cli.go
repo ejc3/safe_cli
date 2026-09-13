@@ -79,6 +79,18 @@ type CLI struct {
 	// condition, so validation knows a keyed lookup there is reached only when that flag
 	// is given. Never decoded from JSON.
 	selectedBy string
+	// OKOn turns a documented error response into a successful no-op: a 4xx/5xx status
+	// whose body contains the text is reported as `result` (pause-internet resume on an
+	// already-unpaused device answers 500 "Device already unpaused"), so a retry is
+	// idempotent instead of a failure.
+	OKOn []OKOn `json:"ok_on,omitempty"`
+}
+
+// OKOn is one error response a verb reports as success.
+type OKOn struct {
+	Status   int    `json:"status"`
+	Contains string `json:"contains"`
+	Result   string `json:"result"`
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
@@ -317,6 +329,17 @@ func (d *Descriptor) validateCLIBlocks() error {
 }
 
 func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
+	for i, k := range c.OKOn {
+		if k.Status < 400 || k.Status > 599 {
+			return fmt.Errorf("ok_on[%d]: status %d must be a 4xx or 5xx error status", i, k.Status)
+		}
+		if k.Contains == "" {
+			return fmt.Errorf("ok_on[%d]: needs a contains text to match in the response body", i)
+		}
+		if k.Result == "" {
+			return fmt.Errorf("ok_on[%d]: needs a result to report", i)
+		}
+	}
 	// Exactly one shape.
 	isVerb := c.Area != "" || c.Verb != ""
 	shapes := 0
@@ -339,7 +362,7 @@ func (d *Descriptor) validateCLI(o Operation, c *CLI) error {
 		// silently ignored — reject it rather than let a half-written verb hide.
 		if len(c.Flags) > 0 || c.BodyTemplate != "" || len(c.Select) > 0 || len(c.Resolve) > 0 || len(c.Query) > 0 ||
 			len(c.Headers) > 0 || len(c.Constants) > 0 || c.Output != nil || len(c.AtLeastOne) > 0 || len(c.OneOf) > 0 ||
-			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" || c.LiveEmergency {
+			len(c.Prereq) > 0 || c.Target != "" || c.Priority != "" || c.Auth != "" || c.LiveEmergency || len(c.OKOn) > 0 {
 			if c.CallOnly {
 				return fmt.Errorf("a call_only block carries nothing but call_only, reason and summary; remove the verb/request fields or make it a verb")
 			}
@@ -710,6 +733,9 @@ func subset(a, b []string) bool {
 	}
 	return true
 }
+
+// LookupOp returns the operation "entity.op" names (a select branch's op, an alias target).
+func (d *Descriptor) LookupOp(ref string) (Operation, bool) { return d.lookupOp(ref) }
 
 // lookupOp returns the operation "entity.op" names.
 func (d *Descriptor) lookupOp(ref string) (Operation, bool) {
