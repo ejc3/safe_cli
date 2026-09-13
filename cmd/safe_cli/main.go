@@ -292,11 +292,19 @@ func main() {
 		os.Exit(1)
 	}
 	var cli CLI
-	ctx := kong.Parse(&cli,
+	parser := kong.Must(&cli,
 		kong.Name("safe_cli"),
 		kong.Description("Unofficial CLI for Verizon Family (Smith Micro SafePath) — administer your own family account."),
 		kong.UsageOnError(),
 	)
+	ctx, err := parser.Parse(os.Args[1:])
+	if err != nil {
+		if hint := entityCommandHint(d, os.Args[1:], err); hint != "" {
+			_, _ = fmt.Fprintln(os.Stderr, hint)
+			os.Exit(1)
+		}
+		parser.FatalIfErrorf(err) // kong's default: usage + error, then exit
+	}
 	rc := &runContext{D: d, G: &cli.Globals, Out: os.Stdout}
 	ctx.FatalIfErrorf(ctx.Run(rc))
 }
