@@ -2060,7 +2060,7 @@
             "x-fp-identifier-target-serviceid"
           ],
           "confirmed": true,
-          "description": "Check Family Line provisioning status. VERIFIED on the wire (2026-09-07, decrypted HPACK): authenticates with the plain parent id_token + x-fp-identifier-target-serviceid — NOT the Family-Line SPC token — so it is callable directly with --service-id."
+          "description": "Check Family Line provisioning status. VERIFIED on the wire (2026-09-07, decrypted HPACK): authenticates with the plain parent id_token + x-fp-identifier-target-serviceid — NOT the Family-Line SPC token — so it is callable directly with --service-id. Account-scoped: pass the account holder's (guardian's) service id from `members`, not a child's — a child id answers 403."
         },
         "getSpcToken": {
           "method": "POST",
@@ -3144,7 +3144,10 @@
             "count",
             "timezone"
           ],
-          "description": "List a monitored profile's most-used apps, ranked by usage (limited by count)."
+          "description": "List a monitored profile's most-used apps, ranked by usage (limited by count).",
+          "required_query": [
+            "date"
+          ]
         }
       }
     },
@@ -4381,7 +4384,7 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "GET the profile's PubNub realtime-messaging configuration (channels/keys) used to receive live updates."
+          "description": "GET the profile's PubNub realtime-messaging configuration (channels/keys) used to receive live updates. Account-scoped: target the account holder (guardian's service id from `members`); a child id answers 403."
         },
         "getPubNubToken": {
           "method": "POST",
@@ -5108,7 +5111,10 @@
             "page",
             "per-page"
           ],
-          "description": "List detected security threats (v5). Query: eventId (the security-threat event id being queried), page (default 1), per-page (default 100). serviceId travels as the x-fp-identifier-target-serviceid header."
+          "description": "List detected security threats (v5). Query: eventId (the security-threat event id being queried), page (default 1), per-page (default 100). serviceId travels as the x-fp-identifier-target-serviceid header.",
+          "required_query": [
+            "eventId"
+          ]
         }
       }
     },
