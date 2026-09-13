@@ -32,13 +32,18 @@ app + CLI probes (a phone-child account with no Gizmo Watch / pet collar / weara
 | `messaging` | 19 | Family group-chat is **Gizmo-Watch-gated** (verified live: Chat/Call shows the Gizmo upsell). Fully hidden. |
 | `video_calling` | 3 | In-app WebRTC video calling is **Gizmo-Watch-gated** (verified live: a member's call opens the system dialer). Fully hidden. |
 | `installed_apps` | 1 | Inbound **child-device telemetry** (the child reports its app inventory). Fully hidden. |
+| `family_line` | 3 | `getFamilyLines`/`getEligibleLines`/`getAddress` need a **Family-Line SPC token** this CLI does not mint (403 to a guardian token). The plain-id_token status read `getProvisioningStatus` (and `traceSdkResponse`) stay available with the guardian's service id. |
+| `pairing` | 6 | Device/Gizmo reads that 403 a guardian token: `getGizmoDevices`/`gizmoImportEligibility` (**no Gizmo Watch**), and `getDeviceStatus`/`getMediaBackupStorageStatus`/`getDeviceLogs`/`getDeviceSettings` (**device-side reads**). The other 42 pairing ops stay available. |
+| `device_settings` | 2 | `getDeviceLogs`/`getDeviceSettings` (same routes as the `pairing` reads) 403 a guardian token — device-side reads. `putDeviceSettings` and others stay available. |
+| `activity_tracking` | 2 | `getActivity`/`getDailyActivities` (comms activity feed) 403 a guardian token on a phone-child account. Fully hidden. |
+| `real_time_tracking` | 1 | `getHistoryEvents` needs an active real-time-tracking (locate) session; 403 otherwise. `getSession` stays available. |
 | `tamper` | 14 | Child-device tamper-status reports. The parent-facing `putTamperInstructions` (same route as `dashboard.putTamperInstructions`) stays available, so the entity is still listed. |
 | `pet_tracker` | 22 | Pet-collar-specific ops (live tracking, wifi, firmware). The route-shared/general ops — `getPurchaseLink` (buy one) and `getAllAvailableEmergencyContacts` — stay available. |
 | `wearable` | 3 | Gizmo-wearable-specific ops (`confirmWatchPairing`, `watchAuth`, `notifyGuardianFromDependantWatch`). The general `resendInvite` and the shared-route `onboardWearableWatch` stay available. |
 | `app_block` | 1 | `getBlockedApps` answers 403 ("User has no permissions on this serviceId") to a guardian token targeting a paired child: a **device-side sync read**, not a parent action. `apps list` (content_filter.getCategories) is the supported read; `blockApp` and the telemetry ops stay available. |
 | `app_management` | 2 | `getAppStatus`/`updateAppStatus` answer 403 for a phone child: **managed-device (Gizmo) app management**. `getAppUsages`/`getInteractionData` stay available; blocking goes through `apps block`. |
 
-Total: **65 ops** disabled across 8 entities (3 fully hidden; `tamper`/`pet_tracker`/`wearable`/`app_block`/`app_management` keep their route-shared or parent-facing ops).
+Total: **79 ops** disabled across 13 entities (4 fully hidden — `messaging`, `video_calling`, `installed_apps`, `activity_tracking`; the mixed entities `tamper`/`pet_tracker`/`wearable`/`app_block`/`app_management`/`family_line`/`pairing`/`device_settings`/`real_time_tracking` keep their route-shared or parent-facing ops).
 
 **Invariant:** an op is never disabled if its `(method, path)` route is also served by an available op — otherwise the CLI would block functionality reachable via a sibling. Enforced by `TestNoUnavailableSharesRouteWithAvailable`. This is what un-disabled the earlier over-reach (`gizmo_activation.validateGizmoActivation` = `pairing.validateGizmoActivation`, the pet_tracker read aliases, `wearable.resendInvite`).
 
