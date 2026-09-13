@@ -79,6 +79,18 @@ type CLI struct {
 	// condition, so validation knows a keyed lookup there is reached only when that flag
 	// is given. Never decoded from JSON.
 	selectedBy string
+	// OKOn turns a documented error response into a successful no-op: a 4xx/5xx status
+	// whose body contains the text is reported as `result` (pause-internet resume on an
+	// already-unpaused device answers 500 "Device already unpaused"), so a retry is
+	// idempotent instead of a failure.
+	OKOn []OKOn `json:"ok_on,omitempty"`
+}
+
+// OKOn is one error response a verb reports as success.
+type OKOn struct {
+	Status   int    `json:"status"`
+	Contains string `json:"contains"`
+	Result   string `json:"result"`
 }
 
 // Flag is one typed --flag of a generated verb and where its value goes.
