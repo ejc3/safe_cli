@@ -3592,7 +3592,20 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List devices and their current internet-pause state (v6)."
+          "description": "List devices and their current internet-pause state (v6).",
+          "cli": {
+            "area": "pause-internet",
+            "verb": "status",
+            "priority": "core",
+            "target": "child",
+            "summary": "Show whether the child's internet is paused, how long is left, and the valid pause timings.",
+            "output": {
+              "table": [
+                "status",
+                "timeLeft"
+              ]
+            }
+          }
         },
         "pauseInternet": {
           "method": "POST",
@@ -3603,7 +3616,71 @@
           ],
           "takes_body": true,
           "description": "Pause the paired child device's internet (verified live 2026-09-07, 201). Target the child with --service-id. pauseSchedule is the display timing with spaces->underscores (toShortenedPauseSchedule): \"30_minutes\" | \"1_hour\" | \"2_hour\" | \"4_hour\" | \"Until_tomorrow_morning\". For indefinite, set untilIUnpause=true and OMIT pauseSchedule (the app sends null). callOnlyMode=true restricts to calls only. timeZone is a short zone code (EST/PST/...). Reversible via unPauseInternet (DELETE). Read current state with getDevices (status Paused/Unpaused, timeLeft, valid pauseTimings).",
-          "body_example": "{\"timeZone\":\"EST\",\"profiles\":[{\"profileId\":123,\"devices\":[{\"serviceId\":456,\"deviceId\":789,\"pauseSchedule\":\"30_minutes\",\"untilIUnpause\":false,\"callOnlyMode\":false}]}]}"
+          "body_example": "{\"timeZone\":\"EST\",\"profiles\":[{\"profileId\":123,\"devices\":[{\"serviceId\":456,\"deviceId\":789,\"pauseSchedule\":\"30_minutes\",\"untilIUnpause\":false,\"callOnlyMode\":false}]}]}",
+          "cli": {
+            "area": "pause-internet",
+            "verb": "pause",
+            "priority": "core",
+            "target": "device",
+            "summary": "Pause the child's internet now, for a fixed time or until you resume it.",
+            "prereq": [
+              "The child's phone must be PAIRED (safe_cli members shows PAIRING)."
+            ],
+            "body_template": "{\"timeZone\":\"$tz\",\"profiles\":[{\"profileId\":\"$child.profileId\",\"devices\":[{\"serviceId\":\"$child.serviceId\",\"deviceId\":\"$child.deviceId\",\"pauseSchedule\":\"$for?\",\"untilIUnpause\":\"$indefinite\",\"callOnlyMode\":\"$callOnly\"}]}]}",
+            "flags": [
+              {
+                "name": "for",
+                "type": "enum",
+                "enum": [
+                  "30m",
+                  "1h",
+                  "2h",
+                  "4h",
+                  "until-morning"
+                ],
+                "default": "30m",
+                "maps_to": "body:$for",
+                "transform": "pause_schedule",
+                "help": "How long to pause: 30m|1h|2h|4h|until-morning (default: 30m). until-morning lifts the pause at the child's next morning. Ignored with --indefinite."
+              },
+              {
+                "name": "indefinite",
+                "type": "bool",
+                "default": false,
+                "maps_to": "body:$indefinite",
+                "nulls": [
+                  "for"
+                ],
+                "help": "Pause until you run `pause-internet resume` (sends untilIUnpause=true and omits pauseSchedule)."
+              },
+              {
+                "name": "call-only",
+                "type": "bool",
+                "default": false,
+                "maps_to": "body:$callOnly",
+                "help": "Leave phone calls working while data is paused (default: false)."
+              },
+              {
+                "name": "timezone",
+                "type": "tz",
+                "default": "$local.timezone",
+                "maps_to": "body:$tz",
+                "transform": "tz_short",
+                "help": "Short zone code (EST, PST) the pause timing is computed in (default: this machine's local zone)."
+              }
+            ],
+            "resolve": [
+              "$child.profileId",
+              "$child.serviceId",
+              "$child.deviceId",
+              "$local.timezone"
+            ],
+            "output": {
+              "table": [
+                "statusCode"
+              ]
+            }
+          }
         },
         "unPauseInternet": {
           "method": "DELETE",
@@ -3612,7 +3689,22 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Resume (unpause) the paired child device's internet (verified live 2026-09-07, 200). DELETE, no body. Target the child with --service-id. Reverses pauseInternet; a no-op when already unpaused returns a 500 \"Device already unpaused\"."
+          "description": "Resume (unpause) the paired child device's internet (verified live 2026-09-07, 200). DELETE, no body. Target the child with --service-id. Reverses pauseInternet; a no-op when already unpaused returns a 500 \"Device already unpaused\".",
+          "cli": {
+            "area": "pause-internet",
+            "verb": "resume",
+            "priority": "core",
+            "target": "device",
+            "summary": "Resume the child's internet, lifting a pause.",
+            "prereq": [
+              "The child's phone must be PAIRED (safe_cli members shows PAIRING)."
+            ],
+            "output": {
+              "table": [
+                "statusCode"
+              ]
+            }
+          }
         }
       }
     },
