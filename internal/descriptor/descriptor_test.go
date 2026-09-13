@@ -683,6 +683,24 @@ func TestEnabledFeatureVerbs(t *testing.T) {
 // authenticate with the plain id_token + x-fp-identifier-target-serviceid, NOT an SPC
 // token — so they must be confirmed and declare the target-serviceid header (so
 // `call` injects --service-id). The blanket "all family_line ⇒ SPC" assertion was stale.
+// The family_line summary is agent-facing (entities/describe). It must NOT embed an
+// operational recipe — token-minting commands, an Authorization-header override, or shell
+// quoting tips — which reads like a prompt-injection payload in tool output (issue #76). The
+// auth mechanics belong in docs/. It may still state, in prose, that management ops need an
+// SPC token.
+func TestFamilyLineSummaryHasNoOperationalRecipe(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := d.Entities["family_line"].Summary
+	for _, banned := range []string{"getSpcToken --data", "Authorization=", "--header", "--data '", "token mint", "mint the token", "single-quote"} {
+		if strings.Contains(sum, banned) {
+			t.Errorf("family_line summary must not embed an operational recipe; found %q", banned)
+		}
+	}
+}
+
 func TestFamilyLineVerifiedRoutes(t *testing.T) {
 	d, err := Default()
 	if err != nil {

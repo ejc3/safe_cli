@@ -296,6 +296,21 @@ scope its blanket "family_line ⇒ SPC" note to the ops still believed to need i
 descriptor follow-up. (The other, uncaptured family_line management routes may still require
 SPC; `getSpcToken` exists, so the two-step flow is not being removed wholesale.)
 
+### Family Line SPC-token flow (management ops)
+
+The management ops (provision, invite/remove members, address, call logs, swap, settings) are
+believed to still require a Family-Line SPC token in addition to the parent id_token. The flow,
+recorded here for reference (this CLI does not automate it):
+
+1. Mint a token via `family_line.getSpcToken` with a body of the form
+   `{"tokenIssued": <epoch-ms>, "grantType": "token"}`.
+2. Send the target op with the returned token in the `Authorization` header (overriding the
+   stored id_token for that one request).
+
+This is documentation, not a supported command path; it is unverified on the wire and is kept
+out of the agent-facing entity summary on purpose (issue #76).
+
+
 #### Pitfalls we hit (each cost a full iteration)
 
 - **`SSL_HANDSHAKE` is freed post-handshake.** Read the secrets from `SSL3_STATE`
