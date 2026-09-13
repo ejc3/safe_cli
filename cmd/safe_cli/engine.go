@@ -23,6 +23,7 @@ import (
 type verbCall struct {
 	entity, op  string
 	area, verb  string         // which of the op's verb blocks this is
+	group       string         // the block's optional third level (`website safe-search enable`)
 	given       map[string]any // flag name -> parsed value, explicitly given flags only
 	child       string         // --child SERVICE-ID ("" when not given)
 	selfSvc     string         // the caller's own service id (from the id_token)
@@ -39,9 +40,9 @@ type verbCall struct {
 }
 
 // findVerb returns the op's verb block for area/verb (an op may back several verbs).
-func findVerb(o descriptor.Operation, area, verb string) *descriptor.CLI {
+func findVerb(o descriptor.Operation, area, group, verb string) *descriptor.CLI {
 	for _, b := range o.CLI {
-		if b.Area == area && b.Verb == verb {
+		if b.Area == area && b.Group == group && b.Verb == verb {
 			return b
 		}
 	}
@@ -82,7 +83,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if err != nil {
 		return err
 	}
-	c := findVerb(o, vc.area, vc.verb)
+	c := findVerb(o, vc.area, vc.group, vc.verb)
 	if c == nil {
 		return fmt.Errorf("%s.%s has no generated verb %q %q; use `safe_cli call %s %s`", vc.entity, vc.op, vc.area, vc.verb, vc.entity, vc.op)
 	}
@@ -280,6 +281,7 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	userHeaders := map[string]string{}
 	repeat := map[string]bool{}
 	filters := map[string]any{}   // response field -> value, for filter: flags
+	finds := map[string]string{}  // response field -> text, for find: flags
 	effective := map[string]any{} // flag name -> its transformed value, given or defaulted, for "$flag" query refs
 	resolveDefault := func(spec string) (any, error) {
 		switch {
@@ -369,6 +371,10 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		case "filter":
 			if ok { // only an explicitly given selector filters
 				filters[arg] = tv
+			}
+		case "find":
+			if ok {
+				finds[arg] = fmt.Sprint(tv)
 			}
 		}
 	}
@@ -473,8 +479,16 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 	if vc.dryRun {
 		return writeDryRun(out, asJSON, resp, tgt)
 	}
-	if len(filters) > 0 && resp.Status < 400 {
-		resp.Body = filterResponse(resp.Body, filters)
+	if resp.Status < 400 {
+		if merged.Output != nil && merged.Output.Pick != "" {
+			resp.Body = pickField(resp.Body, merged.Output.Pick)
+		}
+		if len(filters) > 0 {
+			resp.Body = filterResponse(resp.Body, filters)
+		}
+		for field, text := range finds {
+			resp.Body = findResponse(resp.Body, field, text)
+		}
 	}
 	if resp.Status >= 400 {
 		for _, k := range merged.OKOn {
@@ -497,6 +511,81 @@ func withResolved(flagVals, vars map[string]any) map[string]any {
 		out[k] = v
 	}
 	return out
+}
+
+// pickField projects an object response to one top-level field, kept under its own key so
+// --json output still carries _meta; a response without the field is left untouched.
+func pickField(body []byte, field string) []byte {
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil {
+		return body
+	}
+	v, ok := m[field]
+	if !ok {
+		return body
+	}
+	out, err := json.Marshal(map[string]any{field: v})
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// findResponse keeps, in every array of objects, the elements whose field contains text
+// (case-insensitive) — an element that matches is kept whole, and an element that does not
+// is kept only if something nested inside it matches, pruned to that. Groups therefore
+// survive as containers of their matching members (`apps list --find tiktok` answers with
+// the one app under its category).
+func findResponse(body []byte, field, text string) []byte {
+	var doc any
+	if err := json.Unmarshal(body, &doc); err != nil {
+		return body
+	}
+	pruned, _ := findPrune(doc, field, strings.ToLower(text))
+	out, err := json.Marshal(pruned)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+// findPrune returns the pruned node and whether it (or anything inside) matched.
+func findPrune(n any, field, text string) (any, bool) {
+	switch t := n.(type) {
+	case map[string]any:
+		if v, ok := t[field]; ok && strings.Contains(strings.ToLower(fmt.Sprint(v)), text) {
+			return t, true
+		}
+		out := make(map[string]any, len(t))
+		hit := false
+		for k, v := range t {
+			switch v.(type) {
+			case map[string]any, []any:
+				pv, h := findPrune(v, field, text)
+				out[k] = pv
+				hit = hit || h
+			default:
+				out[k] = v
+			}
+		}
+		return out, hit
+	case []any:
+		out := make([]any, 0, len(t))
+		hit := false
+		for _, el := range t {
+			if _, isObj := el.(map[string]any); !isObj {
+				out = append(out, el) // scalar arrays are not searchable; keep as is
+				continue
+			}
+			pv, h := findPrune(el, field, text)
+			if h {
+				out = append(out, pv)
+				hit = true
+			}
+		}
+		return out, hit
+	}
+	return n, false
 }
 
 // filterResponse applies filter: selectors client-side: every array of objects in the
@@ -770,7 +859,15 @@ func extractLookup(doc any, ref, keyEq, field string, given map[string]any) (any
 	}
 	var rec map[string]any
 	if keyed {
-		rec = findRecord(doc, key, fmt.Sprint(want))
+		var parent map[string]any
+		rec, parent = findRecord(doc, key, fmt.Sprint(want))
+		if strings.HasPrefix(field, "^") { // the enclosing object's field
+			field = strings.TrimPrefix(field, "^")
+			if rec != nil && parent == nil {
+				return nil, false, fmt.Errorf("lookup %s: the matching record is the top-level object, so it has no enclosing object for ^%s", ref, field)
+			}
+			rec = parent
+		}
 	} else {
 		rec = singletonRecord(doc, field)
 	}
@@ -884,12 +981,17 @@ func branchCondition(d *descriptor.Descriptor, c *descriptor.CLI, kind, arg stri
 }
 
 // findRecord walks a JSON document for the first object whose key equals want (compared
-// as text, so a numeric id matches "10003").
-func findRecord(n any, key, want string) map[string]any {
+// as text, so a numeric id matches "10003"), returning it and its enclosing object (the
+// nearest object above it, arrays skipped; nil for a top-level match).
+func findRecord(n any, key, want string) (rec, parent map[string]any) {
+	return findRecordIn(n, key, want, nil)
+}
+
+func findRecordIn(n any, key, want string, parent map[string]any) (map[string]any, map[string]any) {
 	switch t := n.(type) {
 	case map[string]any:
 		if v, ok := t[key]; ok && fmt.Sprint(normalizeNum(v)) == want {
-			return t
+			return t, parent
 		}
 		keys := make([]string, 0, len(t))
 		for k := range t {
@@ -897,18 +999,18 @@ func findRecord(n any, key, want string) map[string]any {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			if r := findRecord(t[k], key, want); r != nil {
-				return r
+			if r, p := findRecordIn(t[k], key, want, t); r != nil {
+				return r, p
 			}
 		}
 	case []any:
 		for _, el := range t {
-			if r := findRecord(el, key, want); r != nil {
-				return r
+			if r, p := findRecordIn(el, key, want, parent); r != nil {
+				return r, p
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func lookupMiss(spec string, given map[string]any) error {
@@ -1088,7 +1190,7 @@ func writeOKOn(out io.Writer, asJSON bool, resp *client.Response, k descriptor.O
 // runVerb is the runtime behind every generated verb: load the session, take the caller's
 // own ids from the id_token, and hand the flags the user gave to invoke. --dry-run keeps the
 // account read real and dumps only the request the verb would send.
-func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool) error {
+func runVerb(rc *runContext, entity, op, area, group, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool) error {
 	st, ts, err := loadTokens()
 	if err != nil {
 		return err
@@ -1099,7 +1201,7 @@ func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any
 	}
 	claims := tokenstore.Claims(idt)
 	appUUID, _ := resolveAppUUID(ts)
-	vc := verbCallFor(entity, op, area, verb, given, child, dryRun, confirm, allowUnpaired, ts, claims, appUUID)
+	vc := verbCallFor(entity, op, area, group, verb, given, child, dryRun, confirm, allowUnpaired, ts, claims, appUUID)
 	if dryRun {
 		vc.dump = dumpRequest(rc, idt)
 	}
@@ -1110,9 +1212,9 @@ func runVerb(rc *runContext, entity, op, area, verb string, given map[string]any
 // app-uuid (the token set's, else the persisted install fallback) and, separately, the
 // SESSION uuid for body injection — only the token set's own, never the fallback, so an
 // imported session cannot be attributed to this install.
-func verbCallFor(entity, op, area, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool, ts *tokenstore.TokenSet, claims map[string]string, appUUID string) verbCall {
+func verbCallFor(entity, op, area, group, verb string, given map[string]any, child string, dryRun, confirm, allowUnpaired bool, ts *tokenstore.TokenSet, claims map[string]string, appUUID string) verbCall {
 	vc := verbCall{
-		entity: entity, op: op, area: area, verb: verb, given: given, child: child,
+		entity: entity, op: op, area: area, group: group, verb: verb, given: given, child: child,
 		selfSvc: claims["custom:identifier-serviceid"], selfPid: claims["custom:identifier-profileid"],
 		appUUID: appUUID, dryRun: dryRun, confirm: confirm, allowUnpaired: allowUnpaired,
 	}

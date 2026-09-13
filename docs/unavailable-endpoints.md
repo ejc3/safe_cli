@@ -24,8 +24,8 @@ Enforced by `TestDeadEndsDisabled` (descriptor guard) and `TestUnavailableDeadEn
 
 ## Currently disabled
 
-Verified live 2026-09-07 against the logged-in app + CLI probes (a phone-child account with no
-Gizmo Watch / pet collar / wearable):
+Verified live 2026-09-07 (and 2026-09-08 for `app_block`/`app_management`) against the logged-in
+app + CLI probes (a phone-child account with no Gizmo Watch / pet collar / wearable):
 
 | Entity | Ops | Why |
 | --- | --- | --- |
@@ -35,8 +35,10 @@ Gizmo Watch / pet collar / wearable):
 | `tamper` | 14 | Child-device tamper-status reports. The parent-facing `putTamperInstructions` (same route as `dashboard.putTamperInstructions`) stays available, so the entity is still listed. |
 | `pet_tracker` | 22 | Pet-collar-specific ops (live tracking, wifi, firmware). The route-shared/general ops — `getPurchaseLink` (buy one) and `getAllAvailableEmergencyContacts` — stay available. |
 | `wearable` | 3 | Gizmo-wearable-specific ops (`confirmWatchPairing`, `watchAuth`, `notifyGuardianFromDependantWatch`). The general `resendInvite` and the shared-route `onboardWearableWatch` stay available. |
+| `app_block` | 1 | `getBlockedApps` answers 403 ("User has no permissions on this serviceId") to a guardian token targeting a paired child: a **device-side sync read**, not a parent action. `apps list` (content_filter.getCategories) is the supported read; `blockApp` and the telemetry ops stay available. |
+| `app_management` | 2 | `getAppStatus`/`updateAppStatus` answer 403 for a phone child: **managed-device (Gizmo) app management**. `getAppUsages`/`getInteractionData` stay available; blocking goes through `apps block`. |
 
-Total: **62 ops** disabled across 6 entities (3 fully hidden; `tamper`/`pet_tracker`/`wearable` keep their route-shared or parent-facing ops).
+Total: **65 ops** disabled across 8 entities (3 fully hidden; `tamper`/`pet_tracker`/`wearable`/`app_block`/`app_management` keep their route-shared or parent-facing ops).
 
 **Invariant:** an op is never disabled if its `(method, path)` route is also served by an available op — otherwise the CLI would block functionality reachable via a sibling. Enforced by `TestNoUnavailableSharesRouteWithAvailable`. This is what un-disabled the earlier over-reach (`gizmo_activation.validateGizmoActivation` = `pairing.validateGizmoActivation`, the pet_tracker read aliases, `wearable.resendInvite`).
 

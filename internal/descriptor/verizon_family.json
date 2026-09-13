@@ -44,7 +44,11 @@
     "_note": "parental-control ops are id_token-authed (Authorization: <id_token>) plus these headers; NOT SigV4."
   },
   "areas": {
-    "pause-internet": "Pause or resume a child's internet right now, and read the current pause state."
+    "pause-internet": "Pause or resume a child's internet right now, and read the current pause state.",
+    "filter": "See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow.",
+    "apps": "Block or allow individual apps on a child's phone, and list which are blocked.",
+    "website": "A child's website block list, trusted (allowed) list, and safe search.",
+    "website safe-search": "Enforced safe search for the child's browsing — one switch for every search engine; `website list` shows the resulting per-engine state (safeSearch.domains[].enabled)."
   },
   "entities": {
     "accessibility_pin": {
@@ -394,7 +398,65 @@
           ],
           "takes_body": true,
           "body_example": "{\"subcategory\":{\"name\":\"Social\",\"id\":101,\"enabled\":true,\"categoryId\":5,\"categoryShortName\":\"SOC\"}}",
-          "description": "Block (or change the block state of) an app by posting a content-filter subcategory entry. Verified live (2026-08-26 eCapture): the request body byte-matches this shape (enabled=true blocks, false unblocks) and the CLI --dry-run reproduces the app's request exactly."
+          "description": "Block (or change the block state of) an app by posting a content-filter subcategory entry. Verified live (2026-08-26 eCapture): the request body byte-matches this shape (enabled=true blocks, false unblocks) and the CLI --dry-run reproduces the app's request exactly.",
+          "cli": [
+            {
+              "area": "apps",
+              "verb": "block",
+              "priority": "core",
+              "target": "child",
+              "summary": "Block an app for this child, by the id that `apps list` prints (enabled=true means blocked).",
+              "prereq": [
+                "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
+              ],
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:name\",\"id\":\"$app\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^id\"}}",
+              "constants": {
+                "enabled": true
+              },
+              "resolve": [
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:name",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^id"
+              ],
+              "flags": [
+                {
+                  "name": "app",
+                  "type": "int",
+                  "required": true,
+                  "maps_to": "body:$app",
+                  "help": "The app's id from `filter categories` or `apps list` (subCategories[].id under an Apps & websites group)."
+                }
+              ]
+            },
+            {
+              "area": "apps",
+              "verb": "allow",
+              "priority": "core",
+              "target": "child",
+              "summary": "Allow (unblock) an app for this child, by the id that `apps list` prints.",
+              "prereq": [
+                "Find the app's id with `safe_cli apps list --child <SERVICE-ID> --find <name>` (subCategories[].id); the app's category fields are filled in for you."
+              ],
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:name\",\"id\":\"$app\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories/Apps & websites:id=app:^id\"}}",
+              "constants": {
+                "enabled": false
+              },
+              "resolve": [
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:name",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^categoryId",
+                "$lookup:content_filter.getCategories/Apps & websites:id=app:^id"
+              ],
+              "flags": [
+                {
+                  "name": "app",
+                  "type": "int",
+                  "required": true,
+                  "maps_to": "body:$app",
+                  "help": "The app's id from `filter categories` or `apps list` (subCategories[].id under an Apps & websites group)."
+                }
+              ]
+            }
+          ]
         },
         "getBlockedApps": {
           "method": "GET",
@@ -407,7 +469,8 @@
           "placeholders": [
             "deviceId"
           ],
-          "description": "Fetch the blocked-apps sync list for a device (deviceId in path; ETag-cached)."
+          "description": "Fetch the blocked-apps sync list for a device (deviceId in path; ETag-cached).",
+          "unavailable": "Answers 403 'User has no permissions on this serviceId' to a guardian token targeting a paired child (verified live 2026-09-08): a device-side sync endpoint, not a parent read. Use `apps list` (getCategories) for what is blocked."
         },
         "sendAccessibilityStatus": {
           "method": "POST",
@@ -473,7 +536,8 @@
           ],
           "takes_body": true,
           "body_example": "{\"name\":\"Instagram\",\"id\":\"98765\",\"consentGiven\":true,\"enabled\":false}",
-          "description": "Update managed-app status — request install/uninstall/enable changes (POST with body)."
+          "description": "Update managed-app status — request install/uninstall/enable changes (POST with body).",
+          "unavailable": "Answers 403 'User has no permissions on this serviceId' to a guardian token targeting a paired child (verified live 2026-09-08); managed-device (Gizmo) app management, not available for a phone child."
         },
         "getAppStatus": {
           "method": "GET",
@@ -482,7 +546,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Read managed-app status (install/enable state) for the device."
+          "description": "Read managed-app status (install/enable state) for the device.",
+          "unavailable": "Answers 403 'User has no permissions on this serviceId' to a guardian token targeting a paired child (verified live 2026-09-08); managed-device (Gizmo) app management, not available for a phone child."
         }
       }
     },
@@ -1091,7 +1156,37 @@
           ],
           "takes_body": true,
           "body_example": "{\"groupId\":2}",
-          "description": "Apply an age-group content-filter preset (verified live 2026-08-28, 200). body {\"groupId\":N}: 1=No Content filters, 2=Young child (5-7), 3=Child (8-12), 4=Teen (13-17). categorySupported=v6. Switching presets replaces the current subcategory filters."
+          "description": "Apply an age-group content-filter preset (verified live 2026-08-28, 200). body {\"groupId\":N}: 1=No Content filters, 2=Young child (5-7), 3=Child (8-12), 4=Teen (13-17). categorySupported=v6. Switching presets replaces the current subcategory filters.",
+          "cli": {
+            "area": "filter",
+            "verb": "set",
+            "priority": "core",
+            "target": "child",
+            "summary": "Apply an age-group preset to this child's content filter.",
+            "prereq": [
+              "A preset REPLACES every per-category block/allow set by hand; run `filter show` first if you may need to restore them."
+            ],
+            "body_template": "{\"groupId\":\"$preset\"}",
+            "query": {
+              "categorySupported": "v6"
+            },
+            "flags": [
+              {
+                "name": "preset",
+                "type": "enum",
+                "enum": [
+                  "none",
+                  "young-child",
+                  "child",
+                  "teen"
+                ],
+                "required": true,
+                "maps_to": "body:$preset",
+                "transform": "preset_group",
+                "help": "none (no content filters) | young-child (ages 5-7) | child (8-12) | teen (13-17); `filter presets` describes each."
+              }
+            ]
+          }
         },
         "getAgeGroupMetaData": {
           "method": "GET",
@@ -1103,7 +1198,20 @@
           "query": [
             "profileId"
           ],
-          "description": "Get age-group definitions/metadata"
+          "description": "Get age-group definitions/metadata",
+          "cli": {
+            "area": "filter",
+            "verb": "presets",
+            "priority": "common",
+            "target": "child",
+            "summary": "List the age-group presets (none, young-child, child, teen) with their ages and description; apply one with `filter set --preset`.",
+            "query": {
+              "profileId": "$child.profileId"
+            },
+            "resolve": [
+              "$child.profileId"
+            ]
+          }
         },
         "getObjectionableSettings": {
           "method": "GET",
@@ -1180,6 +1288,24 @@
           "description": "Read current content-filter settings (v7). include-description=true is fixed (baked into the path); the app-name: VSF header is sent automatically.",
           "header_values": {
             "app-name": "VSF"
+          },
+          "cli": {
+            "area": "filter",
+            "verb": "show",
+            "priority": "core",
+            "target": "child",
+            "summary": "Show this child's content filter: Objectionable (Violence/weapons/self-harm/gore, Drugs/alcohol/gambling, Pornography, Sexual content, Nudity, Hate and racism, Hacking and cheating), Safe Search per search engine, and Security threats — each subcategory with its id and enabled=true where it is blocked.",
+            "prereq": [
+              "Downloads, News, Shopping and the like, and every app, are listed by `filter categories` instead (same ids, same block/allow verbs)."
+            ],
+            "flags": [
+              {
+                "name": "find",
+                "type": "string",
+                "maps_to": "find:name",
+                "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
+              }
+            ]
           }
         },
         "updateSubcategory": {
@@ -1191,7 +1317,89 @@
           ],
           "takes_body": true,
           "body_example": "{\"subcategory\":{\"name\":\"Drugs, alcohol, gambling\",\"id\":10003,\"enabled\":true,\"categoryId\":1001,\"categoryShortName\":\"OBJ\"}}",
-          "description": "Block or allow a specific content subcategory (objectionable category or search engine). Same v8/subcategory route as app_block.blockApp, verified live (2026-08-26 eCapture): enabled=true blocks the subcategory, false allows it."
+          "description": "Block or allow a specific content subcategory (objectionable category or search engine). Same v8/subcategory route as app_block.blockApp, verified live (2026-08-26 eCapture): enabled=true blocks the subcategory, false allows it.",
+          "cli": [
+            {
+              "area": "filter",
+              "verb": "block",
+              "priority": "core",
+              "target": "child",
+              "summary": "Block a content category for this child, by its id.",
+              "prereq": [
+                "Ids come from `filter show` (objectionable content, safe search, security threats) or `filter categories` (Downloads, News, Shopping, ... and apps); the category's own fields are filled in for you."
+              ],
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getFilterContent:id=category:name\",\"id\":\"$category\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getFilterContent:id=category:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getFilterContent:id=category:^id\"}}",
+              "constants": {
+                "enabled": true
+              },
+              "resolve": [
+                "$lookup:content_filter.getFilterContent:id=category:name",
+                "$lookup:content_filter.getFilterContent:id=category:^categoryId",
+                "$lookup:content_filter.getFilterContent:id=category:^id"
+              ],
+              "select": [
+                {
+                  "when": "exists:$lookup:content_filter.getCategories:id=category:name",
+                  "op": "content_filter.updateSubcategory",
+                  "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=category:name\",\"id\":\"$category\",\"enabled\":true,\"categoryId\":\"$lookup:content_filter.getCategories:id=category:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=category:^id\"}}",
+                  "resolve": [
+                    "$lookup:content_filter.getCategories:id=category:name",
+                    "$lookup:content_filter.getCategories:id=category:^categoryId",
+                    "$lookup:content_filter.getCategories:id=category:^id"
+                  ]
+                }
+              ],
+              "flags": [
+                {
+                  "name": "category",
+                  "type": "int",
+                  "required": true,
+                  "maps_to": "body:$category",
+                  "help": "The subcategory id: subCategories[].id from `filter show` (e.g. Drugs, alcohol, gambling) or `filter categories` (e.g. Downloads). Apps use `apps block|allow`."
+                }
+              ]
+            },
+            {
+              "area": "filter",
+              "verb": "allow",
+              "priority": "core",
+              "target": "child",
+              "summary": "Allow (unblock) a content category for this child, by its id.",
+              "prereq": [
+                "Ids come from `filter show` (objectionable content, safe search, security threats) or `filter categories` (Downloads, News, Shopping, ... and apps); the category's own fields are filled in for you."
+              ],
+              "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getFilterContent:id=category:name\",\"id\":\"$category\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getFilterContent:id=category:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getFilterContent:id=category:^id\"}}",
+              "constants": {
+                "enabled": false
+              },
+              "resolve": [
+                "$lookup:content_filter.getFilterContent:id=category:name",
+                "$lookup:content_filter.getFilterContent:id=category:^categoryId",
+                "$lookup:content_filter.getFilterContent:id=category:^id"
+              ],
+              "select": [
+                {
+                  "when": "exists:$lookup:content_filter.getCategories:id=category:name",
+                  "op": "content_filter.updateSubcategory",
+                  "body_template": "{\"subcategory\":{\"name\":\"$lookup:content_filter.getCategories:id=category:name\",\"id\":\"$category\",\"enabled\":false,\"categoryId\":\"$lookup:content_filter.getCategories:id=category:^categoryId\",\"categoryShortName\":\"$lookup:content_filter.getCategories:id=category:^id\"}}",
+                  "resolve": [
+                    "$lookup:content_filter.getCategories:id=category:name",
+                    "$lookup:content_filter.getCategories:id=category:^categoryId",
+                    "$lookup:content_filter.getCategories:id=category:^id"
+                  ]
+                }
+              ],
+              "flags": [
+                {
+                  "name": "category",
+                  "type": "int",
+                  "required": true,
+                  "maps_to": "body:$category",
+                  "help": "The subcategory id: subCategories[].id from `filter show` (e.g. Drugs, alcohol, gambling) or `filter categories` (e.g. Downloads). Apps use `apps block|allow`."
+                }
+              ]
+            }
+          ]
         },
         "getCategories": {
           "method": "GET",
@@ -1209,7 +1417,49 @@
           "description": "List content-filter categories (v7). Fixed (baked into the path): group-name (empty), include-description=false, categorySupported=v7, r=0; the app-name: VSF header is sent automatically. Query: include-safesearch=true|false (default false), resolution=1x|2x|3x (use 1x), sz=icon size e.g. 40x40 (40*device-density).",
           "header_values": {
             "app-name": "VSF"
-          }
+          },
+          "cli": [
+            {
+              "area": "filter",
+              "verb": "categories",
+              "priority": "core",
+              "target": "child",
+              "summary": "List the further content categories (Downloads, News, Search engines, Shopping, Sports, individual websites) and every app the filter knows, with the id to pass to `filter block|allow --category` or `apps block|allow --app`, and enabled=true where it is blocked now. Objectionable content, safe search and security threats are in `filter show`.",
+              "flags": [
+                {
+                  "name": "search-engines",
+                  "type": "bool",
+                  "default": false,
+                  "maps_to": "query:include-safesearch",
+                  "help": "Also include the app's safe-search entries (default: false)."
+                },
+                {
+                  "name": "find",
+                  "type": "string",
+                  "maps_to": "find:name",
+                  "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
+                }
+              ]
+            },
+            {
+              "area": "apps",
+              "verb": "list",
+              "priority": "core",
+              "target": "child",
+              "summary": "List the apps the filter knows — the Apps & websites groups (Messaging, Social Media, Games, Videos, Music, Finance, Generative AI, Dating, Email, VoIP), each app with its id and enabled=true where it is blocked now.",
+              "flags": [
+                {
+                  "name": "find",
+                  "type": "string",
+                  "maps_to": "find:name",
+                  "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
+                }
+              ],
+              "output": {
+                "pick": "Apps & websites"
+              }
+            }
+          ]
         },
         "getSubCategoriesDetail": {
           "method": "GET",
@@ -5577,7 +5827,22 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List visited websites via the v5 /website endpoint"
+          "description": "List visited websites via the v5 /website endpoint",
+          "cli": {
+            "area": "website",
+            "verb": "list",
+            "priority": "core",
+            "target": "child",
+            "summary": "List this child's blocked websites, trusted (allowed) websites — each with the profileDomainId that `website remove --entry-id` takes — and the safe-search state per search engine.",
+            "flags": [
+              {
+                "name": "find",
+                "type": "string",
+                "maps_to": "find:url",
+                "help": "Only entries whose url contains this text (case-insensitive); their enclosing groups are kept."
+              }
+            ]
+          }
         }
       }
     },
@@ -5595,7 +5860,26 @@
           "query": [
             "profileDomainId"
           ],
-          "description": "Remove a website from the paired child's allow/block list (verified live 2026-09-07, 200). DELETE, no body; query profileDomainId=<id> (from web_and_apps.getWebsites2, each entry's profileDomainId). Target the child with --service-id. Reverses postWebsite/postWebsites."
+          "description": "Remove a website from the paired child's allow/block list (verified live 2026-09-07, 200). DELETE, no body; query profileDomainId=<id> (from web_and_apps.getWebsites2, each entry's profileDomainId). Target the child with --service-id. Reverses postWebsite/postWebsites.",
+          "cli": {
+            "area": "website",
+            "verb": "remove",
+            "priority": "common",
+            "target": "device",
+            "summary": "Remove a website from this child's block or trusted list.",
+            "prereq": [
+              "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
+            ],
+            "flags": [
+              {
+                "name": "entry-id",
+                "type": "int",
+                "required": true,
+                "maps_to": "query:profileDomainId",
+                "help": "The entry's profileDomainId from `website list`."
+              }
+            ]
+          }
         },
         "disableSafeSearch": {
           "method": "DELETE",
@@ -5604,7 +5888,18 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Turn off enforced safe search for the child's browsing (DELETE safesearch)"
+          "description": "Turn off enforced safe search for the child's browsing (DELETE safesearch)",
+          "cli": {
+            "area": "website",
+            "group": "safe-search",
+            "verb": "disable",
+            "priority": "common",
+            "target": "device",
+            "summary": "Turn off enforced safe search for this child.",
+            "prereq": [
+              "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
+            ]
+          }
         },
         "enableSafeSearch": {
           "method": "POST",
@@ -5613,7 +5908,18 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Turn on enforced safe search for the child's browsing (POST safesearch, no body)"
+          "description": "Turn on enforced safe search for the child's browsing (POST safesearch, no body)",
+          "cli": {
+            "area": "website",
+            "group": "safe-search",
+            "verb": "enable",
+            "priority": "common",
+            "target": "device",
+            "summary": "Turn on enforced safe search on every search engine for this child.",
+            "prereq": [
+              "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED)."
+            ]
+          }
         },
         "postWebsite": {
           "method": "POST",
@@ -5635,7 +5941,59 @@
           ],
           "takes_body": true,
           "body_example": "{\"domains\":[{\"status\":\"b\",\"url\":\"example.com\"}]}",
-          "description": "Add one or more websites to the paired child's allow/block list in bulk (verified live 2026-09-07, 201). Target the child with --service-id. domains[].status: \"a\"=allow | \"b\"=block; url is a bare domain. Requires a PAIRED device. Reversible via deleteWebsite by the profileDomainId from getWebsites2."
+          "description": "Add one or more websites to the paired child's allow/block list in bulk (verified live 2026-09-07, 201). Target the child with --service-id. domains[].status: \"a\"=allow | \"b\"=block; url is a bare domain. Requires a PAIRED device. Reversible via deleteWebsite by the profileDomainId from getWebsites2.",
+          "cli": [
+            {
+              "area": "website",
+              "verb": "block",
+              "priority": "core",
+              "target": "device",
+              "summary": "Add one or more websites to this child's block list.",
+              "prereq": [
+                "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED).",
+                "Reverse with `website remove --entry-id` (ids from `website list`)."
+              ],
+              "body_template": "{\"domains\":[{\"status\":\"b\",\"url\":\"$url\"}]}",
+              "constants": {
+                "status": "b"
+              },
+              "flags": [
+                {
+                  "name": "url",
+                  "type": "string",
+                  "repeatable": true,
+                  "required": true,
+                  "maps_to": "body:$url",
+                  "help": "A bare domain such as example.com (no scheme). Repeat --url for several."
+                }
+              ]
+            },
+            {
+              "area": "website",
+              "verb": "allow",
+              "priority": "core",
+              "target": "device",
+              "summary": "Add one or more websites to this child's trusted (always allowed) list.",
+              "prereq": [
+                "The child's phone must be PAIRED (the PAIRING column of `safe_cli members` reads PAIRED or UNPAIRED).",
+                "Reverse with `website remove --entry-id` (ids from `website list`)."
+              ],
+              "body_template": "{\"domains\":[{\"status\":\"a\",\"url\":\"$url\"}]}",
+              "constants": {
+                "status": "a"
+              },
+              "flags": [
+                {
+                  "name": "url",
+                  "type": "string",
+                  "repeatable": true,
+                  "required": true,
+                  "maps_to": "body:$url",
+                  "help": "A bare domain such as example.com (no scheme). Repeat --url for several."
+                }
+              ]
+            }
+          ]
         }
       }
     },

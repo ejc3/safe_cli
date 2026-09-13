@@ -235,11 +235,11 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
   "cats":{"method":"GET","path":"/cats","headers":["x-fp-identifier-target-serviceid"]},
   "post":{"method":"POST","path":"/p","takes_body":true,"headers":["x-pending-activation","x-name"],"query":["q"],
     "cli":{"area":"t","verb":"do","priority":"core","target":"child","summary":"s",
-      "body_template":"{\"mode\":{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"},\"domains\":[{\"url\":\"$url\",\"status\":\"$status\"}],\"id\":\"$cat\",\"catName\":\"$lookup:t.cats:id=cat:name\",\"fixed\":\"v\"}",
+      "body_template":"{\"mode\":{\"blockContent\":\"$blockContent\",\"alertOn\":\"$alertOn\"},\"domains\":[{\"url\":\"$url\",\"status\":\"$status\"}],\"id\":\"$cat\",\"catName\":\"$lookup:t.cats:id=cat:name\",\"catShort\":\"$lookup:t.cats:id=cat:^id\",\"catParent\":\"$lookup:t.cats:id=cat:^categoryId\",\"fixed\":\"v\"}",
       "constants":{"fixed":"v"},
       "headers":{"x-pending-activation":"false"},
       "query":{"q":"$name"},
-      "resolve":["$lookup:t.cats:id=cat:name"],
+      "resolve":["$lookup:t.cats:id=cat:name","$lookup:t.cats:id=cat:^id","$lookup:t.cats:id=cat:^categoryId"],
       "flags":[
         {"name":"mode","type":"enum","enum":["block","alert"],"default":"block","spreads_to":["body:$blockContent","body:$alertOn"],"transform":"mode_block_alert","help":"h"},
         {"name":"url","type":"string","repeatable":true,"required":true,"maps_to":"body:$url","help":"h"},
@@ -269,6 +269,10 @@ const engineFixture = `{"name":"t","base_url":"https://h","entities":{"account":
       "body_template":"{\"name\":\"$name\"}","resolve":["$lookup:t.acct::familyName"],
       "select":[{"when":"exists:$lookup:t.stget::screenTimeLimitId","op":"t.stput","body_template":"{\"name\":\"$name\",\"screenTimeLimitId\":\"$lookup:t.stget::screenTimeLimitId\"}","resolve":["$lookup:t.stget::screenTimeLimitId","$lookup:t.acct::familyName"]}],
       "flags":[{"name":"name","type":"string","default":"$lookup:t.acct::familyName","maps_to":"body:$name","help":"h"}]}},
+  "cats2":{"method":"GET","path":"/cats2","headers":["x-fp-identifier-target-serviceid"],
+    "cli":{"area":"t","verb":"apps","priority":"core","target":"child","summary":"s",
+      "output":{"pick":"Apps & websites"},
+      "flags":[{"name":"find","type":"string","maps_to":"find:name","help":"h"}]}},
   "dash":{"method":"GET","path":"/dash","headers":["x-fp-identifier-target-serviceid"],
     "cli":{"area":"t","verb":"dash","priority":"core","target":"account","summary":"s",
       "flags":[{"name":"member","type":"int","maps_to":"filter:serviceId","help":"h"}]}},
@@ -358,8 +362,11 @@ func engineDescriptor(t *testing.T) *descriptor.Descriptor {
 
 func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 	fb := newFakeBackend(t)
+	// The real getCategories shape: the subcategory record carries id/name, and the
+	// parent category object carries the short id and categoryId that updateSubcategory
+	// also wants ("^field" reads the enclosing object).
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"categories":[{"id":10001,"name":"Social"},{"id":10003,"name":"Games","categoryId":1001}]}`))
+		_, _ = w.Write([]byte(`{"categories":[{"id":"SOC","name":"Social","categoryId":5,"subCategories":[{"id":10001,"name":"Instagram","enabled":false}]},{"id":"GAM","name":"Games","categoryId":1001,"subCategories":[{"id":10003,"name":"8 Ball","enabled":false}]}]}`))
 	}
 	d := engineDescriptor(t)
 	vc := verbCall{entity: "t", op: "post", area: "t", verb: "do", child: "2000001", selfSvc: "1000001", selfPid: "1000002",
@@ -380,8 +387,11 @@ func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 	if len(domains) != 2 || domains[0].(map[string]any)["url"] != "a.com" || domains[1].(map[string]any)["url"] != "b.com" || domains[1].(map[string]any)["status"] != "b" {
 		t.Errorf("repeatable expansion wrong: %v", domains)
 	}
-	if body["id"] != float64(10003) || body["catName"] != "Games" || body["fixed"] != "v" {
+	if body["id"] != float64(10003) || body["catName"] != "8 Ball" || body["fixed"] != "v" {
 		t.Errorf("lookup/constant wrong: %s", req.body)
+	}
+	if body["catShort"] != "GAM" || body["catParent"] != float64(1001) {
+		t.Errorf("parent-field lookups wrong (want catShort=GAM catParent=1001): %s", req.body)
 	}
 	if req.headers.Get("x-pending-activation") != "false" || req.headers.Get("x-name") != "n" {
 		t.Errorf("header constant/flag wrong: %v", req.headers)
@@ -395,6 +405,7 @@ func TestInvokeSpreadRepeatLookupHeadersQuery(t *testing.T) {
 func TestInvokeLookupMiss(t *testing.T) {
 	fb := newFakeBackend(t)
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"categories":[]}`)) }
+	// (the post verb's other lookups share the same read; a miss is a miss for all)
 	d := engineDescriptor(t)
 	vc := verbCall{entity: "t", op: "post", area: "t", verb: "do", child: "2000001", selfSvc: "1000001", selfPid: "1000002",
 		given: map[string]any{"url": []string{"a.com"}, "cat": int64(99999)}}
@@ -540,7 +551,7 @@ func TestInvokeUnkeyedLookupDefaultAndExists(t *testing.T) {
 func TestInvokeQueryTemplateUsesFlagDefault(t *testing.T) {
 	fb := newFakeBackend(t)
 	fb.extra["/cats"] = func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"categories":[{"id":10003,"name":"Games"}]}`))
+		_, _ = w.Write([]byte(`{"categories":[{"id":"GAM","categoryId":1001,"subCategories":[{"id":10003,"name":"Games"}]}]}`))
 	}
 	d := engineDescriptor(t)
 	vc := childCall("post", "do", map[string]any{"url": []string{"a.com"}, "cat": int64(10003)})
@@ -702,6 +713,36 @@ func TestInvokeOneReadPerLookupOp(t *testing.T) {
 	}
 	if reads != 1 {
 		t.Errorf("three lookups on one op must read it once, read %d times", reads)
+	}
+}
+
+// output.pick projects the response to one top-level field, and a find: flag keeps only the
+// objects whose field contains the text (case-insensitive), pruning non-matching leaves but
+// keeping the groups that contain a match — `apps list --find tiktok` answers with the one
+// app under its category, never the whole categories document (Codex #72-1; probe T2).
+func TestInvokePickAndFind(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.extra["/cats2"] = func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"categories":[{"name":"More","subCategories":[{"id":1,"name":"Downloads"}]}],"Apps & websites":[{"name":"Social Media","subCategories":[{"id":2,"name":"TikTok"},{"id":3,"name":"Reddit"}]},{"name":"Games","subCategories":[{"id":4,"name":"Ballz"}]}]}`))
+	}
+	d := engineDescriptor(t)
+	var out strings.Builder
+	if err := invoke(context.Background(), fb.do(), d, childCall("cats2", "apps", nil), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "Downloads") || !strings.Contains(out.String(), "Reddit") || !strings.Contains(out.String(), "Ballz") {
+		t.Errorf("pick must drop the other top-level lists and keep the picked one whole:\n%s", out.String())
+	}
+	out.Reset()
+	if err := invoke(context.Background(), fb.do(), d, childCall("cats2", "apps", map[string]any{"find": "tik"}), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "TikTok") || !strings.Contains(s, "Social Media") || strings.Contains(s, "Reddit") || strings.Contains(s, "Games") {
+		t.Errorf("find must keep the matching app under its group and prune the rest:\n%s", s)
+	}
+	if r := fb.seen["/cats2"]; strings.Contains(r.query, "find") {
+		t.Errorf("a find: flag never reaches the request: %q", r.query)
 	}
 }
 
@@ -1007,7 +1048,7 @@ func TestInvokeExcludesAndSharedVar(t *testing.T) {
 // app-uuid must not have the fallback injected as the caller's identity (Codex #71 round 5).
 func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
 	ts := &tokenstore.TokenSet{} // no session uuid
-	vc := verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{"custom:identifier-serviceid": "1000001"}, "fallback-uuid")
+	vc := verbCallFor("t", "op", "a", "", "v", nil, "", false, false, false, ts, map[string]string{"custom:identifier-serviceid": "1000001"}, "fallback-uuid")
 	if vc.appUUID != "fallback-uuid" || vc.selfSvc != "1000001" {
 		t.Errorf("header uuid must be the resolved (fallback) uuid and the claims must be read: %+v", vc)
 	}
@@ -1015,7 +1056,7 @@ func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
 		t.Errorf("without a session uuid nothing may be injected, got %q", vc.sessionUUID)
 	}
 	ts.AppUUID = "session-uuid"
-	if vc = verbCallFor("t", "op", "a", "v", nil, "", false, false, false, ts, map[string]string{}, "session-uuid"); vc.sessionUUID != "session-uuid" {
+	if vc = verbCallFor("t", "op", "a", "", "v", nil, "", false, false, false, ts, map[string]string{}, "session-uuid"); vc.sessionUUID != "session-uuid" {
 		t.Errorf("session uuid must come from the token set: %+v", vc)
 	}
 }

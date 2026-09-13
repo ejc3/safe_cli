@@ -178,6 +178,10 @@ func strictDecode(b []byte, v any) error {
 // Output names the response fields the default table shows.
 type Output struct {
 	Table []string `json:"table,omitempty"`
+	// Pick projects the response to one top-level field before output (and before any
+	// filter:/find: flag applies): `apps list` answers with getCategories' "Apps & websites"
+	// list, not the whole categories document.
+	Pick string `json:"pick,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation
@@ -223,13 +227,14 @@ var (
 	// only place that implements them, this list only rejects an unknown name early.
 	// weekday_ints (postScheduleAlert's weekDays) is absent on purpose: every captured
 	// example has weekDays: [] so its int convention is unobserved; it joins when grounded.
-	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab")
+	cliTransforms = set("", "pause_schedule", "tz_short", "iso_micro", "epoch_ms", "day3_lower", "day3_title", "bool01", "allow_block_ab", "preset_group")
 	// cliTransformDomains lists the input values a closed transform accepts (lowercased);
 	// an enum flag using one may only offer those values.
 	cliTransformDomains = map[string][]string{
 		"pause_schedule":   {"30m", "1h", "2h", "4h", "until-morning"},
 		"allow_block_ab":   {"allow", "block", "a", "b"},
 		"mode_block_alert": {"block", "alert"},
+		"preset_group":     {"none", "young-child", "child", "teen"},
 	}
 	// cliTransformInputs lists the flag types each transform is defined for; a transform on
 	// any other type could never produce the wire form and is a descriptor error.
@@ -242,6 +247,7 @@ var (
 		"day3_title":       {"list", "string"},
 		"bool01":           {"bool"},
 		"allow_block_ab":   {"enum", "string"},
+		"preset_group":     {"enum", "string"},
 		"mode_block_alert": {"enum", "string"},
 	}
 	// cliStructuredTransforms fill a FIXED set of body vars each; a flag's spreads_to must
@@ -918,7 +924,7 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 		}
 		kind, arg, ok := strings.Cut(f.MapsTo, ":")
 		if !ok || arg == "" {
-			return fmt.Errorf("flag --%s: maps_to %q must be body:$var | query:<name> | header:<name> | path:<placeholder>", f.Name, f.MapsTo)
+			return fmt.Errorf("flag --%s: maps_to %q must be body:$var | query:<name> | header:<name> | path:<placeholder> | filter:<field> | find:<field>", f.Name, f.MapsTo)
 		}
 		switch kind {
 		case "body":
@@ -1002,8 +1008,20 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 			if f.Default != nil {
 				return fmt.Errorf("flag --%s: a filter: flag may not have a default (it acts only when given; a default would advertise filtering that never happens)", f.Name)
 			}
+		case "find":
+			if f.Default != nil {
+				return fmt.Errorf("flag --%s: a find: flag may not have a default (it acts only when given)", f.Name)
+			}
+			// A client-side search: keeps the objects whose field contains the text
+			// (case-insensitive), with the groups that contain them; never part of the request.
+			if arg == "" {
+				return fmt.Errorf("flag --%s: find maps_to needs a response field name", f.Name)
+			}
+			if f.Type != "string" {
+				return fmt.Errorf("flag --%s: a find: flag must be a string flag (a case-insensitive substring of the %s field)", f.Name, arg)
+			}
 		default:
-			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter", f.Name, kind)
+			return fmt.Errorf("flag --%s: maps_to kind %q must be body|query|header|path|filter|find", f.Name, kind)
 		}
 	}
 	// Every {placeholder} in the path has a Parse-time source: a path: flag, or one of the
@@ -1175,8 +1193,8 @@ func (d *Descriptor) validateContract(o Operation, c *CLI) error {
 				}
 			} else if g, ok := flagByName[strings.TrimPrefix(v, "$")]; !ok {
 				return fmt.Errorf("query[%s] references unknown flag %q", name, v)
-			} else if strings.HasPrefix(g.MapsTo, "filter:") {
-				return fmt.Errorf("query[%s] references --%s, a filter: flag that never reaches the request", name, g.Name)
+			} else if strings.HasPrefix(g.MapsTo, "filter:") || strings.HasPrefix(g.MapsTo, "find:") {
+				return fmt.Errorf("query[%s] references --%s, a filter:/find: flag that never reaches the request", name, g.Name)
 			} else if len(g.SpreadsTo) > 0 {
 				return fmt.Errorf("query[%s] references --%s, a spreads_to flag whose structured value cannot render as one parameter", name, g.Name)
 			}
@@ -1302,8 +1320,14 @@ func (d *Descriptor) checkResolveVar(v string, flagByName map[string]Flag) error
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>)", v)
 		}
 		ref, keyEq, field := parts[0], parts[1], parts[2]
-		if field == "" {
+		if field == "" || field == "^" {
 			return fmt.Errorf("malformed $lookup %q (want $lookup:<entity>.<op>:<key>=<flag>:<field>, or ::<field> for a singleton read)", v)
+		}
+		// "^field" reads the matched record's enclosing object (updateSubcategory wants the
+		// parent category's id and categoryId next to the subcategory's own name); it only
+		// makes sense for a keyed match, since a singleton read has no matched record.
+		if strings.HasPrefix(field, "^") && keyEq == "" {
+			return fmt.Errorf("$lookup %q: a ^field reads the enclosing object of a keyed match; an unkeyed singleton read has none", v)
 		}
 		opRef, subtree, scoped := strings.Cut(ref, "/")
 		if scoped && (subtree == "" || strings.Contains(subtree, "/")) {

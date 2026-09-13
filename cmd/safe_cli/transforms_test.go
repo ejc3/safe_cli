@@ -20,6 +20,12 @@ func TestTransformsGroundedMappings(t *testing.T) {
 		{"pause_schedule", "2h", "2_hour"},
 		{"pause_schedule", "4h", "4_hour"},
 		{"pause_schedule", "until-morning", "Until_tomorrow_morning"},
+		// content_filter.createGroupPolicy groupId (live-verified 2026-08-28): 1=No Content
+		// filters, 2=Young child (5-7), 3=Child (8-12), 4=Teen (13-17).
+		{"preset_group", "none", 1},
+		{"preset_group", "young-child", 2},
+		{"preset_group", "child", 3},
+		{"preset_group", "Teen", 4},
 		{"tz_short", "EST", "EST"},
 		{"tz_short", "PST", "PST"},
 		{"bool01", true, 1},
@@ -87,6 +93,7 @@ func TestTransformsRejectBadInput(t *testing.T) {
 		want string
 	}{
 		{"pause_schedule", "45m", "30m|1h|2h|4h|until-morning"},
+		{"preset_group", "adult", "none|young-child|child|teen"},
 		{"tz_short", "Mars/Olympus", "IANA zone"},
 		{"iso_micro", "yesterday-ish", "not a time"},
 		{"iso_micro", "106752d", "too large"},               // would overflow time.Duration into the FUTURE

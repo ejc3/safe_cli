@@ -224,6 +224,9 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"header flag names an identity header in mixed case", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"},{"name":"t","type":"string","maps_to":"header:X-FP-Identifier-Target-ServiceId","help":"h"}]}`, `"headers":["X-FP-Identifier-Target-ServiceId"]`, "identity header"},
 		{"scalar then repeatable flag sharing a scalar var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"v\":\"$v?\"}","flags":[{"name":"one","type":"string","excludes":["many"],"maps_to":"body:$v","help":"h"},{"name":"many","type":"string","repeatable":true,"excludes":["one"],"maps_to":"body:$v","help":"h"}]}`, "", "repeatable"},
 		{"repeatable then scalar flag sharing a scalar var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"v\":\"$v?\"}","flags":[{"name":"many","type":"string","repeatable":true,"excludes":["one"],"maps_to":"body:$v","help":"h"},{"name":"one","type":"string","excludes":["many"],"maps_to":"body:$v","help":"h"}]}`, "", "repeatable"},
+		// A find: destination names a response field and is a string flag.
+		{"find flag without a field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"find","type":"string","maps_to":"find:","help":"h"}]}`, `"takes_body":false`, "find:<field>"},
+		{"find flag not a string", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","flags":[{"name":"find","type":"int","maps_to":"find:name","help":"h"}]}`, `"takes_body":false`, "string"},
 		// Codex #71-3: ok_on turns a documented error response into a success; it must name a
 		// 4xx/5xx status, a body substring and the result to report.
 		{"ok_on with a success status", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","ok_on":[{"status":200,"contains":"x","result":"r"}]}`, `"takes_body":false`, "4xx or 5xx"},
@@ -337,6 +340,8 @@ func TestCLIValidationRejects(t *testing.T) {
 		{"query map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profielId"},"resolve":["$child.profileId"]}`, `"takes_body":false,"query":["lat"]`, "not a supported resolved variable"},
 		{"query map resolver var not in resolve", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","query":{"lat":"$child.profileId"}}`, `"takes_body":false,"query":["lat"]`, "not listed in resolve"},
 		{"header map with a mistyped resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","headers":{"timezone":"$ghost.zone"}}`, `"takes_body":false,"headers":["timezone"]`, "not a supported resolved variable"},
+		{"parent field on an unkeyed lookup", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other::^id\"}","resolve":["$lookup:pause.other::^id"]}`, "", "enclosing object"},
+		{"parent field alone", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other:id=x:^\",\"x\":\"$x\"}","resolve":["$lookup:pause.other:id=x:^"],"flags":[{"name":"x","type":"string","required":true,"maps_to":"body:$x","help":"h"}]}`, "", "malformed"},
 		{"unkeyed lookup without a field", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"n\":\"$lookup:pause.other::\"}","resolve":["$lookup:pause.other::"]}`, "", "malformed $lookup"},
 		{"default that is an unknown resolver var", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s","body_template":"{\"x\":\"$x\"}","flags":[{"name":"x","type":"string","default":"$ghost.value","maps_to":"body:$x","help":"h"}]}`, "", "not a supported resolved variable"},
 		{"placeholder with no source", `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s"}`, `"takes_body":false,"path":"/d/{deviceId}/{thing}"`, "{thing} has no source"},
@@ -478,9 +483,9 @@ func TestCLINullsPrecedenceAndAtLeastOneAccepted(t *testing.T) {
 // placeholder.
 func TestCLIExactResolveLookupAndPathAccepted(t *testing.T) {
 	cli := `{"area":"a","verb":"v","priority":"core","target":"child","summary":"s",
-	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"cat\":\"$cat\"}",
-	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name"],
-	  "flags":[{"name":"cat","required":true,"type":"int","maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","required":true,"maps_to":"path:deviceId","help":"h"}]}`
+	  "body_template":"{\"a\":\"$child.serviceId\",\"b\":\"$child.profileId\",\"c\":\"$child.deviceId\",\"d\":\"$child.pairing\",\"e\":\"$self.serviceId\",\"f\":\"$self.profileId\",\"g\":\"$account.id\",\"h\":\"$local.timezone\",\"i\":\"$now.epochMs\",\"j\":\"$uuid\",\"k\":\"$lookup:pause.other:id=cat:name\",\"l\":\"$lookup:pause.other:id=cat:^categoryId\",\"cat\":\"$cat\"}",
+	  "resolve":["$child.serviceId","$child.profileId","$child.deviceId","$child.pairing","$self.serviceId","$self.profileId","$account.id","$local.timezone","$now.epochMs","$uuid","$lookup:pause.other:id=cat:name","$lookup:pause.other:id=cat:^categoryId"],
+	  "flags":[{"name":"cat","type":"int","required":true,"maps_to":"body:$cat","help":"h"},{"name":"dev-id","type":"string","required":true,"maps_to":"path:deviceId","help":"h"}]}`
 	if _, err := Parse(cliFixture(cli, `"path":"/d/{deviceId}"`)); err != nil {
 		t.Fatalf("exact resolve names, a valid $lookup, and a real path placeholder must be accepted: %v", err)
 	}
