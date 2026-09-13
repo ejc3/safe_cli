@@ -134,7 +134,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 			desc = "[UNAVAILABLE: " + op.Unavailable + "] " + desc
 			unavail++
 		}
-		return []string{name, op.Method, opFlags(op, e.IDField), desc}
+		return []string{name, cliColumn(op), op.Method, opFlags(op, e.IDField), desc}
 	}
 	for _, k := range e.OperationNames() {
 		rows = append(rows, row(k, e.Operations[k]))
@@ -142,7 +142,7 @@ func (c *describeCmd) Run(rc *runContext) error {
 	for _, k := range e.ActionNames() {
 		rows = append(rows, row(k+" (action)", e.Actions[k]))
 	}
-	if err := outfmt.Table(rc.Out, []string{"OP", "METHOD", "FLAGS", "WHAT IT DOES"}, rows); err != nil {
+	if err := outfmt.Table(rc.Out, []string{"OP", "CLI", "METHOD", "FLAGS", "WHAT IT DOES"}, rows); err != nil {
 		return err
 	}
 	if unavail > 0 {
@@ -150,11 +150,30 @@ func (c *describeCmd) Run(rc *runContext) error {
 			return err
 		}
 	}
-	_, err := fmt.Fprintln(rc.Out, "\nFLAGS: svc=--service-id (child)  body=--data  query=NAMES (--query name=value)  "+
+	_, err := fmt.Fprintln(rc.Out, "\nCLI=the generated subcommand that fronts the op (`safe_cli <area> <verb> --child SERVICE-ID`, "+
+		"typed flags, ids resolved for you); blank = reach it with `call`.\n"+
+		"FLAGS: svc=--service-id (child)  body=--data  query=NAMES (--query name=value)  "+
 		"header=NAMES (--header name=value)  path=NAMES (--path name=value)  "+
 		"multipart=upload (not constructible)  confirm=destructive, needs --confirm. "+
 		"A trailing * marks a required param `call` refuses to run without. Full paths: --json.")
 	return err
+}
+
+// cliColumn names the generated subcommand(s) that front an op — `pause-internet pause`, or
+// several when one op serves more than one verb (`filter block, filter allow`) — and an
+// alias as `= <verb>`. An op with only call_only blocks (or none) yields "" so the column
+// reads as "use call".
+func cliColumn(op descriptor.Operation) string {
+	var names []string
+	for _, b := range op.CLI {
+		switch {
+		case b.AliasOf != "":
+			names = append(names, "= "+b.AliasOf)
+		case b.Verb != "":
+			names = append(names, strings.Join(strings.Fields(b.Area+" "+b.Group+" "+b.Verb), " "))
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 // placeholderRe matches {name} segments in a descriptor path.
