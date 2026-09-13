@@ -22,8 +22,8 @@ attestation** and that authenticated API calls send the raw `id_token` in the
 `Authorization` header (**no `Bearer` prefix**; not SigV4/Cognito — a debunked red
 herring). `auth login` authenticates live, `auth refresh` renews without a browser,
 and the descriptor's 59 entities / 459 operations are all invokable through `call`;
-394 of them are available on a standard family account (`docs/unavailable-endpoints.md`
-lists the 65 that are not). The everyday actions are generated subcommands with typed
+380 of them are available on a standard family account (`docs/unavailable-endpoints.md`
+lists the 79 that are not). The everyday actions are generated subcommands with typed
 flags (18 verbs across four areas so far; `docs/CLI-DESIGN.md` is the design). Reads and
 reversible mutations have been verified against production, and mutation request bodies
 checked byte-for-byte against the app's own captured traffic.
@@ -194,7 +194,7 @@ each PR. See `CLAUDE.md`.
   engine, and the area/verb vocabulary.
 - `docs/agent-scenarios.md` — 88 request-style scenarios covering every available op,
   for testing an agent that drives the CLI blind.
-- `docs/unavailable-endpoints.md` — the 65 ops a standard family account cannot reach.
+- `docs/unavailable-endpoints.md` — the 79 ops a standard family account cannot reach.
 - `docs/index.html` — the home page.
 
 ## License

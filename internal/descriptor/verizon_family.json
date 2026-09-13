@@ -326,7 +326,8 @@
             "timezone",
             "schedule-type"
           ],
-          "description": "List a device's activity events from the comms activity feed (requires a schedule-type filter)."
+          "description": "List a device's activity events from the comms activity feed (requires a schedule-type filter).",
+          "unavailable": "Answers 403 to a guardian token on this account — comms activity feed, not available for a phone child (device-side/Gizmo-gated)."
         },
         "getDailyActivities": {
           "method": "GET",
@@ -338,7 +339,8 @@
             "timezone",
             "schedule-type"
           ],
-          "description": "List a device's activity for a day from the same feed (timezone required, day-scoped view)."
+          "description": "List a device's activity for a day from the same feed (timezone required, day-scoped view).",
+          "unavailable": "Answers 403 to a guardian token on this account — comms activity feed, not available for a phone child (device-side/Gizmo-gated)."
         }
       }
     },
@@ -1768,7 +1770,8 @@
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List available device diagnostic logs for the service/device"
+          "description": "List available device diagnostic logs for the service/device",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "getDeviceSettings": {
           "method": "GET",
@@ -1782,7 +1785,8 @@
             "settingsType",
             "timezone"
           ],
-          "description": "Read a device's settings for a given settingsType"
+          "description": "Read a device's settings for a given settingsType",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "postDeviceSettings": {
           "method": "POST",
@@ -2039,19 +2043,22 @@
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/address",
           "confirmed": false,
-          "description": "Fetch the saved Family Line address (e.g. E911 location)"
+          "description": "Fetch the saved Family Line address (e.g. E911 location)",
+          "unavailable": "Requires a Family-Line SPC token this CLI does not mint (403 to a guardian token); the status read getProvisioningStatus works with the guardian's service id. See docs/PROCESS.md."
         },
         "getEligibleLines": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/line/eligible",
           "confirmed": false,
-          "description": "List lines eligible to be added to Family Line"
+          "description": "List lines eligible to be added to Family Line",
+          "unavailable": "Requires a Family-Line SPC token this CLI does not mint (403 to a guardian token); the status read getProvisioningStatus works with the guardian's service id. See docs/PROCESS.md."
         },
         "getFamilyLines": {
           "method": "GET",
           "path": "/callandtext/frisco/familyline/v1/fl/line",
           "confirmed": false,
-          "description": "List the current Family Lines"
+          "description": "List the current Family Lines",
+          "unavailable": "Requires a Family-Line SPC token this CLI does not mint (403 to a guardian token); the status read getProvisioningStatus works with the guardian's service id. See docs/PROCESS.md."
         },
         "getProvisioningStatus": {
           "method": "GET",
@@ -3485,7 +3492,8 @@
             "onDemand",
             "statusType"
           ],
-          "description": "Get a device's current status, with optional on-demand refresh."
+          "description": "Get a device's current status, with optional on-demand refresh.",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "upgrade": {
           "method": "POST",
@@ -3579,7 +3587,8 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List the account's Gizmo devices."
+          "description": "List the account's Gizmo devices.",
+          "unavailable": "Requires a Gizmo Watch on the account; none here (403)."
         },
         "getMdnLookupResponse": {
           "method": "GET",
@@ -3617,7 +3626,8 @@
             "onDemand",
             "statusType"
           ],
-          "description": "Get a device's cloud-backup storage status."
+          "description": "Get a device's cloud-backup storage status.",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "gizmoDevicesCheckEligibility": {
           "method": "GET",
@@ -3680,7 +3690,8 @@
             "x-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "Check eligibility to import Gizmo devices."
+          "description": "Check eligibility to import Gizmo devices.",
+          "unavailable": "Requires a Gizmo Watch on the account; none here (403)."
         },
         "gizmoImportEligibilityNotSignedInUser": {
           "method": "GET",
@@ -3797,7 +3808,8 @@
             "x-trace-transaction-id",
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List a device's available log files."
+          "description": "List a device's available log files.",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "getDeviceSettings": {
           "method": "GET",
@@ -3811,7 +3823,8 @@
             "settingsType",
             "timezone"
           ],
-          "description": "Read a device's settings for a given settingsType."
+          "description": "Read a device's settings for a given settingsType.",
+          "unavailable": "Answers 403 (no permissions on this serviceId) to a guardian token — a device-side read, not a parent action."
         },
         "postDeviceSettings": {
           "method": "POST",
@@ -4422,7 +4435,8 @@
           "query": [
             "includeLocEvents"
           ],
-          "description": "GET the current RTT session, optionally including its accumulated live location events (includeLocEvents)."
+          "description": "GET the current RTT session, optionally including its accumulated live location events (includeLocEvents).",
+          "unavailable": "Requires an active real-time-tracking (locate) session; answers 403 to a guardian token otherwise."
         },
         "invoke": {
           "method": "POST",
