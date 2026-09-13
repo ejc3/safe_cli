@@ -522,8 +522,9 @@ adb shell "strings /data/local/tmp/app.hprof | grep -oE 'eyJraWQ[A-Za-z0-9_-]+\\
 # → the online id_token (iss .../frisco-iam-device-auth) + offline (iss .../frisco-iam-auth)
 ```
 
-Build a TokenSet JSON (`{"mdn":…,"tokens":[{"id_token":…,"frisco_token_type":"online"},
-{"id_token":…,"frisco_token_type":"offline"}]}`) and `safe_cli auth import <file>`.
+Build a TokenSet JSON (`{"phone":…,"tokens":[{"id_token":…,"frisco_token_type":"online"},
+{"id_token":…,"frisco_token_type":"offline"}]}`) and `safe_cli auth import <file>` (the
+pre-rename `"mdn"` key is still accepted as legacy input).
 **Caveat: this is one-shot.** The online id_token is short-lived (~30 min) and the heap
 holds **no** `refresh_token` — the refresh tokens live encrypted at rest in
 EncryptedSharedPreferences under keys `REFRESH_TOKEN` / `OFFLINE_REFRESH_TOKEN`, so they
