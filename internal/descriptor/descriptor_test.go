@@ -1114,8 +1114,14 @@ func TestIdentityEntityIsInternal(t *testing.T) {
 			t.Errorf("identity.%s must be marked unavailable (internal auth machinery)", name)
 			continue
 		}
-		if !strings.Contains(op.Unavailable, "auth") {
-			t.Errorf("identity.%s unavailable reason must point to the `auth` commands, got %q", name, op.Unavailable)
+		if !strings.Contains(op.Unavailable, "auth login") {
+			t.Errorf("identity.%s unavailable reason must point to the `auth login`/`refresh` flow, got %q", name, op.Unavailable)
+		}
+		// These ops are OTP / token / audit machinery. `auth logout` and `auth status` do
+		// not perform them (e.g. verifyMdn validates a phone number), so the reason must not
+		// name those as the replacement — it would misdirect a user. (Greptile, PR #87.)
+		if strings.Contains(op.Unavailable, "auth logout") || strings.Contains(op.Unavailable, "auth status") {
+			t.Errorf("identity.%s reason must not promise `auth logout`/`auth status` as a replacement, got %q", name, op.Unavailable)
 		}
 	}
 }
