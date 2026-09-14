@@ -1090,3 +1090,32 @@ func TestWireVerifiedOpsConfirmed(t *testing.T) {
 		}
 	}
 }
+
+// TestIdentityEntityIsInternal pins the identity entity as internal auth machinery. Every
+// one of its ops (OTP/token/refresh/logout/audit) is owned by the CLI's `auth` commands,
+// which drive internal/client directly — never these `call` ops. Marking them all
+// unavailable makes `entities` (text) hide identity as a dead end (AvailableOps()==0) and
+// `call identity <op>` refuse with a pointer to `auth`, so a black-box agent stops
+// rabbit-holing on token plumbing (nav test: scenario 61 tried refreshToken/logOut/…).
+func TestIdentityEntityIsInternal(t *testing.T) {
+	d, err := Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, ok := d.Entity("identity")
+	if !ok {
+		t.Fatal("identity entity missing")
+	}
+	if n := e.AvailableOps(); n != 0 {
+		t.Errorf("identity must have 0 available ops (all internal), got %d", n)
+	}
+	for name, op := range e.Operations {
+		if op.Available() {
+			t.Errorf("identity.%s must be marked unavailable (internal auth machinery)", name)
+			continue
+		}
+		if !strings.Contains(op.Unavailable, "auth") {
+			t.Errorf("identity.%s unavailable reason must point to the `auth` commands, got %q", name, op.Unavailable)
+		}
+	}
+}

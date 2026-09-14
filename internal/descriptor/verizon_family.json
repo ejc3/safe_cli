@@ -616,6 +616,7 @@
           "description": "Read the current saved school-calendar selection"
         },
         "getGoogleCalendarTokens": {
+          "unavailable": "Internal auth machinery (the parent IAM token exchange on the same endpoint as identity.refreshToken), not a family-administration action: the CLI's `auth` commands manage tokens. The calendar-sync reads/writes (getSchoolsForZipCode, createCalendarSelection, getCalendarEvents, …) do not need it.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
           "confirmed": false,
@@ -2341,6 +2342,7 @@
       "id_field": "authPath",
       "operations": {
         "childRefreshToken": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v6/deviceauth/refreshtoken",
           "confirmed": false,
@@ -2349,6 +2351,7 @@
           "body_example": "{\"app_uuid\":\"a1b2c3d4-uuid\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"REFRESHTOKEN123\",\"frisco_token_type\":\"online\",\"grant_type\":\"refresh_token\",\"otp_code\":\"123456\"}"
         },
         "refreshToken": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/token",
           "confirmed": false,
@@ -2360,6 +2363,7 @@
           "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"codeVerifier\":\"pkce_code_verifier\",\"fidoTokenKey\":\"fido-token-key\",\"firstName\":\"Jane\",\"friscoTokenType\":\"online\",\"grantType\":\"refresh_token\",\"idToken\":\"id-token-jwt\",\"identityProvider\":\"VZ\",\"interimFriscoTokenType\":\"online\",\"interimToken\":\"interim-token\",\"interimTokenType\":\"Bearer\",\"lastName\":\"Doe\",\"otpCode\":\"123456\",\"redirectUri\":\"https://example.com/callback\",\"refreshToken\":\"refresh-token-value\",\"refreshTokenIdentityProvider\":\"VZ\",\"token\":\"access-token-value\",\"userPreference\":\"userPref\"}"
         },
         "getAppLoginTokens": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/{authPath}",
           "confirmed": false,
@@ -2371,6 +2375,7 @@
           "body_example": "{\"appUuid\":\"a1b2c3d4-uuid\",\"clientId\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"codeVerifier\":\"pkce_code_verifier\",\"fidoTokenKey\":\"fido-token-key\",\"firstName\":\"Jane\",\"friscoTokenType\":\"online\",\"grantType\":\"identifier_code\",\"idToken\":\"id-token-jwt\",\"identityProvider\":\"VZ\",\"interimFriscoTokenType\":\"online\",\"interimToken\":\"interim-token\",\"interimTokenType\":\"Bearer\",\"lastName\":\"Doe\",\"otpCode\":\"123456\",\"redirectUri\":\"https://example.com/callback\",\"refreshToken\":\"refresh-token-value\",\"refreshTokenIdentityProvider\":\"VZ\",\"token\":\"access-token-value\",\"userPreference\":\"userPref\"}"
         },
         "getChildDeviceAccessToken": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/deviceauth/auth/token",
           "confirmed": false,
@@ -2379,6 +2384,7 @@
           "body_example": "{\"app_uuid\":\"a1b2c3d4-uuid\",\"client_id\":\"6ebckm2cmaijai6kfb7251ar9a\",\"code\":\"AUTHCODE123\",\"frisco_token_type\":\"online\",\"grant_type\":\"identifier_code\",\"otp_code\":\"123456\"}"
         },
         "logOut": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/logout",
           "confirmed": false,
@@ -2387,6 +2393,7 @@
           "description": "Log the user out and invalidate the session (POST device-auth v5 user/auth/logout)."
         },
         "loginActivity": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/l1/login/activity",
           "confirmed": false,
@@ -2395,6 +2402,7 @@
           "description": "Record a login-activity event (POST device-auth v7 user/auth/l1/login/activity)."
         },
         "auditLogin": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v5/user/login/audit",
           "confirmed": false,
@@ -2403,6 +2411,7 @@
           "description": "Record a user login audit event (POST device-auth v5 user/login/audit)."
         },
         "postBiometricAudit": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/frisco/frisco-iam-device-auth/v5/user/auth/audit",
           "confirmed": false,
@@ -2411,6 +2420,7 @@
           "description": "Record a biometric-auth audit event (POST device-auth v5 user/auth/audit)."
         },
         "sendAuthOtp": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp",
           "confirmed": false,
@@ -2419,6 +2429,7 @@
           "description": "Send an authentication OTP via the device-auth service (POST device-auth v7 user/auth/otp)."
         },
         "sendOtp": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp",
           "confirmed": false,
@@ -2427,6 +2438,7 @@
           "description": "Send an OTP via the user-auth service (POST frisco-iam-user-auth v6 user/otp)."
         },
         "validateAuthOtp": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-device-auth/v7/user/auth/otp/validate",
           "confirmed": false,
@@ -2435,6 +2447,7 @@
           "description": "Validate an auth OTP via the device-auth service (POST device-auth v7 user/auth/otp/validate)."
         },
         "validateOtp": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/auth/frisco/frisco-iam-user-auth/v6/user/otp/validate",
           "confirmed": false,
@@ -2443,6 +2456,7 @@
           "description": "Validate an OTP via the user-auth service (POST frisco-iam-user-auth v6 user/otp/validate)."
         },
         "verifyMdn": {
+          "unavailable": "Internal auth machinery, not a family-administration action: the CLI's `auth` commands own the token/OTP lifecycle — use `auth login`, `auth refresh`, `auth logout`, `auth status` instead of calling this directly.",
           "method": "POST",
           "path": "/fam/userprofile-management/v5/phonenumber/validate",
           "confirmed": false,
