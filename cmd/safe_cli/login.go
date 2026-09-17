@@ -31,12 +31,18 @@ type authLoginCmd struct {
 	Redirect  string `name:"redirect" help:"Override the OAuth redirect_uri (advanced; e.g. an RFC 8252 loopback)."`
 	NoBrowser bool   `name:"no-browser" help:"Do not try to open a browser; just print the URL."`
 	Paste     bool   `name:"paste" help:"Paste the vsfapp:// redirect manually instead of the macOS scheme handler."`
+	NewDevice bool   `name:"new-device" help:"Regenerate the device id first — recover from a backend session wedged to an abandoned prior login (its 500 'Internal Error … getting the auth token' at exchange)."`
 }
 
 func (c *authLoginCmd) Run(rc *runContext) error {
 	key, err := signingKey(c.APK)
 	if err != nil {
 		return err
+	}
+	if c.NewDevice {
+		if err := deviceid.Reset(); err != nil {
+			return fmt.Errorf("reset device id: %w", err)
+		}
 	}
 	appUUID, err := deviceid.AppUUID()
 	if err != nil {

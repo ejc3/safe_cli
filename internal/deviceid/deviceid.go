@@ -44,6 +44,21 @@ func AppUUID() (string, error) {
 	return u, nil
 }
 
+// Reset deletes the persisted app UUID so the next AppUUID() mints a fresh one. Use it to
+// recover from a backend auth session wedged to the old UUID (a login abandoned mid-flow
+// leaves a stuck frisco session whose code no longer matches a new login's PKCE challenge).
+// The path honors XDG_CONFIG_HOME, so it clears the id the CLI actually reads.
+func Reset() error {
+	path, err := defaultPath()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func defaultPath() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {

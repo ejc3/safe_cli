@@ -106,7 +106,22 @@ func (c *authExportCmd) Run(rc *runContext) error {
 		_, err = rc.Out.Write(data)
 		return err
 	}
-	if err := os.WriteFile(c.File, data, 0o600); err != nil {
+	// The bundle holds a durable refresh token, so the file must end up 0600 and must not
+	// be written through a pre-existing symlink or an existing loose-permission file
+	// (os.WriteFile would keep the old mode and follow a symlink). Drop any existing entry,
+	// then create a fresh regular file exclusively with 0600.
+	if err := os.Remove(c.File); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	f, err := os.OpenFile(c.File, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 	if rc.G.JSON {

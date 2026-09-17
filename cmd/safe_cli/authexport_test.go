@@ -26,7 +26,7 @@ func TestAuthExportImportRoundTrip(t *testing.T) {
 		MDN:     "5551234567",
 		AppUUID: "11111111-2222-4333-8444-555555555555",
 		Tokens: []tokenstore.Token{
-			{IDToken: "online-id", RefreshToken: "online-rt", FriscoTokenType: "online", ExpiresIn: 1800}, // #nosec G101 -- synthetic test fixture, not a real credential
+			{IDToken: "online-id", RefreshToken: "online-rt", FriscoTokenType: "online", ExpiresIn: 1800},             // #nosec G101 -- synthetic test fixture, not a real credential
 			{IDToken: "offline-id", RefreshToken: "offline-rt-DURABLE", FriscoTokenType: "offline", ExpiresIn: 86400}, // #nosec G101 -- synthetic test fixture, not a real credential
 		},
 	}
@@ -89,5 +89,56 @@ func TestAuthExportNoTokensErrors(t *testing.T) {
 	err := (&authExportCmd{}).Run(&runContext{G: &Globals{}, Out: &bytes.Buffer{}})
 	if err == nil {
 		t.Fatal("export with no stored tokens must error")
+	}
+}
+
+// TestAuthExportFileIsSecret: the bundle holds a durable refresh token, so --file must land
+// as a 0600 regular file even when the target already exists with loose permissions, and
+// must not be written through a pre-existing symlink (which could point somewhere shared).
+func TestAuthExportFileIsSecret(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	st, err := tokenstore.DefaultStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(&tokenstore.TokenSet{AppUUID: "u", Tokens: []tokenstore.Token{{RefreshToken: "rt", FriscoTokenType: "offline"}}}, time.Now()); err != nil { // #nosec G101 -- synthetic test fixture
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+
+	// Pre-existing world-readable file at the target: export must tighten it to 0600.
+	loose := filepath.Join(dir, "bundle.json")
+	if err := os.WriteFile(loose, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&authExportCmd{File: loose}).Run(&runContext{G: &Globals{}, Out: &bytes.Buffer{}}); err != nil {
+		t.Fatalf("export over loose file: %v", err)
+	}
+	fi, err := os.Lstat(loose)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := fi.Mode().Perm(); perm != 0o600 {
+		t.Errorf("exported bundle perm = %o, want 600", perm)
+	}
+
+	// Pre-existing symlink at the target: export must not write through it to the link's
+	// destination (the destination must stay untouched).
+	dest := filepath.Join(dir, "dest.txt")
+	if err := os.WriteFile(dest, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link.json")
+	if err := os.Symlink(dest, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&authExportCmd{File: link}).Run(&runContext{G: &Globals{}, Out: &bytes.Buffer{}}); err != nil {
+		t.Fatalf("export over symlink: %v", err)
+	}
+	if b, _ := os.ReadFile(dest); string(b) != "keep" {
+		t.Errorf("export wrote through the symlink to its destination: dest=%q", string(b))
+	}
+	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("target should be a fresh regular file, not the symlink (err=%v, mode=%v)", err, fi.Mode())
 	}
 }

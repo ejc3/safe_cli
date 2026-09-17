@@ -515,13 +515,14 @@ that works on a datacenter host with no emulator, driving a real masked Chrome (
 where headless Playwright is blocked at credential submission). Order matters — the five
 rules below are each a failure someone already hit:
 
-1. **Fresh device id first.** `rm -f ~/.config/safe_cli/appuuid`. An `auth login` that was
-   started and then abandoned leaves a **stuck frisco session for that `app_uuid`**: every
-   later login for the same uuid gets a `code` bound to the dead session's PKCE challenge,
-   so the exchange fails `500 "Internal Error … getting the auth token"`. A new uuid gives
-   frisco a clean session. (State in the returned `vsfapp://` need not match — frisco rebinds
-   `state` per `app_uuid` and the CLI checks it leniently; the PKCE challenge binding is what
-   must match.)
+1. **Fresh device id first.** Run `auth login` with **`--new-device`** (it regenerates the
+   app UUID before starting — the XDG-correct way; a manual `rm` of the UUID file misses a
+   non-default `XDG_CONFIG_HOME`). An `auth login` that was started and then abandoned leaves
+   a **stuck frisco session for that `app_uuid`**: every later login for the same uuid gets a
+   `code` bound to the dead session's PKCE challenge, so the exchange fails `500 "Internal
+   Error … getting the auth token"`. A new uuid gives frisco a clean session. (State in the
+   returned `vsfapp://` need not match — frisco rebinds `state` per `app_uuid` and the CLI
+   checks it leniently; the PKCE challenge binding is what must match.)
 2. **One clean browser tab.** Restart the login browser so exactly one tab exists —
    `browserctl stop verizon-login && browserctl start verizon-login --url about:blank`. A
    **stale background tab left on an old 2FA page will complete and be captured instead of
@@ -529,7 +530,7 @@ rules below are each a failure someone already hit:
 3. **Run `auth login` in tmux, not a killable background task.** A Ctrl+C/stop that
    interrupts the turn also kills a backgrounded driver — and that kills the process holding
    the in-memory PKCE verifier + recom token, ending the login. tmux survives:
-   `tmux new -d -s vzlogin; tmux send-keys -t vzlogin "safe_cli auth login --phone <n> --apk <apk> --no-browser" Enter`,
+   `tmux new -d -s vzlogin; tmux send-keys -t vzlogin "safe_cli auth login --new-device --phone <n> --apk <apk> --no-browser" Enter`,
    then `tmux send-keys` the OTP and (later) the redirect, reading progress with
    `tmux capture-pane -p -J`.
 4. **Drive the desktop over VNC.** Read the browser's Xvfb display with
