@@ -509,6 +509,44 @@ intercept the `vsfapp://` navigation. Footguns: create the session with
 mid-2FA); a fresh cookieless session avoids a **stale 2FA page that never sends a code**;
 auth `code`s expire in ~60 s, so exchange immediately.
 
+**Alternative (headless server): the browser-manager desktop + tmux.** This is the recipe
+that works on a datacenter host with no emulator, driving a real masked Chrome (the one at
+`github.com/ejc3/aws` `browser-manager/`, whose headed Chrome passes Verizon's bot check
+where headless Playwright is blocked at credential submission). Order matters — the five
+rules below are each a failure someone already hit:
+
+1. **Fresh device id first.** `rm -f ~/.config/safe_cli/appuuid`. An `auth login` that was
+   started and then abandoned leaves a **stuck frisco session for that `app_uuid`**: every
+   later login for the same uuid gets a `code` bound to the dead session's PKCE challenge,
+   so the exchange fails `500 "Internal Error … getting the auth token"`. A new uuid gives
+   frisco a clean session. (State in the returned `vsfapp://` need not match — frisco rebinds
+   `state` per `app_uuid` and the CLI checks it leniently; the PKCE challenge binding is what
+   must match.)
+2. **One clean browser tab.** Restart the login browser so exactly one tab exists —
+   `browserctl stop verizon-login && browserctl start verizon-login --url about:blank`. A
+   **stale background tab left on an old 2FA page will complete and be captured instead of
+   your fresh flow** (its `state`/`code` are from a dead session → `500`).
+3. **Run `auth login` in tmux, not a killable background task.** A Ctrl+C/stop that
+   interrupts the turn also kills a backgrounded driver — and that kills the process holding
+   the in-memory PKCE verifier + recom token, ending the login. tmux survives:
+   `tmux new -d -s vzlogin; tmux send-keys -t vzlogin "safe_cli auth login --phone <n> --apk <apk> --no-browser" Enter`,
+   then `tmux send-keys` the OTP and (later) the redirect, reading progress with
+   `tmux capture-pane -p -J`.
+4. **Drive the desktop over VNC.** Read the browser's Xvfb display with
+   `import -window root` (ImageMagick) and act with `xdotool` (navigate the address bar to
+   the authorize URL, type User ID / password, Sign in, type the Verizon 2FA code). The
+   browser-manager captures the `vsfapp://…?code=…` the desktop can't open to
+   `…/run/<id>/app-redirects.log` (custom-scheme redirect capture, added for exactly this).
+5. **Be quick.** The recom token from the device-OTP leg is short-lived; do the whole
+   browser step and paste the redirect within a couple of minutes or the exchange 500s.
+
+**The durable escape hatch — do the browser dance once, then move auth by file.** After a
+successful login, `safe_cli auth export --file bundle.json` writes the token bundle (the
+durable **offline** refresh token + `app_uuid`); on any other device `safe_cli auth import
+bundle.json` then `safe_cli auth refresh` restores working auth **with no browser, OTP, or
+2FA**. The bundle is a secret (it mints tokens for the account) — 0600, trusted channel,
+delete after import.
+
 ### 9a. Heap token recovery (one-shot, no login)
 
 If the app is already logged in on the emulator, you can lift its live tokens instead of
