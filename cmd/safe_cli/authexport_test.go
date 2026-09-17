@@ -26,8 +26,8 @@ func TestAuthExportImportRoundTrip(t *testing.T) {
 		MDN:     "5551234567",
 		AppUUID: "11111111-2222-4333-8444-555555555555",
 		Tokens: []tokenstore.Token{
-			{IDToken: "online-id", RefreshToken: "online-rt", FriscoTokenType: "online", ExpiresIn: 1800},
-			{IDToken: "offline-id", RefreshToken: "offline-rt-DURABLE", FriscoTokenType: "offline", ExpiresIn: 86400},
+			{IDToken: "online-id", RefreshToken: "online-rt", FriscoTokenType: "online", ExpiresIn: 1800}, // #nosec G101 -- synthetic test fixture, not a real credential
+			{IDToken: "offline-id", RefreshToken: "offline-rt-DURABLE", FriscoTokenType: "offline", ExpiresIn: 86400}, // #nosec G101 -- synthetic test fixture, not a real credential
 		},
 	}
 	if err := stA.Save(orig, time.Now()); err != nil {
