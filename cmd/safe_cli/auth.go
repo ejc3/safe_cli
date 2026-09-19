@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,7 +47,8 @@ func loadTokens() (*tokenstore.Store, *tokenstore.TokenSet, error) {
 type authCmd struct {
 	Login          authLoginCmd          `cmd:"" help:"One-time assisted login: device OTP, hosted Verizon login + 2FA, token exchange."`
 	Refresh        authRefreshCmd        `cmd:"" help:"Refresh the id_token using the stored online refresh_token (no OTP)."`
-	Import         authImportCmd         `cmd:"" help:"Import a captured frisco token JSON and persist it (0600)."`
+	Import         authImportCmd         `cmd:"" help:"Import a token bundle (from 'auth export' or a captured frisco token JSON) and persist it (0600)."`
+	Export         authExportCmd         `cmd:"" help:"Export the stored token bundle so another device can authenticate without repeating the browser login; import it there with 'auth import'."`
 	Status         authStatusCmd         `cmd:"" help:"Show stored token status."`
 	Logout         authLogoutCmd         `cmd:"" help:"Delete stored tokens."`
 	ExtractKey     authExtractKeyCmd     `cmd:"" name:"extract-key" help:"Read the request-signing key from your own APK and print it."`
@@ -73,8 +75,71 @@ func (c *authExtractKeyCmd) Run(rc *runContext) error {
 	return err
 }
 
+// authExportCmd writes the stored token bundle so auth can be moved to another device:
+// export here, `auth import` there. The bundle carries the durable OFFLINE refresh token
+// and the app_uuid, so the other device can `auth refresh` for fresh id_tokens without
+// repeating the assisted browser login. It is a SECRET — anyone holding it can mint tokens
+// for the account — so write it to a 0600 file or a trusted channel, never a shared path.
+type authExportCmd struct {
+	File string `name:"file" type:"path" help:"Write the bundle to this file (0600) instead of stdout."`
+}
+
+func (c *authExportCmd) Run(rc *runContext) error {
+	st, err := tokenstore.DefaultStore()
+	if err != nil {
+		return err
+	}
+	ts, err := st.Load()
+	if err != nil {
+		return err
+	}
+	if len(ts.Tokens) == 0 {
+		return fmt.Errorf("no tokens to export; run 'safe_cli auth login' first")
+	}
+	data, err := json.MarshalIndent(ts, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	if c.File == "" {
+		// stdout is the raw bundle so `safe_cli auth export > bundle.json` round-trips into
+		// `safe_cli auth import bundle.json`. Progress/warnings go to stderr via the caller.
+		_, err = rc.Out.Write(data)
+		return err
+	}
+	// The bundle holds a durable refresh token. Write it atomically: a fresh 0600 temp file
+	// (os.CreateTemp is 0600 + O_EXCL) renamed over the destination. This keeps the mode at
+	// 0600 even if the target existed loose, replaces a symlink target rather than writing
+	// through it, and — unlike remove-then-create — never leaves the previous export missing
+	// or truncated when creation/write/close fails. Same pattern the token-store writer uses.
+	tmp, err := os.CreateTemp(filepath.Dir(c.File), ".safe_cli-export-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op after a successful rename
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, c.File); err != nil {
+		return err
+	}
+	if rc.G.JSON {
+		return outfmt.JSON(rc.Out, map[string]any{"exported": len(ts.Tokens), "path": c.File})
+	}
+	_, err = fmt.Fprintf(rc.Out, "exported %d token(s) -> %s (0600).\n"+
+		"On another device: safe_cli auth import %s  (then `safe_cli auth refresh`).\n"+
+		"This file is a SECRET — it can mint tokens for the account; delete it after import.\n",
+		len(ts.Tokens), c.File, c.File)
+	return err
+}
+
 type authImportCmd struct {
-	File string `arg:"" type:"existingfile" help:"Path to the frisco token JSON (the token endpoint response)."`
+	File string `arg:"" type:"existingfile" help:"Path to a token bundle from 'auth export', or a captured frisco token JSON."`
 }
 
 func (c *authImportCmd) Run(rc *runContext) error {
