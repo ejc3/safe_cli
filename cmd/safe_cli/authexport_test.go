@@ -108,6 +108,7 @@ func TestAuthExportFileIsSecret(t *testing.T) {
 
 	// Pre-existing world-readable file at the target: export must tighten it to 0600.
 	loose := filepath.Join(dir, "bundle.json")
+	// #nosec G306 -- deliberately loose: the test verifies export tightens it to 0600.
 	if err := os.WriteFile(loose, []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
