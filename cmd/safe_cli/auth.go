@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -106,22 +107,25 @@ func (c *authExportCmd) Run(rc *runContext) error {
 		_, err = rc.Out.Write(data)
 		return err
 	}
-	// The bundle holds a durable refresh token, so the file must end up 0600 and must not
-	// be written through a pre-existing symlink or an existing loose-permission file
-	// (os.WriteFile would keep the old mode and follow a symlink). Drop any existing entry,
-	// then create a fresh regular file exclusively with 0600.
-	if err := os.Remove(c.File); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	f, err := os.OpenFile(c.File, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	// The bundle holds a durable refresh token. Write it atomically: a fresh 0600 temp file
+	// (os.CreateTemp is 0600 + O_EXCL) renamed over the destination. This keeps the mode at
+	// 0600 even if the target existed loose, replaces a symlink target rather than writing
+	// through it, and — unlike remove-then-create — never leaves the previous export missing
+	// or truncated when creation/write/close fails. Same pattern the token-store writer uses.
+	tmp, err := os.CreateTemp(filepath.Dir(c.File), ".safe_cli-export-*")
 	if err != nil {
 		return err
 	}
-	if _, err := f.Write(data); err != nil {
-		_ = f.Close()
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op after a successful rename
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
 		return err
 	}
-	if err := f.Close(); err != nil {
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, c.File); err != nil {
 		return err
 	}
 	if rc.G.JSON {
