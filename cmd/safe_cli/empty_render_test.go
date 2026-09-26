@@ -69,6 +69,17 @@ func TestEmptyWhenIgnoresMetadata(t *testing.T) {
 	if strings.Contains(out.String(), "No call or text activity") || !strings.Contains(out.String(), "otherParty") {
 		t.Errorf("a range with activity must print its data:\n%s", out.String())
 	}
+
+	// An unexpected shape carrying NEITHER named field (a schema change, a status/warning
+	// payload) must NOT be suppressed as "empty" — it is shown so nothing important is hidden.
+	odd := &client.Response{Status: 200, Body: []byte(`{"warning":"partial results, retry"}`)}
+	out.Reset()
+	if err := writeVerbResponse(&out, false, odd, c, nil); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "No call or text activity") || !strings.Contains(out.String(), "warning") {
+		t.Errorf("a payload with none of the empty_when fields must be shown, not suppressed:\n%s", out.String())
+	}
 }
 
 // TestEmptyTableRendersNoRecords: a table verb whose body carries no rows prints a plain

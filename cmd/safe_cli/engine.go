@@ -1115,7 +1115,7 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 	// body is never leaf-empty), or — when empty_when is unset — every leaf in the body is
 	// empty. A listing renders that as a short line instead of a table of dashes or (for a
 	// table-less verb that opted in with empty_message) a blob of nulls.
-	noData := false
+	var noData bool
 	if c.Output != nil && len(c.Output.EmptyWhen) > 0 {
 		noData = fieldsEmpty(resp.Body, c.Output.EmptyWhen)
 	} else {
