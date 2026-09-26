@@ -3,6 +3,7 @@ package descriptor
 import (
 	"encoding/json"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -299,6 +300,17 @@ func TestScreenTimeCaptured(t *testing.T) {
 	if !put.Confirmed || !strings.Contains(put.BodyExample, "screenTimeLimitId") || strings.Contains(put.BodyExample, "America/") {
 		t.Errorf("putScreenTimeData must be confirmed, carry screenTimeLimitId, no IANA tz: confirmed=%v ex=%s", put.Confirmed, put.BodyExample)
 	}
+	// requestType is the query that distinguishes actionOnScreenTimeData (the alternate
+	// AdditionalScreenTimeRequest route on the same PUT path) from the ordinary confirmed
+	// update. The harvested contract gives putScreenTimeData NO query params, so it must not
+	// declare requestType — otherwise opFlags renders it as an input and the descriptor tells
+	// an agent to select the action route for a plain screen-time update.
+	if slices.Contains(put.Query, "requestType") {
+		t.Errorf("putScreenTimeData must not declare a requestType query (it belongs to actionOnScreenTimeData): %v", put.Query)
+	}
+	if !slices.Contains(e.Operations["actionOnScreenTimeData"].Query, "requestType") {
+		t.Errorf("actionOnScreenTimeData must keep its requestType query (the route discriminator): %v", e.Operations["actionOnScreenTimeData"].Query)
+	}
 	if !e.Operations["deleteScreenTimeData"].Confirmed {
 		t.Error("deleteScreenTimeData must be confirmed (verified live)")
 	}
@@ -426,8 +438,22 @@ func TestGeofenceUpdateCaptured(t *testing.T) {
 		t.Fatal(err)
 	}
 	o := d.Entities["geofence"].Operations["updateDeviceGeofenceSettings"]
-	if !o.Confirmed || !strings.Contains(o.BodyExample, "geofenceId") || !strings.Contains(o.BodyExample, "geofenceType") {
-		t.Errorf("updateDeviceGeofenceSettings must be confirmed and carry geofenceId + geofenceType: confirmed=%v ex=%s", o.Confirmed, o.BodyExample)
+	if !o.Confirmed {
+		t.Errorf("updateDeviceGeofenceSettings must be confirmed: confirmed=%v", o.Confirmed)
+	}
+	// Assert the captured VALUES, not just the presence of the keys: the body this op
+	// was corrected to carries geofenceType:"all" and operation:"upsert". Checking only
+	// that the keys exist would still pass if the body were reverted to the pre-capture
+	// geofenceType:"arrival_departure" / operation:"UPDATE", so pin the values themselves.
+	for _, want := range []string{`"geofenceId"`, `"geofenceType":"all"`, `"operation":"upsert"`} {
+		if !strings.Contains(o.BodyExample, want) {
+			t.Errorf("updateDeviceGeofenceSettings body must contain %s: ex=%s", want, o.BodyExample)
+		}
+	}
+	// The baked path query is operation=configGeoDevice; the describe text must name it
+	// correctly, not as eventType=configGeoDevice, or it teaches callers the wrong parameter.
+	if strings.Contains(o.Description, "eventType=configGeoDevice") || !strings.Contains(o.Description, "operation=configGeoDevice") {
+		t.Errorf("updateDeviceGeofenceSettings description must say operation=configGeoDevice (baked path), not eventType=: %s", o.Description)
 	}
 }
 
