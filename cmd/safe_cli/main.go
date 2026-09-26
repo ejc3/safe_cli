@@ -109,7 +109,7 @@ type describeCmd struct {
 func (c *describeCmd) Run(rc *runContext) error {
 	e, ok := rc.D.Entity(c.Entity)
 	if !ok {
-		if near := closest(c.Entity, rc.D.EntityNames(), 3); len(near) > 0 {
+		if near := closest(c.Entity, rc.D.EntityNames(), 2); len(near) > 0 {
 			return fmt.Errorf("unknown entity %q; did you mean %q? (run 'safe_cli entities')", c.Entity, near[0])
 		}
 		return fmt.Errorf("unknown entity %q; run 'safe_cli entities'", c.Entity)
@@ -309,9 +309,29 @@ func main() {
 			os.Exit(2)
 		}
 		// Terse error; exit 2 is the conventional shell "usage error" code (kong defaults to 80).
-		_, _ = fmt.Fprintln(os.Stderr, "safe_cli:", err)
+		// A bare "expected …" (e.g. `call` with no entity) gives no next step; nudge to --help.
+		msg := err.Error()
+		if strings.HasPrefix(msg, "expected ") {
+			hint := "safe_cli --help"
+			if a := firstCommandWord(os.Args[1:]); a != "" {
+				hint = "safe_cli " + a + " --help"
+			}
+			msg += fmt.Sprintf(" (run `%s`)", hint)
+		}
+		_, _ = fmt.Fprintln(os.Stderr, "safe_cli:", msg)
 		os.Exit(2)
 	}
 	rc := &runContext{D: d, G: &cli.Globals, Out: os.Stdout}
 	ctx.FatalIfErrorf(ctx.Run(rc))
+}
+
+// firstCommandWord returns the first non-flag argument — the top-level command — so a
+// "expected …" usage error can point at that command's --help. Empty for no args.
+func firstCommandWord(args []string) string {
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+	}
+	return ""
 }

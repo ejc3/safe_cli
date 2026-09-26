@@ -61,3 +61,34 @@ func TestDescribeUnknownEntitySuggests(t *testing.T) {
 		t.Errorf("describe error should say \"did you mean\", got: %v", err)
 	}
 }
+
+// TestClosestRejectsWeakMatch: a short name whose nearest entity is 3 edits away (member ->
+// tamper) gets NO suggestion at the tightened threshold — the audit flagged the nonsense
+// "did you mean tamper?".
+func TestClosestRejectsWeakMatch(t *testing.T) {
+	d, _ := descriptor.Default()
+	names := d.EntityNames()
+	if got := closest("member", names, 2); len(got) != 0 {
+		t.Errorf("`member` should get no suggestion at maxDist 2, got %v", got)
+	}
+	if got := closest("locations", names, 2); len(got) == 0 || got[0] != "location" {
+		t.Errorf("`locations` should still suggest `location` at maxDist 2, got %v", got)
+	}
+}
+
+func TestFirstCommandWord(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"call"}, "call"},
+		{[]string{"describe"}, "describe"},
+		{[]string{"--json", "members"}, "members"},
+		{nil, ""},
+	}
+	for _, c := range cases {
+		if got := firstCommandWord(c.args); got != c.want {
+			t.Errorf("firstCommandWord(%v)=%q want %q", c.args, got, c.want)
+		}
+	}
+}
