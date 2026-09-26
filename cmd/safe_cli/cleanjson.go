@@ -63,3 +63,36 @@ func stripNoise(v any) any {
 func isPresignedURL(s string) bool {
 	return len(s) > 200 && (strings.Contains(s, "X-Amz-Signature") || strings.Contains(s, "X-Amz-Credential"))
 }
+
+// emptyRecordBody recognizes a "no matching records" 404 whose body is a genuine data
+// payload rather than a pure error — this backend returns e.g.
+// {"statusCode":404,"totalCalls":0,"callActivity":null,…,"errors":[…]} for a quiet range.
+// If the body is a JSON object carrying real data keys (anything beyond the error envelope),
+// it returns the body with the error-envelope keys removed and true; otherwise nil,false so
+// the caller reports the 404 as an error as usual.
+func emptyRecordBody(body []byte) ([]byte, bool) {
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil {
+		return nil, false
+	}
+	envelope := map[string]bool{"errors": true, "statuscode": true, "status": true, "message": true, "details": true, "resourceidentifier": true, "code": true}
+	dataKeys := 0
+	for k := range m {
+		if !envelope[strings.ToLower(k)] {
+			dataKeys++
+		}
+	}
+	if dataKeys == 0 {
+		return nil, false // a pure error envelope: a real not-found
+	}
+	for k := range m {
+		if envelope[strings.ToLower(k)] {
+			delete(m, k)
+		}
+	}
+	clean, err := json.Marshal(m)
+	if err != nil {
+		return nil, false
+	}
+	return clean, true
+}

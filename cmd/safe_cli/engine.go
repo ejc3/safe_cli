@@ -1052,7 +1052,19 @@ func writeDryRun(out io.Writer, asJSON bool, resp *client.Response, tgt *member)
 // as a one-row table, falling back to pretty JSON.
 func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *descriptor.CLI, tgt *member) error {
 	if resp.Status >= 400 {
-		return httpError(resp.Status, resp.Body)
+		// This backend answers "no matching records" with a 404 whose body is a real,
+		// data-shaped payload (e.g. call/text activity: {"totalCalls":0,"callActivity":null,…}),
+		// not just an error. Render that as an empty result — with the errors/statusCode noise
+		// stripped — instead of a scary HTTP 404, so `calls log` on a quiet week reads cleanly.
+		if resp.Status == 404 {
+			if clean, ok := emptyRecordBody(resp.Body); ok {
+				resp = &client.Response{Status: 200, Body: clean}
+			} else {
+				return httpError(resp.Status, resp.Body)
+			}
+		} else {
+			return httpError(resp.Status, resp.Body)
+		}
 	}
 	if asJSON {
 		var m map[string]any

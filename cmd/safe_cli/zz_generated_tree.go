@@ -6,6 +6,7 @@ package main
 // command group, one verb per cli block, every flag typed. It is embedded in CLI.
 type generatedAreas struct {
 	Apps          AppsArea          `cmd:"" name:"apps" help:"Block or allow individual apps on a child's phone, and list which are blocked."`
+	Calls         CallsArea         `cmd:"" name:"calls" help:"A child's recent call and text activity — 'calls log --child <SERVICE-ID> --since 7d'."`
 	Filter        FilterArea        `cmd:"" name:"filter" help:"See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow."`
 	Location      LocationArea      `cmd:"" name:"location" help:"Where your family is — 'location where' shows each member's last-known position from the dashboard."`
 	PauseInternet PauseInternetArea `cmd:"" name:"pause-internet" help:"Pause or resume a child's internet right now, and read the current pause state."`
@@ -62,6 +63,30 @@ func (c *AppsListCmd) Run(rc *runContext) error {
 		given["find"] = *c.Find
 	}
 	return runVerb(rc, "content_filter", "getCategories", "apps", "", "list", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// CallsArea groups the calls verbs (core verbs first).
+type CallsArea struct {
+	Log CallsLogCmd `cmd:"" name:"log" help:"List a child's recent call and text activity. Give a time span with --since (e.g. 7d, 24h, or 2026-09-01); --until defaults to now."`
+}
+
+// CallsLogCmd: calls  log <- calls_and_texts.getCallAndTextActivityListV7
+type CallsLogCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	Since  *string `name:"since" help:"Start of the range: a span back (7d, 24h, 90m), a date (YYYY-MM-DD), or an RFC3339 timestamp." required:""`
+	Until  *string `name:"until" help:"End of the range (default now). (default: now)"`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *CallsLogCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	if c.Since != nil {
+		given["since"] = *c.Since
+	}
+	if c.Until != nil {
+		given["until"] = *c.Until
+	}
+	return runVerb(rc, "calls_and_texts", "getCallAndTextActivityListV7", "calls", "", "log", given, deref(c.Child), c.DryRun, false, false)
 }
 
 // FilterArea groups the filter verbs (core verbs first).
