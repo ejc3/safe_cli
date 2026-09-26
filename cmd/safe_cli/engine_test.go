@@ -1144,7 +1144,10 @@ func TestEnrichMemberNames(t *testing.T) {
 	fb := newFakeBackend(t)
 	d, _ := descriptor.Default()
 	body := []byte(`{"events":[{"profileId":3000001},{"profileId":9999999}]}`)
-	got := enrichMemberNames(context.Background(), fb.do(), d, "1000001", "app-uuid", body, "profileId")
+	got, ok := enrichMemberNames(context.Background(), fb.do(), d, "1000001", "app-uuid", body, "profileId")
+	if !ok {
+		t.Fatal("enrichMemberNames should report ok when the account read succeeds")
+	}
 	var m map[string]any
 	if err := json.Unmarshal(got, &m); err != nil {
 		t.Fatalf("bad json: %v (%s)", err, got)

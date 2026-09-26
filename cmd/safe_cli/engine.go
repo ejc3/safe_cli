@@ -486,8 +486,14 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if merged.Output != nil && merged.Output.Flatten != "" {
 			resp.Body = flattenField(resp.Body, merged.Output.Flatten, merged.Output.FlattenParent)
 		}
+		enriched := true
 		if merged.Output != nil && merged.Output.EnrichNames != "" {
-			resp.Body = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
+			resp.Body, enriched = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
+		}
+		// A name filter over an unenriched body would prune every record and misreport a
+		// lookup failure as "no matches"; fail loudly instead.
+		if err := enrichmentFilterConflict(enriched, finds, filters); err != nil {
+			return err
 		}
 		if len(filters) > 0 {
 			resp.Body = filterResponse(resp.Body, filters)
@@ -1056,6 +1062,21 @@ func writeDryRun(out io.Writer, asJSON bool, resp *client.Response, tgt *member)
 // writeVerbResponse renders the backend response: raw JSON under --json (with a _meta of
 // the resolved target so an agent can chain), otherwise the fields cli.output.table names
 // as a one-row table, falling back to pretty JSON.
+// emptyMessage is the line an empty listing prints: the verb's own empty_message when it set
+// one, else a generic default.
+func emptyMessage(c *descriptor.CLI) string {
+	if c.Output != nil && c.Output.EmptyMessage != "" {
+		return c.Output.EmptyMessage
+	}
+	return "No records found."
+}
+
+// writeLine writes s and a trailing newline.
+func writeLine(out io.Writer, s string) error {
+	_, err := fmt.Fprintln(out, s)
+	return err
+}
+
 func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *descriptor.CLI, tgt *member) error {
 	if resp.Status >= 400 {
 		// This backend answers "no matching records" with a 404 whose body is a real,
@@ -1089,6 +1110,10 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 		_, err := out.Write(ensureNewline(resp.Body))
 		return err
 	}
+	// A body whose every leaf is null/0/false/""/empty is "no data". A listing renders that
+	// as a short line instead of a table of dashes or (for a table-less verb that opted in
+	// with empty_message) a blob of nulls.
+	noData := isDataEmpty(resp.Body)
 	if c.Output != nil && len(c.Output.Table) > 0 {
 		// A column is "path" or "path:HEADER" — the optional header keeps a nested path
 		// (locationDetails.address.city) from becoming an unreadable column title.
@@ -1121,10 +1146,20 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 			if hit {
 				return outfmt.Table(out, upper(headers), rows)
 			}
+			// A table verb that came back with nothing to show is an empty listing; say so
+			// plainly rather than fall through to a blob. (If the body is NOT data-empty the
+			// table paths simply missed it, so keep the raw view for debugging.)
+			if noData {
+				return writeLine(out, emptyMessage(c))
+			}
 		}
+	} else if noData && c.Output != nil && c.Output.EmptyMessage != "" {
+		// A table-less verb that opted in: render its empty payload as one line.
+		return writeLine(out, c.Output.EmptyMessage)
 	}
-	// No table configured: pretty-print for a person, minus the presigned-URL noise and
-	// with `&` unescaped (status >=400 was already turned into an error at the top).
+	// No table configured (or a non-empty body a table missed): pretty-print for a person,
+	// minus the presigned-URL noise and with `&` unescaped (status >=400 was already turned
+	// into an error at the top).
 	return cleanHumanJSON(out, resp.Body)
 }
 
@@ -1271,13 +1306,20 @@ func verbCallFor(entity, op, area, group, verb string, given map[string]any, chi
 	return vc
 }
 
+// enrichedNameField is the field enrichMemberNames adds; a find:/filter: on this field
+// depends on enrichment having run.
+const enrichedNameField = "memberName"
+
 // enrichMemberNames adds a "memberName" field to each record whose idField holds a family
-// member's profileId, by joining the account read (getAccountDetails). Best-effort: if the
-// account read or parse fails, the body is returned unchanged so the verb still renders.
-func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor, selfSvc, appUUID string, body []byte, idField string) []byte {
+// member's profileId, by joining the account read (getAccountDetails). It returns the
+// (possibly unchanged) body and whether enrichment actually ran: ok is false when the
+// account read or a parse/marshal fails, so the body carries no memberName. A caller that
+// then filters on memberName must treat ok==false specially (see enrichmentFilterConflict),
+// or an unresolved-names failure would masquerade as "no matches".
+func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor, selfSvc, appUUID string, body []byte, idField string) ([]byte, bool) {
 	acct, err := fetchAccount(ctx, do, d, selfSvc, appUUID)
 	if err != nil {
-		return body
+		return body, false
 	}
 	names := make(map[string]string, len(acct.Members))
 	for _, m := range acct.Members {
@@ -1285,19 +1327,35 @@ func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor,
 	}
 	var doc any
 	if json.Unmarshal(body, &doc) != nil {
-		return body
+		return body, false
 	}
 	for _, rec := range tableRecords(doc) {
 		if pid, ok := rec[idField]; ok {
 			if name, ok := names[fmt.Sprint(normalizeNum(pid))]; ok {
-				rec["memberName"] = name
+				rec[enrichedNameField] = name
 			}
 		}
 	}
 	if out, err := json.Marshal(doc); err == nil {
-		return out
+		return out, true
 	}
-	return body
+	return body, false
+}
+
+// enrichmentFilterConflict reports the error to raise when name enrichment did not run but a
+// find:/filter: on the enriched name field was requested: applying it would prune every
+// record and misreport "no matches" for what is really an account-lookup failure. Returns nil
+// when there is no such conflict (enrichment ran, or no name-based selector was given).
+func enrichmentFilterConflict(enriched bool, finds map[string]string, filters map[string]any) error {
+	if enriched {
+		return nil
+	}
+	_, findByName := finds[enrichedNameField]
+	_, filterByName := filters[enrichedNameField]
+	if findByName || filterByName {
+		return fmt.Errorf("could not resolve member names to filter by --member (the account lookup failed); retry, or drop --member to list everyone")
+	}
+	return nil
 }
 
 // flattenField expands a nested array-of-objects field (each app group's subCategories) into
