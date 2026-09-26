@@ -86,6 +86,8 @@ func TestCommandPath(t *testing.T) {
 		{[]string{"--json", "members"}, "members"},                        // leading global flag skipped
 		{[]string{"location", "where", "--child", "9"}, "location where"}, // full path, stops at the flag
 		{[]string{"call", "todo", "invoke", "--bad"}, "call todo invoke"},
+		// a positional with whitespace keeps its boundary (shell-quoted), not split into words
+		{[]string{"auth", "import", "/tmp/my tokens.json", "--bogus"}, "auth import '/tmp/my tokens.json'"},
 		{nil, ""},
 	}
 	for _, c := range cases {

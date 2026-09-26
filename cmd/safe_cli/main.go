@@ -333,9 +333,11 @@ func main() {
 }
 
 // commandPath returns the command words — the run of non-flag arguments (`location where`,
-// `call todo invoke`) — so a usage error can point at that command's --help, where its real
-// flags are listed. A leading global flag (e.g. `--json`) is skipped; a flag AFTER the command
-// words ends the path. Empty for no args.
+// `call todo invoke`) — as a shell-safe string, so a usage error can point at that command's
+// --help where its real flags are listed. A leading global flag (e.g. `--json`) is skipped; a
+// flag AFTER the command words ends the path. Each word is shell-quoted, so a positional that
+// contains whitespace (a file path with spaces) keeps its boundary in the printed hint rather
+// than looking like two arguments. Empty for no args.
 func commandPath(args []string) string {
 	var words []string
 	for _, a := range args {
@@ -345,7 +347,25 @@ func commandPath(args []string) string {
 			}
 			continue // a leading global flag (--json)
 		}
-		words = append(words, a)
+		words = append(words, shellQuote(a))
 	}
 	return strings.Join(words, " ")
+}
+
+// shellQuote returns s unchanged when it is a plain word, or single-quoted (with embedded
+// single quotes escaped) when it contains anything that a shell would treat specially — so an
+// argument boundary in a printed command hint survives copy-paste.
+func shellQuote(s string) string {
+	if s == "" {
+		return "''"
+	}
+	for _, r := range s {
+		safe := r == '-' || r == '_' || r == '.' || r == '/' || r == ':' || r == '@' ||
+			r == '+' || r == '=' || r == ',' ||
+			(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if !safe {
+			return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+		}
+	}
+	return s
 }
