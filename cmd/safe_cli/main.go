@@ -109,6 +109,9 @@ type describeCmd struct {
 func (c *describeCmd) Run(rc *runContext) error {
 	e, ok := rc.D.Entity(c.Entity)
 	if !ok {
+		if near := closest(c.Entity, rc.D.EntityNames(), 3); len(near) > 0 {
+			return fmt.Errorf("unknown entity %q; did you mean %q? (run 'safe_cli entities')", c.Entity, near[0])
+		}
 		return fmt.Errorf("unknown entity %q; run 'safe_cli entities'", c.Entity)
 	}
 	if rc.G.JSON {
@@ -295,15 +298,19 @@ func main() {
 	parser := kong.Must(&cli,
 		kong.Name("safe_cli"),
 		kong.Description("Unofficial CLI for Verizon Family (Smith Micro SafePath) — administer your own family account."),
-		kong.UsageOnError(),
+		// Deliberately NOT kong.UsageOnError(): a missing/unknown flag should be a one-line
+		// "safe_cli: missing flags: --child=…", not the whole usage screen (UX audit #90).
+		// `--help` still prints full help; it is not an error path.
 	)
 	ctx, err := parser.Parse(os.Args[1:])
 	if err != nil {
 		if hint := entityCommandHint(d, os.Args[1:], err); hint != "" {
 			_, _ = fmt.Fprintln(os.Stderr, hint)
-			os.Exit(1)
+			os.Exit(2)
 		}
-		parser.FatalIfErrorf(err) // kong's default: usage + error, then exit
+		// Terse error; exit 2 is the conventional shell "usage error" code (kong defaults to 80).
+		_, _ = fmt.Fprintln(os.Stderr, "safe_cli:", err)
+		os.Exit(2)
 	}
 	rc := &runContext{D: d, G: &cli.Globals, Out: os.Stdout}
 	ctx.FatalIfErrorf(ctx.Run(rc))
