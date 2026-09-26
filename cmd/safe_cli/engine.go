@@ -1092,7 +1092,9 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 			}
 		}
 	}
-	return writeAPIResponse(out, false, resp)
+	// No table configured: pretty-print for a person, minus the presigned-URL noise and
+	// with `&` unescaped (status >=400 was already turned into an error at the top).
+	return cleanHumanJSON(out, resp.Body)
 }
 
 // tableRecords picks the objects a table row stands for: the elements of a top-level
