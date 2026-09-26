@@ -7,6 +7,7 @@ package main
 type generatedAreas struct {
 	Apps          AppsArea          `cmd:"" name:"apps" help:"Block or allow individual apps on a child's phone, and list which are blocked."`
 	Filter        FilterArea        `cmd:"" name:"filter" help:"See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow."`
+	Location      LocationArea      `cmd:"" name:"location" help:"Where your family is — 'location where' shows each member's last-known position from the dashboard."`
 	PauseInternet PauseInternetArea `cmd:"" name:"pause-internet" help:"Pause or resume a child's internet right now, and read the current pause state."`
 	Website       WebsiteArea       `cmd:"" name:"website" help:"A child's website block list, trusted (allowed) list, and safe search."`
 }
@@ -161,6 +162,21 @@ type FilterPresetsCmd struct {
 func (c *FilterPresetsCmd) Run(rc *runContext) error {
 	given := map[string]any{}
 	return runVerb(rc, "content_filter", "getAgeGroupMetaData", "filter", "", "presets", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// LocationArea groups the location verbs (core verbs first).
+type LocationArea struct {
+	Where LocationWhereCmd `cmd:"" name:"where" help:"Show where each family member is — last-known positions from the location dashboard. Targets the account holder and returns one row per member; no device is pinged."`
+}
+
+// LocationWhereCmd: location  where <- location.getDashboardDetails
+type LocationWhereCmd struct {
+	DryRun bool `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *LocationWhereCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "location", "getDashboardDetails", "location", "", "where", given, "", c.DryRun, false, false)
 }
 
 // PauseInternetArea groups the pause-internet verbs (core verbs first).

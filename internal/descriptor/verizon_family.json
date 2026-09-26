@@ -44,6 +44,7 @@
     "_note": "parental-control ops are id_token-authed (Authorization: <id_token>) plus these headers; NOT SigV4."
   },
   "areas": {
+    "location": "Where your family is — `location where` shows each member's last-known position from the dashboard.",
     "pause-internet": "Pause or resume a child's internet right now, and read the current pause state.",
     "filter": "See and change what web content is blocked for a child: the current filter, the age presets, and per-category block/allow.",
     "apps": "Block or allow individual apps on a child's phone, and list which are blocked.",
@@ -2688,6 +2689,22 @@
           "description": "List parents currently available to answer a child's Pick Me Up ride request."
         },
         "getDashboardDetails": {
+          "cli": [
+            {
+              "area": "location",
+              "verb": "where",
+              "target": "self",
+              "priority": "core",
+              "summary": "Show where each family member is — last-known positions from the location dashboard. Targets the account holder and returns one row per member; no device is pinged.",
+              "query": {
+                "source": "app",
+                "locationEnabled": "1",
+                "locPermission": "ALWAYS",
+                "onlyLastKnownLoc": "true",
+                "onDemand": "false"
+              }
+            }
+          ],
           "method": "GET",
           "path": "/vsf/location/v5/dashboard",
           "confirmed": true,
