@@ -37,3 +37,14 @@ func TestAuthLoginPhoneFlag(t *testing.T) {
 		t.Errorf("auth login help must not mention mdn/MDN; got:\n%s", h)
 	}
 }
+
+// TestCallHelpHasWorkedExamples: `call --help` includes runnable examples (UX audit #90
+// finding 3 — a bare op table was hard to translate into a command).
+func TestCallHelpHasWorkedExamples(t *testing.T) {
+	h := helpFor(t, "call", "--help")
+	for _, want := range []string{"Examples:", "location getDashboardDetails", "--data", "--dry-run", "describe <entity>"} {
+		if !strings.Contains(h, want) {
+			t.Errorf("call --help missing %q:\n%s", want, h)
+		}
+	}
+}

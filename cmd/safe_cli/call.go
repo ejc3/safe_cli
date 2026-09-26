@@ -34,6 +34,25 @@ type callCmd struct {
 	Force     bool     `name:"force" help:"Send an operation marked unavailable in the descriptor anyway (the 'unavailable' reasons are observed on one account — pass this if yours has the device/product)."`
 }
 
+// Help adds worked examples to `call --help` — the audit found translating a describe row
+// into a working invocation took trial and error (UX audit #90). Kong appends this.
+func (c *callCmd) Help() string {
+	return `Examples:
+  # GET with query params — the location dashboard (prefer 'location where'):
+  safe_cli call location getDashboardDetails --service-id <SERVICE-ID> \
+      -q source=app -q locationEnabled=1 -q locPermission=ALWAYS \
+      -q onlyLastKnownLoc=true -q onDemand=false
+
+  # POST with a JSON body — preview it first with --dry-run:
+  safe_cli call <entity> <op> --service-id <SERVICE-ID> --data '{"field":"value"}' --dry-run
+
+Tips:
+  - 'safe_cli describe <entity>' lists each op's METHOD and FLAGS; a trailing * marks a
+    required query/body param, and describe shows a --data body_example for POST ops.
+  - Prefer a generated verb when one exists (see 'safe_cli --help'): 'location where',
+    'apps list', 'pause-internet pause' resolve ids and flags for you.`
+}
+
 func (c *callCmd) Run(rc *runContext) error {
 	// An op's `unavailable` reason is ADVISORY: it was observed on one account's device
 	// inventory, but the descriptor ships embedded, so this can't know the caller's own
