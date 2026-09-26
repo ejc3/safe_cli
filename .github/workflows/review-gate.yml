@@ -14,21 +14,32 @@
 # finding. So this fires on the review-state events too, and keeping it separate
 # means those events do not also rebuild Go.
 #
-# The signal is this job's own CHECK-RUN (its exit code) — NOT a commit status.
-# A commit status would need `statuses: write`, which GitHub forces to read-only for
-# fork PRs, so the required context would never post and every external PR would be
-# permanently unmergeable (codex P1 on #109). A check-run needs no write access.
+# The required check is the COMMIT STATUS `review-gate/disposition`, which this job
+# posts — NOT the job's own check-run. This is load-bearing, and it was learned the
+# hard way (#104 → #107 → #109):
+#   * A check-run signal cannot work for a gate that re-evaluates. The gate
+#     legitimately fails once (a finding is added) and later passes (it is
+#     disposed); that earlier *failure* check-run then lingers on the head SHA and
+#     branch protection keeps the PR BLOCKED even though the latest run passed —
+#     verified, it is not lag. And `cancel-in-progress: true` compounds it by
+#     leaving a *cancelled* check-run that also blocks.
+#   * A commit status is idempotent per (SHA, context): the latest post overwrites,
+#     nothing accumulates. So the job always exits 0 (its own check-run is
+#     irrelevant) and encodes the verdict in the status it posts, and concurrency is
+#     `cancel-in-progress: false` so a run is never cancelled mid-post.
 #
-# `cancel-in-progress: false` is the load-bearing fix: with it true, a superseded run
-# leaves a *cancelled* check-run that branch protection latches onto and blocks merge
-# even after a later run passes (the stuck state hit on #107). Queueing instead means
-# every run completes success/failure and the latest governs.
+# Scope: this gates SAME-REPO PRs, which is the whole of this repo's workflow
+# (single-maintainer, self-merge; see CLAUDE.md). A fork PR gets a read-only
+# GITHUB_TOKEN, so the status POST 403s and the required context never appears — the
+# fork PR is BLOCKED, which fails closed (never a wrong merge) and is the right
+# default for an unofficial tool taking external code. Giving forks a writable
+# status needs pull_request_target's privileged base-context run; deliberately
+# declined.
 #
-# One residual, in the SAFE direction: GitHub emits no workflow event when a thread is
-# *resolved*, so if resolving is the last action the check can stay stale-failure
-# (only ever blocks merge). Make the closing action a comment (a disposition /
-# REVIEW-ACK reply is a pull_request_review_comment, which re-fires this) so the check
-# reflects the settled state.
+# Residual, SAFE direction: no Actions event fires when a thread is *resolved*, so
+# if resolving is the last action the status can stay stale-failure (only blocks).
+# Make the closing action a comment (a disposition / REVIEW-ACK reply is a
+# pull_request_review_comment, which re-fires this) so the status reflects reality.
 name: review-gate
 
 on:
@@ -38,14 +49,16 @@ on:
   pull_request_review_comment:
     types: [created, edited, deleted]
 
-# Read-only — no write scope, so the gate runs identically on fork PRs. gh graphql
-# reads reviewThreads/reviews/comments with pull-requests:read.
+# statuses:write to post the commit status; the rest read-only. gh graphql reads
+# reviewThreads/reviews/comments with pull-requests:read. (A fork PR's token is
+# forced read-only regardless — see the scope note above.)
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
-# Queue re-evaluations of the SAME pr; do NOT cancel — a cancelled run is the very
-# thing that strands a blocking check. Keyed by PR number (every trigger carries one).
+# Queue re-evaluations of the SAME pr; do NOT cancel — a cancelled run is one of the
+# things that strands a blocking check. Keyed by PR number (every trigger carries one).
 concurrency:
   group: review-gate-${{ github.event.pull_request.number }}
   cancel-in-progress: false
@@ -58,11 +71,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: check review threads
+      - name: check review threads and post the disposition status
         env:
           GH_TOKEN: ${{ github.token }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
-        # Fails closed: the script exits 2 when it cannot run (gh/jq missing or the
-        # query errors), so the check-run is red for a gate that could not evaluate.
-        run: .claude/skills/pr-review-gate/check-review-threads.sh "${{ github.event.pull_request.number }}"
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # The script fails closed (exit 2) when it cannot run, so any non-zero is a
+          # failing status — a gate that could not evaluate never reports success.
+          if .claude/skills/pr-review-gate/check-review-threads.sh "$PR"; then
+            state=success
+            desc="every thread resolved and disposed"
+          else
+            state=failure
+            desc="unresolved or undisposed review threads — see the run log"
+          fi
+          gh api "repos/$REPO_OWNER/$REPO_NAME/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f context="review-gate/disposition" \
+            -f description="$desc" \
+            -f target_url="$RUN_URL"
+          echo "posted review-gate/disposition = $state for $HEAD_SHA"
