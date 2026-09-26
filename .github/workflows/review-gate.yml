@@ -14,6 +14,14 @@
 # attached to the same head SHA while native conversation-resolution clears, and
 # the PR merges with an undisposed finding. So this fires on the review-state
 # events too, and keeping it separate means those events do not also rebuild Go.
+#
+# One residual, in the SAFE direction: GitHub emits no workflow event when a
+# thread is *resolved* (there is no such Actions trigger), so if resolving is the
+# last action the check can stay stale-RED — which only ever blocks merge, never
+# wrongly permits it. To turn it green, make the closing action a comment (the
+# disposition / REVIEW-ACK reply naturally is one) or re-run this workflow after
+# resolving. A green result therefore always reflects a run that observed the
+# threads both resolved AND disposed; the dangerous stale-green is what is closed.
 name: review-gate
 
 on:
