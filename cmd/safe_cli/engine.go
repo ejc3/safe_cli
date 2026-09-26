@@ -486,8 +486,14 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if merged.Output != nil && merged.Output.Flatten != "" {
 			resp.Body = flattenField(resp.Body, merged.Output.Flatten, merged.Output.FlattenParent)
 		}
+		enriched := true
 		if merged.Output != nil && merged.Output.EnrichNames != "" {
-			resp.Body = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
+			resp.Body, enriched = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
+		}
+		// A name filter over an unenriched body would prune every record and misreport a
+		// lookup failure as "no matches"; fail loudly instead.
+		if err := enrichmentFilterConflict(enriched, finds, filters); err != nil {
+			return err
 		}
 		if len(filters) > 0 {
 			resp.Body = filterResponse(resp.Body, filters)
@@ -1300,13 +1306,20 @@ func verbCallFor(entity, op, area, group, verb string, given map[string]any, chi
 	return vc
 }
 
+// enrichedNameField is the field enrichMemberNames adds; a find:/filter: on this field
+// depends on enrichment having run.
+const enrichedNameField = "memberName"
+
 // enrichMemberNames adds a "memberName" field to each record whose idField holds a family
-// member's profileId, by joining the account read (getAccountDetails). Best-effort: if the
-// account read or parse fails, the body is returned unchanged so the verb still renders.
-func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor, selfSvc, appUUID string, body []byte, idField string) []byte {
+// member's profileId, by joining the account read (getAccountDetails). It returns the
+// (possibly unchanged) body and whether enrichment actually ran: ok is false when the
+// account read or a parse/marshal fails, so the body carries no memberName. A caller that
+// then filters on memberName must treat ok==false specially (see enrichmentFilterConflict),
+// or an unresolved-names failure would masquerade as "no matches".
+func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor, selfSvc, appUUID string, body []byte, idField string) ([]byte, bool) {
 	acct, err := fetchAccount(ctx, do, d, selfSvc, appUUID)
 	if err != nil {
-		return body
+		return body, false
 	}
 	names := make(map[string]string, len(acct.Members))
 	for _, m := range acct.Members {
@@ -1314,19 +1327,35 @@ func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor,
 	}
 	var doc any
 	if json.Unmarshal(body, &doc) != nil {
-		return body
+		return body, false
 	}
 	for _, rec := range tableRecords(doc) {
 		if pid, ok := rec[idField]; ok {
 			if name, ok := names[fmt.Sprint(normalizeNum(pid))]; ok {
-				rec["memberName"] = name
+				rec[enrichedNameField] = name
 			}
 		}
 	}
 	if out, err := json.Marshal(doc); err == nil {
-		return out
+		return out, true
 	}
-	return body
+	return body, false
+}
+
+// enrichmentFilterConflict reports the error to raise when name enrichment did not run but a
+// find:/filter: on the enriched name field was requested: applying it would prune every
+// record and misreport "no matches" for what is really an account-lookup failure. Returns nil
+// when there is no such conflict (enrichment ran, or no name-based selector was given).
+func enrichmentFilterConflict(enriched bool, finds map[string]string, filters map[string]any) error {
+	if enriched {
+		return nil
+	}
+	_, findByName := finds[enrichedNameField]
+	_, filterByName := filters[enrichedNameField]
+	if findByName || filterByName {
+		return fmt.Errorf("could not resolve member names to filter by --member (the account lookup failed); retry, or drop --member to list everyone")
+	}
+	return nil
 }
 
 // flattenField expands a nested array-of-objects field (each app group's subCategories) into

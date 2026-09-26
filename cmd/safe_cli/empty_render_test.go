@@ -104,3 +104,27 @@ func TestLocationWhereMemberFilter(t *testing.T) {
 		t.Error("calls log must carry an empty_message so an empty range does not print a blob of nulls")
 	}
 }
+
+// TestEnrichmentFilterConflict: when name enrichment did not run (account lookup failed) but a
+// --member (find:memberName) selector was requested, applying it would prune every record and
+// misreport a lookup failure as "no matches" — so it must raise an error instead. When
+// enrichment ran, or no name selector was given, there is no conflict.
+func TestEnrichmentFilterConflict(t *testing.T) {
+	byName := map[string]string{"memberName": "connor"}
+	// Enrichment failed + a name find requested -> error.
+	if err := enrichmentFilterConflict(false, byName, nil); err == nil {
+		t.Error("a name find over an unenriched body must error, not silently prune to empty")
+	}
+	// Same via a filter: destination.
+	if err := enrichmentFilterConflict(false, nil, map[string]any{"memberName": "connor"}); err == nil {
+		t.Error("a name filter over an unenriched body must error")
+	}
+	// Enrichment succeeded -> no conflict even with a name selector.
+	if err := enrichmentFilterConflict(true, byName, nil); err != nil {
+		t.Errorf("no conflict when enrichment ran: %v", err)
+	}
+	// Enrichment failed but the selector is on some OTHER field -> no conflict.
+	if err := enrichmentFilterConflict(false, map[string]string{"city": "san jose"}, nil); err != nil {
+		t.Errorf("a non-name selector does not depend on enrichment: %v", err)
+	}
+}
