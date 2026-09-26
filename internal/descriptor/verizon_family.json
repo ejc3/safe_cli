@@ -837,9 +837,22 @@
           "description": "Call/text activity for one contact (v7). Fixed (baked): activityType=call,text, timezone=preferred. Query: otherPartyMdn=the other party's phone number, startDate/endDate=yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z' (all three required — the API 400s an empty other-party phone number / start / end date), betaProviders=RCS|RCS,GIZMO (optional)."
         },
         "getSchedulesRequest": {
+          "cli": [
+            {
+              "area": "calls",
+              "verb": "schedules",
+              "target": "child",
+              "priority": "core",
+              "summary": "List the call/text restriction schedules on a child's device (windows when calls/texts are limited).",
+              "output": {
+                "pick": "schedules",
+                "table": ["name:NAME", "scheduleType:TYPE", "startTime:START", "endTime:END"]
+              }
+            }
+          ],
           "method": "GET",
           "path": "/parental-control/frisco/v6/schedules",
-          "confirmed": false,
+          "confirmed": true,
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
