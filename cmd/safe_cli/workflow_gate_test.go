@@ -84,14 +84,12 @@ func TestReviewGateReevaluatesOnReviewEvents(t *testing.T) {
 
 	joined := strings.Join(lines, "\n")
 
-	// The required signal must be the idempotent COMMIT STATUS review-gate/disposition, not
-	// the job's check-run: re-evaluating on every event otherwise accumulates several
-	// check-runs of one name on a head SHA, which branch protection reads ambiguously.
-	if !strings.Contains(joined, "review-gate/disposition") {
-		t.Errorf("%s must post the review-gate/disposition commit status (the idempotent required signal)", path)
-	}
-	if !regexp.MustCompile(`statuses/\$?\{?`).MatchString(joined) && !strings.Contains(joined, "/statuses/") {
-		t.Errorf("%s must POST to the commit statuses API so the latest verdict overwrites, not accumulates", path)
+	// The gate must not depend on write access: GitHub forces GITHUB_TOKEN read-only for fork
+	// PRs, so a `statuses: write` (commit-status) design would never post the required context
+	// and every external PR would be permanently unmergeable. The signal must be the job's own
+	// check-run, which needs no write scope.
+	if regexp.MustCompile(`(?m)statuses:\s*write`).MatchString(joined) {
+		t.Errorf("%s must not require statuses: write — it would break fork PRs (read-only token). Use the job's check-run as the signal", path)
 	}
 
 	// cancel-in-progress MUST be false: a cancelled run leaves a cancelled check that branch
