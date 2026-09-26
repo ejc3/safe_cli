@@ -1256,7 +1256,11 @@
             },
             "resolve": [
               "$child.profileId"
-            ]
+            ],
+            "output": {
+              "pick": "ageGroups",
+              "table": ["groupName:PRESET", "ages:AGES", "groupId:ID"]
+            }
           }
         },
         "getObjectionableSettings": {
@@ -1489,7 +1493,13 @@
                   "maps_to": "find:name",
                   "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
                 }
-              ]
+              ],
+              "output": {
+                "pick": "categories",
+                "flatten": "subCategories",
+                "flatten_parent": { "name": "group" },
+                "table": ["group:CATEGORY", "name:ITEM", "id:ID", "enabled:BLOCKED"]
+              }
             },
             {
               "area": "apps",
@@ -5937,7 +5947,7 @@
           "headers": [
             "x-fp-identifier-target-serviceid"
           ],
-          "description": "List visited websites via the v5 /website endpoint",
+          "description": "Read the website filter config (GET v5 /website): the child's blocked and trusted (allowed) websites and the per-engine safe-search state. This is `website list` — the CONFIG, not visited-site activity (that is getWebsite/getWebsites under web-app-activity).",
           "cli": {
             "area": "website",
             "verb": "list",
