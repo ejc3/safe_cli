@@ -1060,3 +1060,35 @@ func TestVerbCallForKeepsSessionUUIDSeparate(t *testing.T) {
 		t.Errorf("session uuid must come from the token set: %+v", vc)
 	}
 }
+
+// TestInvokeLocationWhereBakesQuery pins the `location where` verb (UX audit #90 #1). It
+// targets the ACCOUNT HOLDER's own service id (not a child), pings no device, and bakes the
+// exact query the backend needs — critically locationEnabled=1 as an INTEGER (the audit's
+// `locationEnabled=true` guess 400ed) and source=app.
+func TestInvokeLocationWhereBakesQuery(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	var out strings.Builder
+	vc := verbCall{entity: "location", op: "getDashboardDetails", area: "location", verb: "where",
+		given: map[string]any{}, selfSvc: "1000001", selfPid: "1000002"}
+	if err := invoke(context.Background(), fb.do(), d, vc, &out, false); err != nil {
+		t.Fatalf("invoke: %v", err)
+	}
+	req := fb.seen["/vsf/location/v5/dashboard"]
+	if req.method != "GET" {
+		t.Fatalf("method = %q (want GET)", req.method)
+	}
+	q := req.query
+	for _, want := range []string{"locationEnabled=1", "source=app", "locPermission=ALWAYS", "onlyLastKnownLoc=true", "onDemand=false"} {
+		if !strings.Contains(q, want) {
+			t.Errorf("query missing %q; got %q", want, q)
+		}
+	}
+	if strings.Contains(q, "locationEnabled=true") {
+		t.Errorf("locationEnabled must be the integer 1, not \"true\" (that 400s); got %q", q)
+	}
+	// self-scoped: targets the account holder's own service id, never a child.
+	if got := req.headers.Get("x-fp-identifier-target-serviceid"); got != "1000001" {
+		t.Errorf("target header = %q, want the caller's own service id 1000001", got)
+	}
+}
