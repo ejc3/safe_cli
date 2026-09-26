@@ -1,0 +1,54 @@
+# The enforcement half of CLAUDE.md's review governance.
+#
+# GitHub's native `required_conversation_resolution` enforces only that inline
+# threads are marked *resolved*; it says nothing about the disposition tokens the
+# governance requires. This gate additionally fails the PR unless each resolved
+# thread carries a RED-VERIFIED / NOT-A-DEFECT / DISAGREE disposition and each
+# review body a REVIEW-ACK.
+#
+# It lives in its own workflow, apart from the Go build in ci.yml, for one reason:
+# the trigger set. A gate that ran only on the default `pull_request` activities
+# (opened/synchronize/reopened) is re-evaluated only when a commit is pushed. A
+# finding added *after* the last push — a review submitted, an inline reply, a
+# thread resolved — would not re-run it, so the previously green check stays
+# attached to the same head SHA while native conversation-resolution clears, and
+# the PR merges with an undisposed finding. So this fires on the review-state
+# events too, and keeping it separate means those events do not also rebuild Go.
+name: review-gate
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited, deleted]
+
+# Read-only: the gate only queries review threads; it never writes to the repo.
+permissions:
+  contents: read
+  pull-requests: read
+
+# Collapse superseded re-evaluations of the SAME pr, but never let a review-state
+# event cancel an unrelated PR's run. Keyed by PR number (every trigger here
+# carries one), not github.ref, which differs across these event types.
+concurrency:
+  group: review-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-gate:
+    name: review-gate (threads resolved + disposed)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: check review threads
+        env:
+          # gh graphql reads reviewThreads/reviews/comments with the workflow token;
+          # pull-requests:read above is sufficient. Fails closed (exit 2) if gh/jq
+          # are missing or the query errors, so a gate that cannot run is never green.
+          GH_TOKEN: ${{ github.token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: .claude/skills/pr-review-gate/check-review-threads.sh "${{ github.event.pull_request.number }}"
