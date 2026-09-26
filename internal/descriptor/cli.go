@@ -186,6 +186,12 @@ type Output struct {
 	// the engine reads the account and adds a "memberName" field so a table can show a name
 	// instead of the raw id (`location where` events carry profileId, not a name).
 	EnrichNames string `json:"enrich_names,omitempty"`
+	// Flatten expands a nested array-of-objects field (each group's subCategories) into the
+	// row set, so `apps list` shows one row per app — with its id — instead of one per group.
+	// FlattenParent optionally copies a parent field into each expanded child under a new
+	// name ({"name":"group"} tags each app with its group), for context and filtering.
+	Flatten       string            `json:"flatten,omitempty"`
+	FlattenParent map[string]string `json:"flatten_parent,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation

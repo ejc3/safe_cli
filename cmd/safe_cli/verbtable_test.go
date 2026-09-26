@@ -1,6 +1,8 @@
 package main
 
 import (
+	jsonpkg "encoding/json"
+	fmtpkg "fmt"
 	"strings"
 	"testing"
 
@@ -16,7 +18,7 @@ func TestReadVerbsRenderAsTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string][]string{ // "area verb" -> required table columns
-		"apps list":       {"name", "enabledCount", "totalCount"},
+		"apps list":       {"group", "name", "id", "enabled"},
 		"filter show":     {"name", "enabledCount"},
 		"calls schedules": {"name", "scheduleType", "startTime", "endTime"},
 	}
@@ -74,3 +76,26 @@ func TestOutputTableAliasedHeaders(t *testing.T) {
 		t.Errorf("raw field-path headers leaked (aliases ignored):\n%s", s)
 	}
 }
+
+// TestFlattenField expands nested children into flat rows, tagging each with a renamed
+// parent field — the mechanism that puts app ids back in `apps list` (audit round 2).
+func TestFlattenField(t *testing.T) {
+	body := []byte(`{"Apps & websites":[{"name":"Social Media","subCategories":[{"name":"TikTok","id":10037,"enabled":false}]}]}`)
+	got := flattenField(body, "subCategories", map[string]string{"name": "group"})
+	var rows []map[string]any
+	if err := jsonUnmarshal(got, &rows); err != nil {
+		t.Fatalf("bad json: %v (%s)", err, got)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 flattened row, got %d", len(rows))
+	}
+	if rows[0]["name"] != "TikTok" || rows[0]["group"] != "Social Media" {
+		t.Errorf("app row lost id/group: %v", rows[0])
+	}
+	if fmtSprint(rows[0]["id"]) != "10037" {
+		t.Errorf("app id lost: %v", rows[0]["id"])
+	}
+}
+
+func jsonUnmarshal(b []byte, v any) error { return jsonpkg.Unmarshal(b, v) }
+func fmtSprint(v any) string              { return fmtpkg.Sprint(v) }

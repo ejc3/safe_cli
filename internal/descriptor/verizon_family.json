@@ -1507,7 +1507,9 @@
               ],
               "output": {
                 "pick": "Apps & websites",
-                "table": ["name:APP GROUP", "enabledCount:BLOCKED", "totalCount:TOTAL"]
+                "flatten": "subCategories",
+                "flatten_parent": { "name": "group" },
+                "table": ["group:GROUP", "name:APP", "id:ID", "enabled:BLOCKED"]
               }
             }
           ]
