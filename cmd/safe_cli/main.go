@@ -314,11 +314,13 @@ func main() {
 			os.Exit(2)
 		}
 		// Terse error; exit 2 is the conventional shell "usage error" code (kong defaults to 80).
-		// A bare "expected …" (e.g. `call` with no entity) gives no next step; nudge to --help.
+		// A bare "expected …" (`call` with no entity) or an "unknown flag" (e.g. `location where
+		// --child`, which takes --member) gives no next step on its own; nudge to the command's
+		// --help, where the real flags are listed (fuzz #110 F2/F6).
 		msg := err.Error()
-		if strings.HasPrefix(msg, "expected ") {
+		if strings.HasPrefix(msg, "expected ") || strings.Contains(msg, "unknown flag") || strings.Contains(msg, "unknown short flag") {
 			hint := "safe_cli --help"
-			if a := firstCommandWord(os.Args[1:]); a != "" {
+			if a := commandPath(os.Args[1:]); a != "" {
 				hint = "safe_cli " + a + " --help"
 			}
 			msg += fmt.Sprintf(" (run `%s`)", hint)
@@ -330,13 +332,40 @@ func main() {
 	ctx.FatalIfErrorf(ctx.Run(rc))
 }
 
-// firstCommandWord returns the first non-flag argument — the top-level command — so a
-// "expected …" usage error can point at that command's --help. Empty for no args.
-func firstCommandWord(args []string) string {
+// commandPath returns the command words — the run of non-flag arguments (`location where`,
+// `call todo invoke`) — as a shell-safe string, so a usage error can point at that command's
+// --help where its real flags are listed. A leading global flag (e.g. `--json`) is skipped; a
+// flag AFTER the command words ends the path. Each word is shell-quoted, so a positional that
+// contains whitespace (a file path with spaces) keeps its boundary in the printed hint rather
+// than looking like two arguments. Empty for no args.
+func commandPath(args []string) string {
+	var words []string
 	for _, a := range args {
-		if !strings.HasPrefix(a, "-") {
-			return a
+		if strings.HasPrefix(a, "-") {
+			if len(words) > 0 {
+				break // a flag after the command words
+			}
+			continue // a leading global flag (--json)
+		}
+		words = append(words, shellQuote(a))
+	}
+	return strings.Join(words, " ")
+}
+
+// shellQuote returns s unchanged when it is a plain word, or single-quoted (with embedded
+// single quotes escaped) when it contains anything that a shell would treat specially — so an
+// argument boundary in a printed command hint survives copy-paste.
+func shellQuote(s string) string {
+	if s == "" {
+		return "''"
+	}
+	for _, r := range s {
+		safe := r == '-' || r == '_' || r == '.' || r == '/' || r == ':' || r == '@' ||
+			r == '+' || r == '=' || r == ',' ||
+			(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if !safe {
+			return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 		}
 	}
-	return ""
+	return s
 }

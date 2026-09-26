@@ -76,19 +76,23 @@ func TestClosestRejectsWeakMatch(t *testing.T) {
 	}
 }
 
-func TestFirstCommandWord(t *testing.T) {
+func TestCommandPath(t *testing.T) {
 	cases := []struct {
 		args []string
 		want string
 	}{
 		{[]string{"call"}, "call"},
 		{[]string{"describe"}, "describe"},
-		{[]string{"--json", "members"}, "members"},
+		{[]string{"--json", "members"}, "members"},                        // leading global flag skipped
+		{[]string{"location", "where", "--child", "9"}, "location where"}, // full path, stops at the flag
+		{[]string{"call", "todo", "invoke", "--bad"}, "call todo invoke"},
+		// a positional with whitespace keeps its boundary (shell-quoted), not split into words
+		{[]string{"auth", "import", "/tmp/my tokens.json", "--bogus"}, "auth import '/tmp/my tokens.json'"},
 		{nil, ""},
 	}
 	for _, c := range cases {
-		if got := firstCommandWord(c.args); got != c.want {
-			t.Errorf("firstCommandWord(%v)=%q want %q", c.args, got, c.want)
+		if got := commandPath(c.args); got != c.want {
+			t.Errorf("commandPath(%v)=%q want %q", c.args, got, c.want)
 		}
 	}
 }
