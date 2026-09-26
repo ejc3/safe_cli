@@ -1,8 +1,10 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/ejc3/safe_cli/internal/client"
 	"github.com/ejc3/safe_cli/internal/descriptor"
 )
 
@@ -34,7 +36,8 @@ func TestReadVerbsRenderAsTables(t *testing.T) {
 				}
 				have := map[string]bool{}
 				for _, col := range c.Output.Table {
-					have[col] = true
+					path, _, _ := strings.Cut(col, ":")
+					have[path] = true
 				}
 				for _, col := range cols {
 					if !have[col] {
@@ -48,5 +51,25 @@ func TestReadVerbsRenderAsTables(t *testing.T) {
 		if !seen[key] {
 			t.Errorf("verb %q not found in the descriptor", key)
 		}
+	}
+}
+
+// TestOutputTableAliasedHeaders: a "path:HEADER" column renders HEADER (uppercased) as the
+// title while digging the value from path — so nested paths get readable headers.
+func TestOutputTableAliasedHeaders(t *testing.T) {
+	resp := &client.Response{Status: 200, Body: []byte(`[{"name":"Social Media","enabledCount":2,"totalCount":15}]`)}
+	c := &descriptor.CLI{Output: &descriptor.Output{Table: []string{"name:APP GROUP", "enabledCount:BLOCKED", "totalCount:TOTAL"}}}
+	var out strings.Builder
+	if err := writeVerbResponse(&out, false, resp, c, nil); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+	for _, want := range []string{"APP GROUP", "BLOCKED", "TOTAL", "Social Media", "15"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("table output missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "ENABLEDCOUNT") || strings.Contains(s, "TOTALCOUNT") {
+		t.Errorf("raw field-path headers leaked (aliases ignored):\n%s", s)
 	}
 }

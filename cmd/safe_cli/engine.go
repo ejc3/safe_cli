@@ -1084,14 +1084,27 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 		return err
 	}
 	if c.Output != nil && len(c.Output.Table) > 0 {
+		// A column is "path" or "path:HEADER" — the optional header keeps a nested path
+		// (locationDetails.address.city) from becoming an unreadable column title.
+		paths := make([]string, len(c.Output.Table))
+		headers := make([]string, len(c.Output.Table))
+		for i, col := range c.Output.Table {
+			path, header, ok := strings.Cut(col, ":")
+			paths[i] = path
+			if ok {
+				headers[i] = header
+			} else {
+				headers[i] = path
+			}
+		}
 		var doc any
 		if err := json.Unmarshal(resp.Body, &doc); err == nil {
 			var rows [][]string
 			hit := false
 			for _, rec := range tableRecords(doc) {
-				row := make([]string, 0, len(c.Output.Table))
-				for _, col := range c.Output.Table {
-					v := digField(rec, col)
+				row := make([]string, 0, len(paths))
+				for _, p := range paths {
+					v := digField(rec, p)
 					if v != nil {
 						hit = true
 					}
@@ -1100,7 +1113,7 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 				rows = append(rows, row)
 			}
 			if hit {
-				return outfmt.Table(out, upper(c.Output.Table), rows)
+				return outfmt.Table(out, upper(headers), rows)
 			}
 		}
 	}
