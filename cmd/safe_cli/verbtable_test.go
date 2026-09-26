@@ -18,9 +18,11 @@ func TestReadVerbsRenderAsTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string][]string{ // "area verb" -> required table columns
-		"apps list":       {"group", "name", "id", "enabled"},
-		"filter show":     {"name", "enabledCount"},
-		"calls schedules": {"name", "scheduleType", "startTime", "endTime"},
+		"apps list":         {"group", "name", "id", "enabled"},
+		"filter show":       {"name", "enabledCount"},
+		"calls schedules":   {"name", "scheduleType", "startTime", "endTime"},
+		"filter presets":    {"groupName", "ages", "groupId"},
+		"filter categories": {"group", "name", "id", "enabled"},
 	}
 	seen := map[string]bool{}
 	for _, en := range d.EntityNames() {
