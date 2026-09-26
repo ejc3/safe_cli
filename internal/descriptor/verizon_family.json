@@ -1309,7 +1309,11 @@
                 "maps_to": "find:name",
                 "help": "Only entries whose name contains this text (case-insensitive); their enclosing groups are kept."
               }
-            ]
+            ],
+            "output": {
+              "pick": "categories",
+              "table": ["name", "enabledCount"]
+            }
           }
         },
         "updateSubcategory": {
@@ -1460,7 +1464,8 @@
                 }
               ],
               "output": {
-                "pick": "Apps & websites"
+                "pick": "Apps & websites",
+                "table": ["name", "enabledCount", "totalCount"]
               }
             }
           ]
