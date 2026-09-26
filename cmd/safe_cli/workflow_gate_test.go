@@ -81,4 +81,15 @@ func TestReviewGateReevaluatesOnReviewEvents(t *testing.T) {
 			t.Errorf("%s missing `on:` trigger %q — the gate would not re-evaluate when review state changes", path, trigger)
 		}
 	}
+
+	joined := strings.Join(lines, "\n")
+
+	// cancel-in-progress must be false so a superseded re-evaluation is not cancelled — a
+	// cancelled run shows as a grey X, which reads like a real failure on an informational check.
+	if regexp.MustCompile(`(?m)cancel-in-progress:\s*true`).MatchString(joined) {
+		t.Errorf("%s sets cancel-in-progress: true — a cancelled run reads as a failure; it must be false", path)
+	}
+	if !regexp.MustCompile(`(?m)cancel-in-progress:\s*false`).MatchString(joined) {
+		t.Errorf("%s must set cancel-in-progress: false so review-event re-evaluations queue instead of cancelling", path)
+	}
 }

@@ -1,27 +1,16 @@
-# The enforcement half of CLAUDE.md's review governance.
+# A visibility signal for CLAUDE.md's review governance — NOT an iron-clad merge gate.
 #
-# GitHub's native `required_conversation_resolution` enforces only that inline
-# threads are marked *resolved*; it says nothing about the disposition tokens the
-# governance requires. This gate additionally fails the PR unless each resolved
-# thread carries a RED-VERIFIED / NOT-A-DEFECT / DISAGREE disposition and each
-# review body a REVIEW-ACK.
+# GitHub's native `required_conversation_resolution` is the hard gate: a PR cannot
+# merge while an inline thread is unresolved. This workflow adds a check-run that goes
+# RED when a resolved thread is missing its disposition token (RED-VERIFIED /
+# NOT-A-DEFECT / DISAGREE) or a review body its REVIEW-ACK — so the author NOTICES
+# there is feedback to answer. It is intentionally informational: it is not a required
+# status check, so it never leaves a PR mysteriously stuck; it just surfaces the state.
 #
-# It lives in its own workflow, apart from the Go build in ci.yml, for one reason:
-# the trigger set. A gate that ran only on the default `pull_request` activities
-# (opened/synchronize/reopened) is re-evaluated only when a commit is pushed. A
-# finding added *after* the last push — a review submitted, an inline reply, a
-# thread resolved — would not re-run it, so the previously green check stays
-# attached to the same head SHA while native conversation-resolution clears, and
-# the PR merges with an undisposed finding. So this fires on the review-state
-# events too, and keeping it separate means those events do not also rebuild Go.
-#
-# One residual, in the SAFE direction: GitHub emits no workflow event when a
-# thread is *resolved* (there is no such Actions trigger), so if resolving is the
-# last action the check can stay stale-RED — which only ever blocks merge, never
-# wrongly permits it. To turn it green, make the closing action a comment (the
-# disposition / REVIEW-ACK reply naturally is one) or re-run this workflow after
-# resolving. A green result therefore always reflects a run that observed the
-# threads both resolved AND disposed; the dangerous stale-green is what is closed.
+# It fires on the review-state events (not only on push) so a finding added after the
+# last commit still turns the check red without needing a new push. `cancel-in-progress:
+# false` so re-evaluations queue rather than cancel (a cancelled run reads as a scary
+# grey X). It fails closed (the script exits non-zero when it cannot run).
 name: review-gate
 
 on:
@@ -31,21 +20,18 @@ on:
   pull_request_review_comment:
     types: [created, edited, deleted]
 
-# Read-only: the gate only queries review threads; it never writes to the repo.
+# Read-only: the gate only queries review threads; it never writes.
 permissions:
   contents: read
   pull-requests: read
 
-# Collapse superseded re-evaluations of the SAME pr, but never let a review-state
-# event cancel an unrelated PR's run. Keyed by PR number (every trigger here
-# carries one), not github.ref, which differs across these event types.
 concurrency:
   group: review-gate-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   review-gate:
-    name: review-gate (threads resolved + disposed)
+    name: review-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,9 +39,6 @@ jobs:
           persist-credentials: false
       - name: check review threads
         env:
-          # gh graphql reads reviewThreads/reviews/comments with the workflow token;
-          # pull-requests:read above is sufficient. Fails closed (exit 2) if gh/jq
-          # are missing or the query errors, so a gate that cannot run is never green.
           GH_TOKEN: ${{ github.token }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
