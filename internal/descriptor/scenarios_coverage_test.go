@@ -9,8 +9,8 @@ import (
 
 // scenarioVerbRe pulls a backtick-delimited `entity.op` token out of a "Verbs exercised:"
 // line. The op part matches everything up to the closing backtick, because some op names
-// carry a parenthetical (config.getConfigData (Call variant), todo.invoke (getTodos)) — the
-// whole thing is one token and must be captured, and compared, in full.
+// carry a parenthetical (e.g. config.getConfigData (Call variant)) — the whole thing is one
+// token and must be captured, and compared, in full.
 var scenarioVerbRe = regexp.MustCompile("`([a-zA-Z0-9_]+\\.[^`]+)`")
 
 // TestAgentScenariosCoverEveryAvailableOp guards docs/agent-scenarios.md: every

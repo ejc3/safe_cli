@@ -1110,10 +1110,17 @@ func writeVerbResponse(out io.Writer, asJSON bool, resp *client.Response, c *des
 		_, err := out.Write(ensureNewline(resp.Body))
 		return err
 	}
-	// A body whose every leaf is null/0/false/""/empty is "no data". A listing renders that
-	// as a short line instead of a table of dashes or (for a table-less verb that opted in
-	// with empty_message) a blob of nulls.
-	noData := isDataEmpty(resp.Body)
+	// "No data" is either: every named empty_when field is empty (a response that always
+	// carries populated metadata, like calls log's lastUpdatedTime/totalCalls, so the whole
+	// body is never leaf-empty), or — when empty_when is unset — every leaf in the body is
+	// empty. A listing renders that as a short line instead of a table of dashes or (for a
+	// table-less verb that opted in with empty_message) a blob of nulls.
+	var noData bool
+	if c.Output != nil && len(c.Output.EmptyWhen) > 0 {
+		noData = fieldsEmpty(resp.Body, c.Output.EmptyWhen)
+	} else {
+		noData = isDataEmpty(resp.Body)
+	}
 	if c.Output != nil && len(c.Output.Table) > 0 {
 		// A column is "path" or "path:HEADER" — the optional header keeps a nested path
 		// (locationDetails.address.city) from becoming an unreadable column title.

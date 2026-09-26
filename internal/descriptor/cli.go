@@ -198,6 +198,13 @@ type Output struct {
 	// a settings verb can legitimately answer all-false/zero, and that must not be hidden; a
 	// table verb needs no opt-in (an empty listing already renders "No records found.").
 	EmptyMessage string `json:"empty_message,omitempty"`
+	// EmptyWhen names the record-bearing fields whose emptiness means "no results", for a
+	// response that always carries populated metadata (calls log's payload keeps a
+	// lastUpdatedTime and totalCalls:0 even on a quiet week, so the whole body is never
+	// data-empty). When every listed field is null/empty, the verb renders EmptyMessage / the
+	// empty-listing line instead of the raw body. Empty means: absent, null, empty array, or
+	// empty object. When unset, emptiness falls back to "every leaf in the body is empty".
+	EmptyWhen []string `json:"empty_when,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation
