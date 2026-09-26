@@ -67,7 +67,8 @@ func (c *AppsListCmd) Run(rc *runContext) error {
 
 // CallsArea groups the calls verbs (core verbs first).
 type CallsArea struct {
-	Log CallsLogCmd `cmd:"" name:"log" help:"List a child's recent call and text activity. Give a time span with --since (e.g. 7d, 24h, or 2026-09-01); --until defaults to now."`
+	Log       CallsLogCmd       `cmd:"" name:"log" help:"List a child's recent call and text activity. Give a time span with --since (e.g. 7d, 24h, or 2026-09-01); --until defaults to now."`
+	Schedules CallsSchedulesCmd `cmd:"" name:"schedules" help:"List the call/text restriction schedules on a child's device (windows when calls/texts are limited)."`
 }
 
 // CallsLogCmd: calls  log <- calls_and_texts.getCallAndTextActivityListV7
@@ -87,6 +88,17 @@ func (c *CallsLogCmd) Run(rc *runContext) error {
 		given["until"] = *c.Until
 	}
 	return runVerb(rc, "calls_and_texts", "getCallAndTextActivityListV7", "calls", "", "log", given, deref(c.Child), c.DryRun, false, false)
+}
+
+// CallsSchedulesCmd: calls  schedules <- calls_and_texts.getSchedulesRequest
+type CallsSchedulesCmd struct {
+	Child  *string `name:"child" help:"The child, by the SERVICE-ID that 'safe_cli members' prints. Required." required:""`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+}
+
+func (c *CallsSchedulesCmd) Run(rc *runContext) error {
+	given := map[string]any{}
+	return runVerb(rc, "calls_and_texts", "getSchedulesRequest", "calls", "", "schedules", given, deref(c.Child), c.DryRun, false, false)
 }
 
 // FilterArea groups the filter verbs (core verbs first).
