@@ -483,6 +483,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if merged.Output != nil && merged.Output.Pick != "" {
 			resp.Body = pickField(resp.Body, merged.Output.Pick)
 		}
+		if merged.Output != nil && merged.Output.Flatten != "" {
+			resp.Body = flattenField(resp.Body, merged.Output.Flatten, merged.Output.FlattenParent)
+		}
 		if merged.Output != nil && merged.Output.EnrichNames != "" {
 			resp.Body = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
 		}
@@ -1293,6 +1296,41 @@ func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor,
 	}
 	if out, err := json.Marshal(doc); err == nil {
 		return out
+	}
+	return body
+}
+
+// flattenField expands a nested array-of-objects field (each app group's subCategories) into
+// a flat row set, so a table can show one row per app with its id — not one per group. Each
+// expanded child optionally inherits parent fields renamed via parentMap ({"name":"group"}
+// tags each app with its group). Best-effort: on any parse failure the body is unchanged.
+func flattenField(body []byte, field string, parentMap map[string]string) []byte {
+	var doc any
+	if json.Unmarshal(body, &doc) != nil {
+		return body
+	}
+	var out []any
+	for _, rec := range tableRecords(doc) {
+		children, ok := rec[field].([]any)
+		if !ok {
+			continue
+		}
+		for _, ch := range children {
+			obj, ok := ch.(map[string]any)
+			if !ok {
+				out = append(out, ch)
+				continue
+			}
+			for src, dst := range parentMap {
+				if v, ok := rec[src]; ok {
+					obj[dst] = v
+				}
+			}
+			out = append(out, obj)
+		}
+	}
+	if b, err := json.Marshal(out); err == nil {
+		return b
 	}
 	return body
 }
