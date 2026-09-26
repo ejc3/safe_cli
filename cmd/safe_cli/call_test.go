@@ -31,6 +31,29 @@ func TestResolveOp(t *testing.T) {
 	}
 }
 
+// TestUnknownOpErrorNamesRealOps: a wrong op name should surface the entity's real op(s)
+// inline so an agent needn't spend a turn on `describe` to recover (nav test #77 —
+// most_used_apps/security_threat were guessed as `list`/`getMostUsedApps`). A single-op
+// entity must name that one op; a multi-op entity must list its available ops.
+func TestUnknownOpErrorNamesRealOps(t *testing.T) {
+	d, _ := descriptor.Default()
+	// single available op -> the error names it directly
+	if _, err := resolveOp(d, "most_used_apps", "list"); err == nil || !strings.Contains(err.Error(), "getTopApps") {
+		t.Errorf("most_used_apps unknown op should name getTopApps, got: %v", err)
+	}
+	if _, err := resolveOp(d, "security_threat", "getMostUsedApps"); err == nil || !strings.Contains(err.Error(), "getThreats") {
+		t.Errorf("security_threat unknown op should name getThreats, got: %v", err)
+	}
+	// multi-op entity -> the error lists real ops (not just "run describe")
+	acctErr := ""
+	if _, err := resolveOp(d, "account", "list"); err != nil {
+		acctErr = err.Error()
+	}
+	if !strings.Contains(acctErr, "getAccountDetails") {
+		t.Errorf("account unknown op should list real ops incl. getAccountDetails, got: %q", acctErr)
+	}
+}
+
 func TestFillPath(t *testing.T) {
 	// placeholder substitution
 	if got, err := fillPath("/frisco/v8/devices/{deviceId}/appsSync", "deviceId", "D1", nil); err != nil || got != "/frisco/v8/devices/D1/appsSync" {
