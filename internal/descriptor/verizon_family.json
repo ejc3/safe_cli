@@ -2749,6 +2749,16 @@
                 "locPermission": "ALWAYS",
                 "onlyLastKnownLoc": "true",
                 "onDemand": "false"
+              },
+              "output": {
+                "pick": "events",
+                "enrich_names": "profileId",
+                "table": [
+                  "memberName:WHO",
+                  "locationDetails.address.city:CITY",
+                  "locationDetails.address.state:STATE",
+                  "isLastKnownLoc:LAST-KNOWN"
+                ]
               }
             }
           ],

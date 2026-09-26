@@ -483,6 +483,9 @@ func invoke(ctx context.Context, do doFunc, d *descriptor.Descriptor, vc verbCal
 		if merged.Output != nil && merged.Output.Pick != "" {
 			resp.Body = pickField(resp.Body, merged.Output.Pick)
 		}
+		if merged.Output != nil && merged.Output.EnrichNames != "" {
+			resp.Body = enrichMemberNames(ctx, do, d, vc.selfSvc, vc.appUUID, resp.Body, merged.Output.EnrichNames)
+		}
 		if len(filters) > 0 {
 			resp.Body = filterResponse(resp.Body, filters)
 		}
@@ -1164,6 +1167,20 @@ func tableRecords(doc any) []map[string]any {
 
 // digField finds a named field at the top level or one level down (e.g. devices[0].status).
 func digField(m map[string]any, name string) any {
+	// A dotted name walks nested objects (locationDetails.address.city); the last segment is
+	// the leaf. A bare name keeps the legacy behavior (direct key, else one level down).
+	if i := strings.IndexByte(name, '.'); i >= 0 {
+		head, rest := name[:i], name[i+1:]
+		child, ok := m[head]
+		if !ok {
+			return nil
+		}
+		obj, ok := child.(map[string]any)
+		if !ok {
+			return nil
+		}
+		return digField(obj, rest)
+	}
 	if v, ok := m[name]; ok {
 		return normalizeNum(v)
 	}
@@ -1249,4 +1266,33 @@ func verbCallFor(entity, op, area, group, verb string, given map[string]any, chi
 		vc.sessionUUID = ts.AppUUID
 	}
 	return vc
+}
+
+// enrichMemberNames adds a "memberName" field to each record whose idField holds a family
+// member's profileId, by joining the account read (getAccountDetails). Best-effort: if the
+// account read or parse fails, the body is returned unchanged so the verb still renders.
+func enrichMemberNames(ctx context.Context, do doFunc, d *descriptor.Descriptor, selfSvc, appUUID string, body []byte, idField string) []byte {
+	acct, err := fetchAccount(ctx, do, d, selfSvc, appUUID)
+	if err != nil {
+		return body
+	}
+	names := make(map[string]string, len(acct.Members))
+	for _, m := range acct.Members {
+		names[fmt.Sprint(m.ProfileID)] = m.Name
+	}
+	var doc any
+	if json.Unmarshal(body, &doc) != nil {
+		return body
+	}
+	for _, rec := range tableRecords(doc) {
+		if pid, ok := rec[idField]; ok {
+			if name, ok := names[fmt.Sprint(normalizeNum(pid))]; ok {
+				rec["memberName"] = name
+			}
+		}
+	}
+	if out, err := json.Marshal(doc); err == nil {
+		return out
+	}
+	return body
 }

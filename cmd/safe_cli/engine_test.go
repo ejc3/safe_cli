@@ -1124,3 +1124,36 @@ func TestInvokeCallsLogBakesDateRange(t *testing.T) {
 		t.Errorf("target header = %q, want child 2000001", got)
 	}
 }
+
+func TestDigFieldDottedPath(t *testing.T) {
+	m := map[string]any{"loc": map[string]any{"address": map[string]any{"city": "Denver"}}, "top": "x"}
+	if got := digField(m, "loc.address.city"); got != "Denver" {
+		t.Errorf("dotted path = %v, want Denver", got)
+	}
+	if got := digField(m, "top"); got != "x" {
+		t.Errorf("bare key = %v, want x", got)
+	}
+	if got := digField(m, "loc.missing"); got != nil {
+		t.Errorf("missing nested = %v, want nil", got)
+	}
+}
+
+// TestEnrichMemberNames joins an events payload's profileId to a member name via the account
+// read — the mechanism behind `location where`'s WHO column.
+func TestEnrichMemberNames(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	body := []byte(`{"events":[{"profileId":3000001},{"profileId":9999999}]}`)
+	got := enrichMemberNames(context.Background(), fb.do(), d, "1000001", "app-uuid", body, "profileId")
+	var m map[string]any
+	if err := json.Unmarshal(got, &m); err != nil {
+		t.Fatalf("bad json: %v (%s)", err, got)
+	}
+	events := m["events"].([]any)
+	if name := events[0].(map[string]any)["memberName"]; name != "Alex" {
+		t.Errorf("profileId 3000001 should enrich to Alex, got %v", name)
+	}
+	if _, ok := events[1].(map[string]any)["memberName"]; ok {
+		t.Error("an unknown profileId must not get a memberName")
+	}
+}
