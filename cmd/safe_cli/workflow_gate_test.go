@@ -81,4 +81,25 @@ func TestReviewGateReevaluatesOnReviewEvents(t *testing.T) {
 			t.Errorf("%s missing `on:` trigger %q — the gate would not re-evaluate when review state changes", path, trigger)
 		}
 	}
+
+	joined := strings.Join(lines, "\n")
+
+	// The required signal must be the idempotent COMMIT STATUS review-gate/disposition, not
+	// the job's check-run: re-evaluating on every event otherwise accumulates several
+	// check-runs of one name on a head SHA, which branch protection reads ambiguously.
+	if !strings.Contains(joined, "review-gate/disposition") {
+		t.Errorf("%s must post the review-gate/disposition commit status (the idempotent required signal)", path)
+	}
+	if !regexp.MustCompile(`statuses/\$?\{?`).MatchString(joined) && !strings.Contains(joined, "/statuses/") {
+		t.Errorf("%s must POST to the commit statuses API so the latest verdict overwrites, not accumulates", path)
+	}
+
+	// cancel-in-progress MUST be false: a cancelled run leaves a cancelled check that branch
+	// protection latches onto and blocks merge even after a later run passes.
+	if regexp.MustCompile(`(?m)cancel-in-progress:\s*true`).MatchString(joined) {
+		t.Errorf("%s sets cancel-in-progress: true — a cancelled run strands a blocking check; it must be false", path)
+	}
+	if !regexp.MustCompile(`(?m)cancel-in-progress:\s*false`).MatchString(joined) {
+		t.Errorf("%s must set cancel-in-progress: false so review-event re-evaluations queue instead of cancelling", path)
+	}
 }
