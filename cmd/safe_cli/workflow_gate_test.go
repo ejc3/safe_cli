@@ -84,22 +84,10 @@ func TestReviewGateReevaluatesOnReviewEvents(t *testing.T) {
 
 	joined := strings.Join(lines, "\n")
 
-	// The required signal must be the idempotent COMMIT STATUS review-gate/disposition, posted
-	// to the head SHA — NOT the job's check-run. A gate that re-evaluates legitimately fails
-	// once (a finding is added) then passes (disposed); a check-run signal leaves that earlier
-	// failure on the SHA and branch protection stays BLOCKED even after the latest run passes.
-	// A commit status overwrites per (SHA, context), so the latest verdict governs.
-	if !strings.Contains(joined, "review-gate/disposition") {
-		t.Errorf("%s must post the review-gate/disposition commit status (the idempotent required signal)", path)
-	}
-	if !strings.Contains(joined, "/statuses/") {
-		t.Errorf("%s must POST to the commit statuses API so the latest verdict overwrites, not accumulates", path)
-	}
-
-	// cancel-in-progress MUST be false: a cancelled run leaves a cancelled check that branch
-	// protection latches onto and blocks merge even after a later run passes.
+	// cancel-in-progress must be false so a superseded re-evaluation is not cancelled — a
+	// cancelled run shows as a grey X, which reads like a real failure on an informational check.
 	if regexp.MustCompile(`(?m)cancel-in-progress:\s*true`).MatchString(joined) {
-		t.Errorf("%s sets cancel-in-progress: true — a cancelled run strands a blocking check; it must be false", path)
+		t.Errorf("%s sets cancel-in-progress: true — a cancelled run reads as a failure; it must be false", path)
 	}
 	if !regexp.MustCompile(`(?m)cancel-in-progress:\s*false`).MatchString(joined) {
 		t.Errorf("%s must set cancel-in-progress: false so review-event re-evaluations queue instead of cancelling", path)
