@@ -22,7 +22,8 @@ var version = "0.1.0-dev"
 
 // Globals are flags shared by every subcommand.
 type Globals struct {
-	JSON bool `name:"json" help:"Machine-readable JSON output (stdout-as-API)."`
+	JSON    bool             `name:"json" help:"Machine-readable JSON output (stdout-as-API)."`
+	Version kong.VersionFlag `name:"version" help:"Print the version and exit (same string as the version command)."`
 }
 
 // runContext is bound into each command's Run method by kong.
@@ -298,6 +299,10 @@ func main() {
 	parser := kong.Must(&cli,
 		kong.Name("safe_cli"),
 		kong.Description("Unofficial CLI for Verizon Family (Smith Micro SafePath) — administer your own family account."),
+		// --version prints this and exits. The version is stamped at build time via
+		// -ldflags "-X main.version=…" (Makefile / GoReleaser); it is "0.1.0-dev" for a
+		// plain `go build`.
+		kong.Vars{"version": "safe_cli " + version},
 		// Deliberately NOT kong.UsageOnError(): a missing/unknown flag should be a one-line
 		// "safe_cli: missing flags: --child=…", not the whole usage screen (UX audit #90).
 		// `--help` still prints full help; it is not an error path.

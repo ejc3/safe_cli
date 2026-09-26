@@ -1,0 +1,65 @@
+# GoReleaser config (https://goreleaser.com). Pushing a tag like v0.1.0 builds the four
+# platform binaries, archives + checksums, and a GitHub Release. See .github/workflows/release.yml.
+#   Try it locally without publishing: goreleaser release --snapshot --clean
+version: 2
+
+project_name: safe_cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: safe_cli
+    main: ./cmd/safe_cli
+    binary: safe_cli
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    # Stamp the tag into main.version so `safe_cli version` / --version report it.
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: safe_cli
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: ejc3
+    name: safe_cli
+  # Interoperability tool; make the nature clear on every release page.
+  header: |
+    Unofficial CLI for Verizon Family (Smith Micro SafePath). See the README.
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+# Homebrew tap — commented out until the one-time setup exists, so `goreleaser release`
+# does not fail trying to push to a missing repo with a token it does not have:
+#   1. Create the public repo  ejc3/homebrew-tap
+#   2. Add a repo secret  HOMEBREW_TAP_GITHUB_TOKEN  (a PAT with `contents: write` on that
+#      tap repo) and pass it as GITHUB_TOKEN to the brews step, or set `token:` below.
+# Then uncomment. After that, `brew install ejc3/tap/safe_cli` works.
+# brews:
+#   - repository:
+#       owner: ejc3
+#       name: homebrew-tap
+#       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+#     homepage: "https://github.com/ejc3/safe_cli"
+#     description: "Unofficial CLI for Verizon Family (Smith Micro SafePath)"
+#     license: "see repository"
+#     test: |
+#       system "#{bin}/safe_cli", "--version"
