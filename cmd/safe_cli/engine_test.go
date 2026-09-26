@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -1090,5 +1091,36 @@ func TestInvokeLocationWhereBakesQuery(t *testing.T) {
 	// self-scoped: targets the account holder's own service id, never a child.
 	if got := req.headers.Get("x-fp-identifier-target-serviceid"); got != "1000001" {
 		t.Errorf("target header = %q, want the caller's own service id 1000001", got)
+	}
+}
+
+// TestInvokeCallsLogBakesDateRange pins the `calls log` verb (UX audit #90): --since is
+// transformed to an ISO-microsecond startDate, --until defaults to now (endDate),
+// summaryOnly=false is baked, and it targets the child's service id.
+func TestInvokeCallsLogBakesDateRange(t *testing.T) {
+	fb := newFakeBackend(t)
+	d, _ := descriptor.Default()
+	var out strings.Builder
+	vc := verbCall{entity: "calls_and_texts", op: "getCallAndTextActivityListV7", area: "calls", verb: "log",
+		given: map[string]any{"since": "7d"}, child: "2000001", selfSvc: "1000001", selfPid: "1000002"}
+	if err := invoke(context.Background(), fb.do(), d, vc, &out, false); err != nil {
+		t.Fatalf("invoke: %v", err)
+	}
+	var req capturedReq
+	for p, r := range fb.seen {
+		if strings.Contains(p, "/callandtext/") {
+			req = r
+		}
+	}
+	q := req.query
+	iso := regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}(:|%3A)\d{2}(:|%3A)\d{2}\.\d{6}Z`)
+	if !strings.Contains(q, "startDate=") || !strings.Contains(q, "endDate=") || len(iso.FindAllString(q, -1)) < 2 {
+		t.Errorf("startDate/endDate should be ISO-micro timestamps; got %q", q)
+	}
+	if !strings.Contains(q, "summaryOnly=false") {
+		t.Errorf("summaryOnly=false should be baked; got %q", q)
+	}
+	if got := req.headers.Get("x-fp-identifier-target-serviceid"); got != "2000001" {
+		t.Errorf("target header = %q, want child 2000001", got)
 	}
 }
