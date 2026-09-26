@@ -43,6 +43,34 @@ func TestEmptyMessageForTablelessVerb(t *testing.T) {
 	}
 }
 
+// TestEmptyWhenIgnoresMetadata: calls log's payload always carries populated metadata
+// (lastUpdatedTime, totalCalls:0) even on a quiet week, so isDataEmpty never fires. empty_when
+// names the record arrays, so emptiness is judged on those alone and the empty_message shows.
+func TestEmptyWhenIgnoresMetadata(t *testing.T) {
+	c := &descriptor.CLI{Output: &descriptor.Output{
+		EmptyMessage: "No call or text activity in that range.",
+		EmptyWhen:    []string{"callActivity", "textActivity"},
+	}}
+	// Empty range: activity null/[], but lastUpdatedTime and totalCalls are populated.
+	empty := &client.Response{Status: 200, Body: []byte(`{"callActivity":null,"textActivity":[],"totalCalls":0,"totalTexts":0,"lastUpdatedTime":1727000000000}`)}
+	var out strings.Builder
+	if err := writeVerbResponse(&out, false, empty, c, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(out.String()); got != "No call or text activity in that range." {
+		t.Errorf("empty_when should ignore metadata and render the empty line; got:\n%s", out.String())
+	}
+	// A range with activity must print its data, not the empty line.
+	populated := &client.Response{Status: 200, Body: []byte(`{"callActivity":[{"otherParty":"5551212"}],"textActivity":null,"totalCalls":1,"lastUpdatedTime":1727000000000}`)}
+	out.Reset()
+	if err := writeVerbResponse(&out, false, populated, c, nil); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "No call or text activity") || !strings.Contains(out.String(), "otherParty") {
+		t.Errorf("a range with activity must print its data:\n%s", out.String())
+	}
+}
+
 // TestEmptyTableRendersNoRecords: a table verb whose body carries no rows prints a plain
 // "No records found." (this is what `location where --member <no match>` now shows) rather
 // than falling through to a blob; a body with rows still renders the table.
@@ -102,6 +130,11 @@ func TestLocationWhereMemberFilter(t *testing.T) {
 	log := find("calls_and_texts", "getCallAndTextActivityListV7", "calls", "log")
 	if log.Output == nil || log.Output.EmptyMessage == "" {
 		t.Error("calls log must carry an empty_message so an empty range does not print a blob of nulls")
+	}
+	// empty_when must name the record arrays; otherwise the always-populated metadata
+	// (lastUpdatedTime, totalCalls) keeps the body from ever counting as empty (issue #108).
+	if log.Output == nil || len(log.Output.EmptyWhen) == 0 {
+		t.Error("calls log must set empty_when (its metadata is always populated, so isDataEmpty never fires)")
 	}
 }
 

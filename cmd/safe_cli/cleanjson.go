@@ -108,6 +108,24 @@ func isDataEmpty(body []byte) bool {
 	return valueEmpty(v)
 }
 
+// fieldsEmpty reports whether every named top-level field of a JSON object body is empty
+// (absent, null, empty array/object, or an all-empty value) — used to detect "no results" on
+// a response whose metadata fields (counts, timestamps) are always populated, so isDataEmpty
+// would never fire. A body that is not a JSON object, or names none of the fields, is not
+// treated as empty.
+func fieldsEmpty(body []byte, fields []string) bool {
+	var m map[string]any
+	if err := json.Unmarshal(body, &m); err != nil || m == nil {
+		return false
+	}
+	for _, f := range fields {
+		if v, ok := m[f]; ok && !valueEmpty(v) {
+			return false
+		}
+	}
+	return true
+}
+
 func valueEmpty(v any) bool {
 	switch t := v.(type) {
 	case nil:

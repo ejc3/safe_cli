@@ -2622,10 +2622,10 @@ A black-box test suite for a **blind agent** driving `safe_cli` on behalf of a f
 - Delete the obsolete 'Take out trash' to-do by its todoId
 
 
-**Navigation (answer key):** describe todo; the list op is literally named 'invoke (getTodos)' (a GET); createTodo/updateTodo take a schedule body (message, startTime, weeklyScheduledDays, rewardText, scheduleType); deleteTodo needs a todoId query param.
+**Navigation (answer key):** describe todo; the list op is `invoke` (a GET; the app labels it getTodos); createTodo/updateTodo take a schedule body (message, startTime, weeklyScheduledDays, rewardText, scheduleType); deleteTodo needs a todoId query param.
 
 
-**Verbs exercised:** `todo.invoke (getTodos)`, `todo.createTodo`, `todo.updateTodo`, `todo.deleteTodo`
+**Verbs exercised:** `todo.invoke`, `todo.createTodo`, `todo.updateTodo`, `todo.deleteTodo`
 
 
 **Success:** Lists first, creates with weekdays (Mon-Fri) at 18:00 and the reward text, updates startTime to 18:30 on the newly created todoId, and deletes the correct 'Take out trash' todoId.
@@ -3078,7 +3078,7 @@ Every one of the 380 available operations appears in at least one scenario.
 | `tamper.putTamperInstructions` | #49 |
 | `todo.createTodo` | #86 |
 | `todo.deleteTodo` | #86 |
-| `todo.invoke (getTodos)` | #86 |
+| `todo.invoke` | #86 |
 | `todo.updateTodo` | #86 |
 | `user_setting.updateUserSettings` | #66 |
 | `vpn_status.getWebAppVisibility` | #34 |

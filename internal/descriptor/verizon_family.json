@@ -779,7 +779,8 @@
                 }
               ],
               "output": {
-                "empty_message": "No call or text activity in that range."
+                "empty_message": "No call or text activity in that range.",
+                "empty_when": ["callActivity", "textActivity"]
               }
             }
           ],
@@ -5686,7 +5687,7 @@
           ],
           "description": "Permanently delete the to-do item identified by todoId."
         },
-        "invoke (getTodos)": {
+        "invoke": {
           "method": "GET",
           "path": "/comms/fam/v1/todos",
           "confirmed": false,
@@ -5694,7 +5695,7 @@
             "x-fp-identifier-target-serviceid",
             "timezone"
           ],
-          "description": "List the child's to-do items (method name is literally 'invoke')."
+          "description": "List the child's to-do items. The endpoint's method name is literally 'invoke' (GET /comms/fam/v1/todos); the app labels it getTodos. Call it as `call todo invoke`."
         },
         "updateTodo": {
           "method": "PUT",

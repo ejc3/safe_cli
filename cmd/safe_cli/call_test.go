@@ -29,6 +29,15 @@ func TestResolveOp(t *testing.T) {
 	if _, err := resolveOp(d, "account", "nope"); err == nil {
 		t.Error("want error for unknown op")
 	}
+	// issue #108/#112: the todo list op is `invoke` (its literal method name), reachable as
+	// `call todo invoke` — not the old malformed key "invoke (getTodos)" that neither
+	// `invoke` nor `getTodos` could resolve.
+	if _, err := resolveOp(d, "todo", "invoke"); err != nil {
+		t.Errorf("todo invoke must resolve (call todo invoke): %v", err)
+	}
+	if _, err := resolveOp(d, "todo", "invoke (getTodos)"); err == nil {
+		t.Error("the malformed op key \"invoke (getTodos)\" must be gone (renamed to invoke)")
+	}
 }
 
 // TestUnknownOpErrorNamesRealOps: a wrong op name should surface the entity's real op(s)

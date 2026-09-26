@@ -836,7 +836,7 @@ Harvested by static analysis of the signed APK **v8.101.30** (build 810100030; d
 | Method | HTTP | Path | Headers | Query |
 |---|---|---|---|---|
 | deleteTodo | DELETE | `/comms/fam/v1/todos` | `x-fp-identifier-target-serviceid` | `todoId` |
-| invoke (getTodos) | GET | `/comms/fam/v1/todos` | `x-fp-identifier-target-serviceid`, `timezone` | — |
+| invoke | GET | `/comms/fam/v1/todos` | `x-fp-identifier-target-serviceid`, `timezone` | — |
 | createTodo | POST | `/comms/fam/v1/todos` | `x-fp-identifier-target-serviceid`, `x-transaction-id` | — |
 | updateTodo | PUT | `/comms/fam/v1/todos` | `x-fp-identifier-target-serviceid`, `x-transaction-id` | — |
 
