@@ -182,6 +182,10 @@ type Output struct {
 	// filter:/find: flag applies): `apps list` answers with getCategories' "Apps & websites"
 	// list, not the whole categories document.
 	Pick string `json:"pick,omitempty"`
+	// EnrichNames names an integer field in each record that is a family member's profileId;
+	// the engine reads the account and adds a "memberName" field so a table can show a name
+	// instead of the raw id (`location where` events carry profileId, not a name).
+	EnrichNames string `json:"enrich_names,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation
