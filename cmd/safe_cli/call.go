@@ -420,7 +420,40 @@ func resolveOp(d *descriptor.Descriptor, entity, op string) (descriptor.Operatio
 	if o, ok := ent.Actions[op]; ok {
 		return o, nil
 	}
-	return descriptor.Operation{}, fmt.Errorf("entity %q has no operation or action %q; run `safe_cli describe %s`", entity, op, entity)
+	return descriptor.Operation{}, unknownOpError(ent, entity, op)
+}
+
+// unknownOpError names the entity's real, callable op(s) inline so an agent that guessed a
+// verb/op (e.g. `list`, `getMostUsedApps`) gets the right name from the error itself and
+// needn't spend a turn on `describe` to recover. A single-op entity points straight at its
+// one op; a multi-op entity lists them (capped, with a describe pointer for the rest).
+func unknownOpError(ent descriptor.Entity, entity, op string) error {
+	var avail []string
+	for _, n := range ent.OperationNames() {
+		if ent.Operations[n].Available() {
+			avail = append(avail, n)
+		}
+	}
+	for _, n := range ent.ActionNames() {
+		if ent.Actions[n].Available() {
+			avail = append(avail, n)
+		}
+	}
+	switch {
+	case len(avail) == 0:
+		return fmt.Errorf("entity %q has no callable operation %q (none available on this account); run `safe_cli describe %s`", entity, op, entity)
+	case len(avail) == 1:
+		return fmt.Errorf("entity %q has no operation %q; its only operation is %q — try `safe_cli call %s %s …` (see `safe_cli describe %s`)", entity, op, avail[0], entity, avail[0], entity)
+	default:
+		const maxShown = 12
+		shown := avail
+		tail := ""
+		if len(avail) > maxShown {
+			shown = avail[:maxShown]
+			tail = fmt.Sprintf(", … (%d total)", len(avail))
+		}
+		return fmt.Errorf("entity %q has no operation %q; its operations are: %s%s (see `safe_cli describe %s`)", entity, op, strings.Join(shown, ", "), tail, entity)
+	}
 }
 
 // fillPath places id into path. If the path has the {idField} placeholder it is
