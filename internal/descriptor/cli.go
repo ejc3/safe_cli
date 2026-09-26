@@ -192,6 +192,12 @@ type Output struct {
 	// name ({"name":"group"} tags each app with its group), for context and filtering.
 	Flatten       string            `json:"flatten,omitempty"`
 	FlattenParent map[string]string `json:"flatten_parent,omitempty"`
+	// EmptyMessage is the one-line human message a verb WITHOUT a table prints when the
+	// response carries no data (every leaf null/0/false/""/empty) — so `calls log` on a quiet
+	// week reads "No call or text activity…" instead of a blob of nulls. It is opt-in because
+	// a settings verb can legitimately answer all-false/zero, and that must not be hidden; a
+	// table verb needs no opt-in (an empty listing already renders "No records found.").
+	EmptyMessage string `json:"empty_message,omitempty"`
 }
 
 // CLIBlocks is an op's `cli` entry: one verb block, or a list of them when one operation

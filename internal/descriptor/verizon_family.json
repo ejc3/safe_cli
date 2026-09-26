@@ -777,7 +777,10 @@
                   "transform": "iso_micro",
                   "help": "End of the range (default now)."
                 }
-              ]
+              ],
+              "output": {
+                "empty_message": "No call or text activity in that range."
+              }
             }
           ],
           "method": "GET",
@@ -2762,6 +2765,14 @@
                 "onlyLastKnownLoc": "true",
                 "onDemand": "false"
               },
+              "flags": [
+                {
+                  "name": "member",
+                  "type": "string",
+                  "maps_to": "find:memberName",
+                  "help": "Show only members whose name contains this text (case-insensitive); omit for everyone."
+                }
+              ],
               "output": {
                 "pick": "events",
                 "enrich_names": "profileId",

@@ -208,11 +208,15 @@ type LocationArea struct {
 
 // LocationWhereCmd: location  where <- location.getDashboardDetails
 type LocationWhereCmd struct {
-	DryRun bool `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
+	Member *string `name:"member" help:"Show only members whose name contains this text (case-insensitive); omit for everyone."`
+	DryRun bool    `name:"dry-run" help:"Print the exact request, with the resolved ids, without sending it."`
 }
 
 func (c *LocationWhereCmd) Run(rc *runContext) error {
 	given := map[string]any{}
+	if c.Member != nil {
+		given["member"] = *c.Member
+	}
 	return runVerb(rc, "location", "getDashboardDetails", "location", "", "where", given, "", c.DryRun, false, false)
 }
 

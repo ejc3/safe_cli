@@ -96,3 +96,43 @@ func emptyRecordBody(body []byte) ([]byte, bool) {
 	}
 	return clean, true
 }
+
+// isDataEmpty reports whether a JSON body carries no actual data — every leaf is null, 0,
+// false, "", or an empty array/object. Used to turn a "no records" payload (call/text
+// activity of all zeros/nulls) into a one-line "no results" instead of a blob of nulls.
+func isDataEmpty(body []byte) bool {
+	var v any
+	if err := json.Unmarshal(body, &v); err != nil {
+		return false
+	}
+	return valueEmpty(v)
+}
+
+func valueEmpty(v any) bool {
+	switch t := v.(type) {
+	case nil:
+		return true
+	case bool:
+		return !t
+	case float64:
+		return t == 0
+	case string:
+		return t == ""
+	case []any:
+		for _, x := range t {
+			if !valueEmpty(x) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		for _, x := range t {
+			if !valueEmpty(x) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
