@@ -1,9 +1,12 @@
 .PHONY: build test lint fmt vet tidy-check vuln gate clean
 
 BIN := bin/safe_cli
+# Stamp the build with the nearest tag (or a short sha) so `safe_cli version` / --version
+# report something real instead of the hardcoded 0.1.0-dev. GoReleaser stamps {{.Version}}.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)
 
 build:
-	go build -o $(BIN) ./cmd/safe_cli
+	go build -ldflags "-X main.version=$(VERSION)" -o $(BIN) ./cmd/safe_cli
 
 test:
 	go test -race ./...
