@@ -431,7 +431,7 @@ func injectAppUUID(body []byte, appUUID string) ([]byte, error) {
 func resolveOp(d *descriptor.Descriptor, entity, op string) (descriptor.Operation, error) {
 	ent, ok := d.Entity(entity)
 	if !ok {
-		if near := closest(entity, d.EntityNames(), 3); len(near) > 0 {
+		if near := closest(entity, d.EntityNames(), 2); len(near) > 0 {
 			return descriptor.Operation{}, fmt.Errorf("unknown entity %q; did you mean %q? (run `safe_cli entities`)", entity, near[0])
 		}
 		return descriptor.Operation{}, fmt.Errorf("unknown entity %q; run `safe_cli entities`", entity)

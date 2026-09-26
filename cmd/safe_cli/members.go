@@ -70,6 +70,17 @@ func (c *membersCmd) Run(rc *runContext) error {
 	if rc.G.JSON {
 		return outfmt.JSON(rc.Out, members)
 	}
+	if len(members) == 0 && (c.Find != "" || c.Role != "") {
+		crit := ""
+		if c.Find != "" {
+			crit = fmt.Sprintf(" matching %q", c.Find)
+		}
+		if c.Role != "" {
+			crit += fmt.Sprintf(" with role %q", c.Role)
+		}
+		_, err = fmt.Fprintf(rc.Out, "no members%s (run `safe_cli members` to list everyone).\n", crit)
+		return err
+	}
 	rows := make([][]string, 0, len(members))
 	for _, m := range members {
 		dev := ""
